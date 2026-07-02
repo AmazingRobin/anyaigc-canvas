@@ -85,14 +85,14 @@ export default function ImagePage() {
     const addAsset = useAssetStore((state) => state.addAsset);
     const [prompt, setPrompt] = useState("");
     const [references, setReferences] = useState<ReferenceImage[]>([]);
-    const [results, setResults] = useState<GenerationResult[]>([]);
+    const [activeSessionId, setActiveSessionId] = useState(() => nanoid());
+    const [resultsBySession, setResultsBySession] = useState<Record<string, GenerationResult[]>>({});
     const [logs, setLogs] = useState<GenerationLog[]>([]);
-    const [running, setRunning] = useState(false);
+    const [runningBySession, setRunningBySession] = useState<Record<string, { startedAt: number }>>({});
     const [logsOpen, setLogsOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
-    const [startedAt, setStartedAt] = useState(0);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
@@ -101,16 +101,38 @@ export default function ImagePage() {
     const model = effectiveConfig.imageModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(15, Number(config.count) || 1));
+    const results = resultsBySession[activeSessionId] || [];
+    const activeRunning = runningBySession[activeSessionId];
+    const running = Boolean(activeRunning);
 
     useEffect(() => {
-        if (!running || !startedAt) return;
-        const timer = window.setInterval(() => setElapsedMs(performance.now() - startedAt), 1000);
+        if (!activeRunning?.startedAt) {
+            setElapsedMs(0);
+            return;
+        }
+        const timer = window.setInterval(() => setElapsedMs(performance.now() - activeRunning.startedAt), 1000);
         return () => window.clearInterval(timer);
-    }, [running, startedAt]);
+    }, [activeRunning?.startedAt]);
 
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    const updateSessionResults = (sessionId: string, updater: (value: GenerationResult[]) => GenerationResult[]) => {
+        setResultsBySession((value) => ({ ...value, [sessionId]: updater(value[sessionId] || []) }));
+    };
+
+    const startSessionRun = (sessionId: string, startedAt: number) => {
+        setRunningBySession((value) => ({ ...value, [sessionId]: { startedAt } }));
+    };
+
+    const finishSessionRun = (sessionId: string) => {
+        setRunningBySession((value) => {
+            const next = { ...value };
+            delete next[sessionId];
+            return next;
+        });
+    };
 
     const addReferences = async (files?: FileList | null) => {
         const imageFiles: File[] = [];
@@ -179,16 +201,17 @@ export default function ImagePage() {
         const snapshot = buildRequestSnapshot();
         if (!snapshot) return;
 
+        const sessionId = activeSessionId;
+        const sessionResults = resultsBySession[sessionId] || [];
         setElapsedMs(0);
-        setRunning(true);
         setPreviewLog(null);
-        const baseResultIndex = results.length;
+        const baseResultIndex = sessionResults.length;
         const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
-        setResults((value) => [...value, ...pendingResults]);
+        updateSessionResults(sessionId, (value) => [...value, ...pendingResults]);
         const batchStartedAt = performance.now();
-        setStartedAt(batchStartedAt);
+        startSessionRun(sessionId, batchStartedAt);
 
-        const tasks = Array.from({ length: generationCount }, (_, index) => runGenerationSlot(baseResultIndex + index, snapshot));
+        const tasks = Array.from({ length: generationCount }, (_, index) => runGenerationSlot(sessionId, baseResultIndex + index, snapshot));
 
         const result = await Promise.allSettled(tasks);
         const successImages = result.filter((item): item is PromiseFulfilledResult<GeneratedImage> => item.status === "fulfilled").map((item) => item.value);
@@ -196,8 +219,7 @@ export default function ImagePage() {
         const failCount = generationCount - successCount;
         const failed = result.find((item): item is PromiseRejectedResult => item.status === "rejected");
         const durationMs = performance.now() - batchStartedAt;
-        setRunning(false);
-        setStartedAt(0);
+        finishSessionRun(sessionId);
         successCount ? message.success("图片已生成") : message.error(failed?.reason instanceof Error ? failed.reason.message : "生成失败");
 
         void (async () => {
@@ -263,11 +285,11 @@ export default function ImagePage() {
 
     const createSession = () => {
         previewRequestIdRef.current += 1;
+        const sessionId = nanoid();
+        setActiveSessionId(sessionId);
         setPrompt("");
         setReferences([]);
-        setResults([]);
         setElapsedMs(0);
-        setStartedAt(0);
         setSelectedLogIds([]);
         setPreviewLog(null);
     };
@@ -278,7 +300,7 @@ export default function ImagePage() {
         void Promise.all([deleteStoredImages(imageKeys), ...selectedLogIds.map((id) => logStore.removeItem(id))]).then(refreshLogs);
         if (previewLog && selectedLogIds.includes(previewLog.id)) {
             setPreviewLog(null);
-            setResults([]);
+            updateSessionResults(activeSessionId, () => []);
         }
         setSelectedLogIds([]);
         setDeleteConfirmOpen(false);
@@ -292,6 +314,8 @@ export default function ImagePage() {
 
     const previewGenerationLog = async (log: GenerationLog) => {
         const requestId = (previewRequestIdRef.current += 1);
+        const sessionId = `log:${log.id}`;
+        setActiveSessionId(sessionId);
         setPreviewLog(log);
         setLogsOpen(false);
         const hydratedLog = await hydrateLogMedia(log);
@@ -303,7 +327,7 @@ export default function ImagePage() {
         if (hydratedLog.config.quality) updateConfig("quality", hydratedLog.config.quality);
         if (hydratedLog.config.size) updateConfig("size", hydratedLog.config.size);
         if (hydratedLog.config.count) updateConfig("count", hydratedLog.config.count);
-        setResults(hydratedLog.images.map((image) => ({ id: image.id, status: "success", image })));
+        updateSessionResults(sessionId, () => hydratedLog.images.map((image) => ({ id: image.id, status: "success", image })));
     };
 
     const buildRequestSnapshot = () => {
@@ -320,7 +344,7 @@ export default function ImagePage() {
         return { text, config: { ...effectiveConfig, model, count: "1" }, references: [...references] };
     };
 
-    const runGenerationSlot = async (index: number, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }) => {
+    const runGenerationSlot = async (sessionId: string, index: number, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }) => {
         const itemStartedAt = performance.now();
         try {
             const result = snapshot.references.length ? await requestEdit(snapshot.config, snapshot.text, snapshot.references) : await requestGeneration(snapshot.config, snapshot.text);
@@ -328,10 +352,10 @@ export default function ImagePage() {
             if (!image) throw new Error("接口没有返回图片");
             const meta = await readImageMeta(image.dataUrl);
             const nextImage = { id: image.id, dataUrl: image.dataUrl, durationMs: performance.now() - itemStartedAt, width: meta.width, height: meta.height, bytes: getDataUrlByteSize(image.dataUrl) };
-            setResults((value) => updateResultAt(value, index, { status: "success", image: nextImage }));
+            updateSessionResults(sessionId, (value) => updateResultAt(value, index, { status: "success", image: nextImage }));
             return nextImage;
         } catch (error) {
-            setResults((value) => updateResultAt(value, index, { status: "failed", error: error instanceof Error ? error.message : "生成失败" }));
+            updateSessionResults(sessionId, (value) => updateResultAt(value, index, { status: "failed", error: error instanceof Error ? error.message : "生成失败" }));
             throw error;
         }
     };
@@ -340,8 +364,9 @@ export default function ImagePage() {
         const snapshot = buildRequestSnapshot();
         if (!snapshot) return;
         setPreviewLog(null);
-        setResults((value) => updateResultAt(value, index, { status: "pending", error: undefined, image: undefined }));
-        void runGenerationSlot(index, snapshot).catch(() => {});
+        const sessionId = activeSessionId;
+        updateSessionResults(sessionId, (value) => updateResultAt(value, index, { status: "pending", error: undefined, image: undefined }));
+        void runGenerationSlot(sessionId, index, snapshot).catch(() => {});
     };
 
     return (
