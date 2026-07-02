@@ -687,20 +687,24 @@ function LogPanel({
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
     const thumbnail = normalizeLogThumbnails(log.thumbnails)[0] || "";
     const imageCount = log.imageCount || log.successCount || 0;
+    const coverImage = log.images.find((image) => image.dataUrl || image.storageKey);
+    const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
+    const promptPreview = log.prompt || log.title || "";
 
     return (
         <button
             type="button"
             className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
+            title={promptPreview}
         >
             <div className="grid grid-cols-[minmax(128px,1fr)_auto] gap-2">
                 <div className="grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2">
                     <Checkbox className="mt-0.5" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
-                    <LogCover image={thumbnail} count={imageCount} />
+                    <LogCover logId={log.id} image={thumbnail} source={coverImage} count={imageCount} />
                     <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold leading-5">{log.title}</div>
-                        <div className="mt-1 line-clamp-2 text-xs leading-4 text-stone-500 dark:text-stone-400">{log.prompt}</div>
+                        <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
+                        <div className="mt-1 line-clamp-3 text-xs leading-4 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     </div>
                 </div>
                 <div className="grid justify-items-end gap-2">
@@ -729,13 +733,65 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
     );
 }
 
-function LogCover({ image, count }: { image: string; count: number }) {
+function LogCover({ logId, image, source, count }: { logId: string; image: string; source?: GeneratedImage; count: number }) {
+    const [thumbnail, setThumbnail] = useState(image);
+    const coverRef = useRef<HTMLSpanElement>(null);
+    const hasSource = Boolean(source?.dataUrl || source?.storageKey);
+
+    useEffect(() => {
+        setThumbnail(image);
+    }, [image, logId]);
+
+    useEffect(() => {
+        if (thumbnail || !source || !hasSource) return;
+        let cancelled = false;
+        let idleId = 0;
+        let timerId: ReturnType<typeof globalThis.setTimeout> | null = null;
+        let observer: IntersectionObserver | null = null;
+        const run = () => {
+            const load = async () => {
+                const sourceUrl = await resolveImageUrl(source.storageKey, source.dataUrl);
+                if (!sourceUrl || cancelled) return;
+                const nextThumbnail = await createImageThumbnail(sourceUrl);
+                if (!nextThumbnail || cancelled) return;
+                setThumbnail(nextThumbnail);
+                void cacheLogThumbnail(logId, nextThumbnail);
+            };
+            if ("requestIdleCallback" in window) {
+                idleId = window.requestIdleCallback(() => void load(), { timeout: 1500 });
+            } else {
+                timerId = globalThis.setTimeout(() => void load(), 120);
+            }
+        };
+        const node = coverRef.current;
+        if (node && "IntersectionObserver" in window) {
+            observer = new IntersectionObserver(
+                ([entry]) => {
+                    if (!entry?.isIntersecting) return;
+                    observer?.disconnect();
+                    run();
+                },
+                { rootMargin: "180px" },
+            );
+            observer.observe(node);
+        } else {
+            run();
+        }
+        return () => {
+            cancelled = true;
+            observer?.disconnect();
+            if (idleId) window.cancelIdleCallback(idleId);
+            if (timerId) globalThis.clearTimeout(timerId);
+        };
+    }, [hasSource, logId, source, thumbnail]);
+
     return (
         <span
+            ref={coverRef}
             className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
-            style={image ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
+            style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
         >
-            {image ? <img src={image} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : <ImagePlus className="size-4 opacity-75" />}
+            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : hasSource ? <LoaderCircle className="size-4 animate-spin opacity-60" /> : <ImagePlus className="size-4 opacity-75" />}
             {count > 1 ? <span className="absolute bottom-0.5 right-0.5 rounded bg-black/65 px-1 text-[10px] font-semibold leading-4 text-white shadow-sm">{count}</span> : null}
         </span>
     );
@@ -848,6 +904,23 @@ function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: n
 
 function normalizeLogThumbnails(thumbnails?: string[]) {
     return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= 120_000)).slice(0, 1);
+}
+
+async function cacheLogThumbnail(logId: string, thumbnail: string) {
+    if (!thumbnail) return;
+    try {
+        const log = await logStore.getItem<GenerationLog>(logId);
+        if (!log) return;
+        await logStore.setItem(logId, { ...log, thumbnails: normalizeLogThumbnails([thumbnail]) });
+    } catch {}
+}
+
+function compactLogTitle(value: string) {
+    const text = value.replace(/\s+/g, " ").replace(/^[,.;:，。；：、\s]+/, "").trim();
+    if (!text) return "未命名";
+    const sentence = text.split(/[。！？!?]/, 1)[0]?.trim() || text;
+    if (sentence.length <= 30) return sentence;
+    return `${sentence.slice(0, 30)}…`;
 }
 
 function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
