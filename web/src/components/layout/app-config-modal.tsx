@@ -466,7 +466,7 @@ export function AppConfigModal() {
                                                     <Cloud className="size-4" />
                                                     WebDAV 同步
                                                 </div>
-                                                <div className="mt-1 text-xs text-stone-500">适合已有 NAS 或自定义存储的用户。同步内容不包含 AI API Key；服务不支持 CORS 时可走 Next.js 转发。</div>
+                                                <div className="mt-1 text-xs text-stone-500">适合已有 NAS 或自定义存储的用户。同步内容不包含 AI API Key；服务不支持 CORS 时可使用 Next.js 转发。</div>
                                             </div>
                                             <div className="text-xs text-stone-500">{webdav.lastSyncedAt ? `${t("上次同步")} ${formatWebdavTime(webdav.lastSyncedAt, language)}` : t("尚未同步")}</div>
                                         </div>

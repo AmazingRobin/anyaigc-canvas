@@ -35,7 +35,7 @@ const zhToEn = {
     "在主站获取 Key": "Get Keys On RelayBases",
     "前往 RelayBases API 密钥页面创建媒体 Key 和文本 Key，余额、模型与账单都在主站管理。": "Create media and text keys on the RelayBases API keys page. Balance, models, and billing stay on the main site.",
     "媒体 Key 用于图片和视频": "Media Key Powers Images And Videos",
-    "画布内图片与视频统一走 RelayBases 媒体线路；异步图片和视频任务会按 4 倍扣费。": "Images and videos use RelayBases media routes. Async image and video tasks cost x4.",
+    "画布内图片与视频统一使用 RelayBases 媒体线路；异步图片和视频任务会按 4 倍扣费。": "Images and videos use RelayBases media routes. Async image and video tasks cost x4.",
     "文本 Key 用于 Agent": "Text Key Powers Agents",
     "文本 Key 负责 Agent、提示词反推和文本生成。填入后可自动获取可用文本模型。": "The text key is used for agents, prompt reverse engineering, and text generation. Available text models are loaded automatically.",
     主站管理: "Main Site",
@@ -89,7 +89,7 @@ const zhToEn = {
     云同步中: "Cloud Syncing",
     立即云同步: "Sync Now",
     "高级同步：WebDAV": "Advanced Sync: WebDAV",
-    "适合已有 NAS 或自定义存储的用户。同步内容不包含 AI API Key；服务不支持 CORS 时可走 Next.js 转发。":
+    "适合已有 NAS 或自定义存储的用户。同步内容不包含 AI API Key；服务不支持 CORS 时可使用 Next.js 转发。":
         "For users who already have a NAS or custom storage. Synced content does not include AI API keys. Use the Next.js proxy if the service does not support CORS.",
     等待本地数据加载: "Waiting For Local Data",
     读取远端清单: "Reading Remote Manifest",
