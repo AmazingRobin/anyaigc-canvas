@@ -247,7 +247,7 @@ export default function ImagePage() {
         }
     };
 
-    const generate = async () => {
+    const generate = () => {
         const text = prompt.trim();
         if (!text) {
             message.error("请输入生图提示词");
@@ -277,7 +277,26 @@ export default function ImagePage() {
         startSessionRun(sessionId, batchStartedAt);
 
         const tasks = pendingResults.map((item) => runGenerationSlot(sessionId, item.id, snapshot));
+        void finishGenerationBatch({ sessionId, text, model, snapshot, generationCount, batchStartedAt, tasks });
+    };
 
+    const finishGenerationBatch = async ({
+        sessionId,
+        text,
+        model,
+        snapshot,
+        generationCount,
+        batchStartedAt,
+        tasks,
+    }: {
+        sessionId: string;
+        text: string;
+        model: string;
+        snapshot: { text: string; config: AiConfig; references: ReferenceImage[] };
+        generationCount: number;
+        batchStartedAt: number;
+        tasks: Array<Promise<GeneratedImage>>;
+    }) => {
         const result = await Promise.allSettled(tasks);
         const successImages = result.filter((item): item is PromiseFulfilledResult<GeneratedImage> => item.status === "fulfilled").map((item) => item.value);
         const successCount = successImages.length;
@@ -559,7 +578,7 @@ export default function ImagePage() {
                         </div>
 
                         <div className="mt-auto pt-6">
-                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => void generate()}>
+                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={generate}>
                                 开始生成
                             </Button>
                         </div>
@@ -570,7 +589,7 @@ export default function ImagePage() {
                             <div>
                                 <h2 className="text-xl font-semibold">生成结果</h2>
                             </div>
-                            {running ? <Tag className="m-0 px-2 py-1">等待 {formatDuration(elapsedMs)}{runningCount > 1 ? ` · ${runningCount} 批` : ""}</Tag> : null}
+                            {running ? <Tag className="m-0 px-2 py-1">生成中 {formatDuration(elapsedMs)}{runningCount > 1 ? ` · 并发 ${runningCount} 批` : ""}</Tag> : null}
                         </div>
                         {results.length ? (
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
