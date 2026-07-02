@@ -133,8 +133,8 @@ export const defaultConfig: AiConfig = {
     videoModels: RELAYBASES_VIDEO_MODEL_OPTIONS,
     textModels: [],
     audioModels: [],
-    quality: "medium",
-    size: "1:1",
+    quality: "auto",
+    size: "auto",
     count: "3",
     canvasImageCount: "3",
 };
