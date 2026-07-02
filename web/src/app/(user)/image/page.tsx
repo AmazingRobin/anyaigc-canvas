@@ -62,6 +62,10 @@ type GenerationLog = {
 type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "size" | "count">;
 
 const IMAGE_REFERENCE_LIMIT = 5;
+const INITIAL_LOG_VISIBLE_COUNT = 60;
+const LOG_VISIBLE_BATCH_SIZE = 60;
+const LOG_THUMBNAIL_SIZE = 72;
+const LOG_THUMBNAIL_QUALITY = 0.72;
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
@@ -72,6 +76,7 @@ const logStore = localforage.createInstance({ name: "infinite-canvas", storeName
 export default function ImagePage() {
     const { message } = App.useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const previewRequestIdRef = useRef(0);
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
     const updateConfig = useConfigStore((state) => state.updateConfig);
@@ -196,6 +201,7 @@ export default function ImagePage() {
                     return { ...image, dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType };
                 }),
             );
+            const thumbnails = await createLogThumbnails(logImages);
             saveLog(
                 buildLog({
                     prompt: text,
@@ -207,6 +213,7 @@ export default function ImagePage() {
                     failCount,
                     status: successCount ? "成功" : "失败",
                     images: logImages,
+                    thumbnails,
                 }),
             );
             successCount ? message.success("图片已生成") : message.error(failed?.reason instanceof Error ? failed.reason.message : "生成失败");
@@ -252,6 +259,7 @@ export default function ImagePage() {
     };
 
     const createSession = () => {
+        previewRequestIdRef.current += 1;
         setPrompt("");
         setReferences([]);
         setResults([]);
@@ -262,6 +270,7 @@ export default function ImagePage() {
     };
 
     const deleteSelectedLogs = () => {
+        previewRequestIdRef.current += 1;
         const imageKeys = logs.filter((log) => selectedLogIds.includes(log.id)).flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
         void Promise.all([deleteStoredImages(imageKeys), ...selectedLogIds.map((id) => logStore.removeItem(id))]).then(refreshLogs);
         if (previewLog && selectedLogIds.includes(previewLog.id)) {
@@ -279,15 +288,19 @@ export default function ImagePage() {
     const refreshLogs = async () => setLogs(await readStoredLogs());
 
     const previewGenerationLog = async (log: GenerationLog) => {
+        const requestId = (previewRequestIdRef.current += 1);
         setPreviewLog(log);
         setLogsOpen(false);
-        setPrompt(log.prompt);
-        setReferences((log.references || []).slice(0, IMAGE_REFERENCE_LIMIT));
-        if (log.config.imageModel || log.model) updateConfig("imageModel", log.config.imageModel || log.model);
-        if (log.config.quality) updateConfig("quality", log.config.quality);
-        if (log.config.size) updateConfig("size", log.config.size);
-        if (log.config.count) updateConfig("count", log.config.count);
-        setResults(log.images.map((image) => ({ id: image.id, status: "success", image })));
+        const hydratedLog = await hydrateLogMedia(log);
+        if (requestId !== previewRequestIdRef.current) return;
+        setPreviewLog(hydratedLog);
+        setPrompt(hydratedLog.prompt);
+        setReferences((hydratedLog.references || []).slice(0, IMAGE_REFERENCE_LIMIT));
+        if (hydratedLog.config.imageModel || hydratedLog.model) updateConfig("imageModel", hydratedLog.config.imageModel || hydratedLog.model);
+        if (hydratedLog.config.quality) updateConfig("quality", hydratedLog.config.quality);
+        if (hydratedLog.config.size) updateConfig("size", hydratedLog.config.size);
+        if (hydratedLog.config.count) updateConfig("count", hydratedLog.config.count);
+        setResults(hydratedLog.images.map((image) => ({ id: image.id, status: "success", image })));
     };
 
     const buildRequestSnapshot = () => {
@@ -621,7 +634,14 @@ function LogPanel({
     onPreviewLog: (log: GenerationLog) => void;
 }) {
     const allSelected = Boolean(logs.length) && selectedLogIds.length === logs.length;
+    const [visibleCount, setVisibleCount] = useState(INITIAL_LOG_VISIBLE_COUNT);
+    const visibleLogs = logs.slice(0, visibleCount);
+    const hiddenCount = Math.max(0, logs.length - visibleLogs.length);
     const toggleAll = () => onSelectedLogIdsChange(allSelected ? [] : logs.map((log) => log.id));
+
+    useEffect(() => {
+        setVisibleCount(INITIAL_LOG_VISIBLE_COUNT);
+    }, [logs.length]);
 
     return (
         <>
@@ -643,7 +663,7 @@ function LogPanel({
                 </Button>
             </div>
             <div className="space-y-3">
-                {logs.map((log) => (
+                {visibleLogs.map((log) => (
                     <LogCard
                         key={log.id}
                         log={log}
@@ -653,6 +673,11 @@ function LogPanel({
                         onClick={() => onPreviewLog(log)}
                     />
                 ))}
+                {hiddenCount ? (
+                    <Button block size="small" onClick={() => setVisibleCount((value) => value + LOG_VISIBLE_BATCH_SIZE)}>
+                        加载更多 {hiddenCount}
+                    </Button>
+                ) : null}
                 {!logs.length ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-stone-300 text-center text-sm text-stone-500 dark:border-stone-700">暂无生成记录</div> : null}
             </div>
         </>
@@ -676,7 +701,7 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                         {thumbnails.length ? (
                             <div className="mt-2 flex gap-1 overflow-hidden">
                                 {thumbnails.map((image, index) => (
-                                    <img key={`${log.id}-${index}`} src={image} alt="" className="size-8 shrink-0 rounded-md object-cover" />
+                                    <img key={`${log.id}-${index}`} src={image} alt="" className="size-8 shrink-0 rounded-md object-cover" loading="lazy" decoding="async" />
                                 ))}
                             </div>
                         ) : null}
@@ -715,14 +740,37 @@ async function readStoredLogs() {
         await logStore.iterate<GenerationLog, void>((value) => {
             values.push(value);
         });
-        const logs = await Promise.all(values.map(normalizeLog));
+        const logs = values.map(normalizeLogMetadata);
         return logs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     } catch {
         return [];
     }
 }
 
-async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog> {
+function normalizeLogMetadata(log: Partial<GenerationLog>): GenerationLog {
+    const config = normalizeLogConfig(log);
+    return {
+        id: log.id || nanoid(),
+        createdAt: log.createdAt || Date.now(),
+        title: log.title || log.model || "未命名",
+        prompt: log.prompt || log.title || "",
+        time: log.time || new Date().toLocaleString("zh-CN", { hour12: false }),
+        model: log.model || config.imageModel || "",
+        config,
+        references: (log.references || []).map(normalizeReferenceMetadata),
+        durationMs: log.durationMs || 0,
+        successCount: log.successCount ?? log.imageCount ?? 0,
+        failCount: log.failCount || 0,
+        imageCount: log.imageCount || log.successCount || 0,
+        size: log.size || config.size || "",
+        quality: log.quality || config.quality || "",
+        status: log.status || "成功",
+        images: (log.images || []).map(normalizeGeneratedImageMetadata),
+        thumbnails: normalizeLogThumbnails(log.thumbnails),
+    };
+}
+
+async function hydrateLogMedia(log: Partial<GenerationLog>): Promise<GenerationLog> {
     const references = await Promise.all(
         (log.references || []).map(async (item) => ({
             ...item,
@@ -753,7 +801,7 @@ async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog>
         quality: log.quality || config.quality || "",
         status: log.status || "成功",
         images,
-        thumbnails: images.map((image) => image.dataUrl).filter(Boolean),
+        thumbnails: normalizeLogThumbnails(log.thumbnails),
     };
 }
 
@@ -762,8 +810,36 @@ function serializeLog(log: GenerationLog): GenerationLog {
         ...log,
         references: log.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
         images: log.images.map((image) => ({ ...image, dataUrl: image.storageKey ? "" : image.dataUrl })),
-        thumbnails: [],
+        thumbnails: normalizeLogThumbnails(log.thumbnails),
     };
+}
+
+function normalizeReferenceMetadata(item: Partial<ReferenceImage>, index: number): ReferenceImage {
+    return {
+        id: item.id || nanoid(),
+        name: item.name || `reference-${index + 1}.png`,
+        type: item.type || "",
+        dataUrl: item.storageKey ? "" : item.dataUrl || "",
+        url: item.url,
+        storageKey: item.storageKey,
+    };
+}
+
+function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: number): GeneratedImage {
+    return {
+        id: item.id || nanoid(),
+        dataUrl: item.storageKey ? "" : item.dataUrl || "",
+        storageKey: item.storageKey,
+        durationMs: item.durationMs || 0,
+        width: item.width || 0,
+        height: item.height || 0,
+        bytes: item.bytes || 0,
+        mimeType: item.mimeType,
+    };
+}
+
+function normalizeLogThumbnails(thumbnails?: string[]) {
+    return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= 120_000)).slice(0, 4);
 }
 
 function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
@@ -804,6 +880,7 @@ function buildLog({
     failCount,
     status,
     images,
+    thumbnails,
 }: {
     prompt: string;
     model: string;
@@ -814,6 +891,7 @@ function buildLog({
     failCount: number;
     status: GenerationLog["status"];
     images: GeneratedImage[];
+    thumbnails?: string[];
 }): GenerationLog {
     const logConfig = {
         model: config.model,
@@ -839,6 +917,52 @@ function buildLog({
         quality: logConfig.quality,
         status,
         images,
-        thumbnails: images.map((image) => image.dataUrl).filter(Boolean),
+        thumbnails: normalizeLogThumbnails(thumbnails),
     };
+}
+
+async function createLogThumbnails(images: GeneratedImage[]) {
+    if (typeof window === "undefined") return [];
+    const thumbnails = await Promise.all(images.slice(0, 4).map((image) => createImageThumbnail(image.dataUrl)));
+    return thumbnails.filter(Boolean);
+}
+
+function createImageThumbnail(source: string) {
+    return new Promise<string>((resolve) => {
+        if (!source) {
+            resolve("");
+            return;
+        }
+        const image = new window.Image();
+        let settled = false;
+        const done = (value: string) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            resolve(value);
+        };
+        const timeout = window.setTimeout(() => done(""), 3000);
+        image.onload = () => {
+            try {
+                const width = image.naturalWidth || LOG_THUMBNAIL_SIZE;
+                const height = image.naturalHeight || LOG_THUMBNAIL_SIZE;
+                const scale = LOG_THUMBNAIL_SIZE / Math.max(width, height, 1);
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(width * scale));
+                canvas.height = Math.max(1, Math.round(height * scale));
+                const context = canvas.getContext("2d");
+                if (!context) {
+                    done("");
+                    return;
+                }
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                done(canvas.toDataURL("image/webp", LOG_THUMBNAIL_QUALITY));
+            } catch {
+                done("");
+            }
+        };
+        image.onerror = () => done("");
+        image.decoding = "async";
+        image.src = source;
+    });
 }
