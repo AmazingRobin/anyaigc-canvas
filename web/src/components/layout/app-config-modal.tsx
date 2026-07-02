@@ -429,7 +429,7 @@ export function AppConfigModal() {
                                                 <Cloud className="size-4" />
                                                 RelayBases 云同步
                                             </div>
-                                            <div className="mt-1 text-xs leading-5 text-stone-500">同步画布、我的素材、生成记录和本地媒体文件，不同步 API Key。换设备后填入同一个 RelayBases Key 即可恢复。</div>
+                                            <div className="mt-1 text-xs leading-5 text-stone-500">同步画布、我的素材、生成记录和本地媒体文件，不同步 API Key。开启后会在页面打开后自动同步，并每 5 分钟同步一次；顶部按钮可随时手动同步。</div>
                                         </div>
                                         <Switch
                                             checked={cloudSync.enabled}

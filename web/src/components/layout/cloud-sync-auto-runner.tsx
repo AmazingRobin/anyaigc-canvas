@@ -8,6 +8,8 @@ import { useConfigStore } from "@/stores/use-config-store";
 
 const INITIAL_AUTO_SYNC_DELAY_MS = 6000;
 const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const RECENT_SYNC_SKIP_MS = 60 * 1000;
+const CLOUD_SYNC_MANUAL_STARTED_AT_KEY = "infinite-canvas:cloud_sync_manual_started_at";
 
 export function CloudSyncAutoRunner() {
     const syncingRef = useRef(false);
@@ -21,6 +23,10 @@ export function CloudSyncAutoRunner() {
 
         const run = async () => {
             if (syncingRef.current) return;
+            const lastManualStartedAt = Number(window.localStorage.getItem(CLOUD_SYNC_MANUAL_STARTED_AT_KEY) || 0);
+            if (lastManualStartedAt && Date.now() - lastManualStartedAt < RECENT_SYNC_SKIP_MS) return;
+            const lastSyncedAt = useConfigStore.getState().cloudSync.lastSyncedAt;
+            if (lastSyncedAt && Date.now() - new Date(lastSyncedAt).getTime() < RECENT_SYNC_SKIP_MS) return;
             syncingRef.current = true;
             try {
                 const result = await syncAppDataToCloud(apiKey);

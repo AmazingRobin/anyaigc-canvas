@@ -80,8 +80,13 @@ const zhToEn = {
     "RelayBases 云同步": "RelayBases Cloud Sync",
     "同步画布、我的素材、生成记录和本地媒体文件，不同步 API Key。换设备后填入同一个 RelayBases Key 即可恢复。":
         "Sync canvas, assets, generation history, and local media files. API keys are not synced. Use the same RelayBases key on another device to restore.",
+    "同步画布、我的素材、生成记录和本地媒体文件，不同步 API Key。开启后会在页面打开后自动同步，并每 5 分钟同步一次；顶部按钮可随时手动同步。":
+        "Sync canvas, assets, generation history, and local media files. API keys are not synced. When enabled, sync runs after the page opens and every 5 minutes; the top button can sync manually anytime.",
     已开启: "On",
     未开启: "Off",
+    开启同步: "Enable Sync",
+    云同步: "Cloud Sync",
+    同步中: "Syncing",
     上次同步: "Last Sync",
     尚未同步: "Not Synced Yet",
     最近失败: "Last Failure",
