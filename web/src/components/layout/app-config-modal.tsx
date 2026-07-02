@@ -2,7 +2,7 @@
 
 import { App, Button, Form, Input, Modal, Progress, Segmented, Select, Switch, Tabs } from "antd";
 import { Cloud, RefreshCw, Wifi } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { ModelPicker } from "@/components/model-picker";
 import { fetchChannelModels } from "@/services/api/image";
@@ -71,7 +71,6 @@ function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProg
 export function AppConfigModal() {
     const { message } = App.useApp();
     const { language, t } = useI18n();
-    const lastHandledCloudSyncRequestRef = useRef(0);
     const [syncingCloud, setSyncingCloud] = useState(false);
     const [testingWebdav, setTestingWebdav] = useState(false);
     const [syncingWebdav, setSyncingWebdav] = useState(false);
@@ -90,7 +89,6 @@ export function AppConfigModal() {
     const setCloudSyncActivity = useConfigStore((state) => state.setCloudSyncActivity);
     const isConfigOpen = useConfigStore((state) => state.isConfigOpen);
     const configActiveTab = useConfigStore((state) => state.configActiveTab);
-    const cloudSyncManualRequestId = useConfigStore((state) => state.cloudSyncManualRequestId);
     const shouldPromptContinue = useConfigStore((state) => state.shouldPromptContinue);
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
     const setConfigActiveTab = useConfigStore((state) => state.setConfigActiveTab);
@@ -223,13 +221,6 @@ export function AppConfigModal() {
             if (useConfigStore.getState().cloudSyncActivity === "manual") setCloudSyncActivity("idle");
         }
     }, [config.mediaApiKey, config.textApiKey, message, setCloudSyncActivity, syncingCloud, updateCloudSyncConfig]);
-
-    useEffect(() => {
-        if (!isConfigOpen || configActiveTab !== "sync" || !cloudSyncManualRequestId) return;
-        if (lastHandledCloudSyncRequestRef.current === cloudSyncManualRequestId) return;
-        lastHandledCloudSyncRequestRef.current = cloudSyncManualRequestId;
-        void syncCloud();
-    }, [cloudSyncManualRequestId, configActiveTab, isConfigOpen, syncCloud]);
 
     const syncWebdav = async () => {
         if (!webdavReady) {

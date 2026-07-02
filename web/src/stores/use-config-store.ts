@@ -162,7 +162,6 @@ type ConfigStore = {
     webdav: WebdavSyncConfig;
     isConfigOpen: boolean;
     configActiveTab: string;
-    cloudSyncManualRequestId: number;
     cloudSyncActivity: CloudSyncActivity;
     shouldPromptContinue: boolean;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
@@ -173,7 +172,6 @@ type ConfigStore = {
     openConfigDialog: (shouldPromptContinue?: boolean, activeTab?: string) => void;
     setConfigDialogOpen: (isOpen: boolean) => void;
     setConfigActiveTab: (activeTab: string) => void;
-    requestCloudSyncDialog: () => void;
     setCloudSyncActivity: (activity: CloudSyncActivity) => void;
     clearPromptContinue: () => void;
 };
@@ -245,7 +243,6 @@ export const useConfigStore = create<ConfigStore>()(
             webdav: defaultWebdavSyncConfig,
             isConfigOpen: false,
             configActiveTab: "channels",
-            cloudSyncManualRequestId: 0,
             cloudSyncActivity: "idle",
             shouldPromptContinue: false,
             updateConfig: (key, value) => set((state) => ({ config: normalizeRelayBasesConfig({ ...state.config, [key]: value }) })),
@@ -268,7 +265,6 @@ export const useConfigStore = create<ConfigStore>()(
             openConfigDialog: (shouldPromptContinue = false, activeTab) => set((state) => ({ isConfigOpen: true, shouldPromptContinue, configActiveTab: activeTab || state.configActiveTab })),
             setConfigDialogOpen: (isConfigOpen) => set({ isConfigOpen }),
             setConfigActiveTab: (configActiveTab) => set({ configActiveTab }),
-            requestCloudSyncDialog: () => set({ isConfigOpen: true, shouldPromptContinue: false, configActiveTab: "sync", cloudSyncManualRequestId: Date.now() }),
             setCloudSyncActivity: (cloudSyncActivity) => set({ cloudSyncActivity }),
             clearPromptContinue: () => set({ shouldPromptContinue: false }),
         }),

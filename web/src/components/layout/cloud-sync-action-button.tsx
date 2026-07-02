@@ -22,7 +22,6 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
     const cloudSync = useConfigStore((state) => state.cloudSync);
     const cloudSyncActivity = useConfigStore((state) => state.cloudSyncActivity);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
-    const requestCloudSyncDialog = useConfigStore((state) => state.requestCloudSyncDialog);
     const apiKey = getCloudSyncApiKey(config.mediaApiKey, config.textApiKey);
     const ready = Boolean(apiKey);
     const hasError = Boolean(cloudSync.lastError);
@@ -57,7 +56,7 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
             openConfigDialog(false, "channels");
             return;
         }
-        requestCloudSyncDialog();
+        openConfigDialog(false, "sync");
     };
 
     const Icon = syncing ? RefreshCw : hasError ? AlertCircle : Cloud;
