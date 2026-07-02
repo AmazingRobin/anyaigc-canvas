@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { App, Button, Checkbox, Drawer, Empty, Image, Input, Modal, Tag, Tooltip, Typography } from "antd";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { App, Button, Checkbox, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
 
@@ -595,7 +595,12 @@ export default function ImagePage() {
                             <div>
                                 <h2 className="text-xl font-semibold">生成结果</h2>
                             </div>
-                            {running ? <Tag className="m-0 px-2 py-1">生成中 {formatDuration(elapsedMs)}{runningCount > 1 ? ` · 并发 ${runningCount} 批` : ""}</Tag> : null}
+                            {running ? (
+                                <HistoryPill tone="pending" label="生成中">
+                                    {formatDuration(elapsedMs)}
+                                    {runningCount > 1 ? ` · ${runningCount} 批` : ""}
+                                </HistoryPill>
+                            ) : null}
                         </div>
                         {results.length ? (
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
@@ -670,6 +675,25 @@ function GenerationSettings({ config, model, updateConfig, openConfigDialog }: {
                 <ImageSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4" />
             </div>
         </>
+    );
+}
+
+type HistoryPillTone = "neutral" | "success" | "danger" | "pending" | "info";
+
+const HISTORY_PILL_TONE_CLASSES: Record<HistoryPillTone, string> = {
+    neutral: "border-stone-200 bg-stone-50 text-stone-700 dark:border-stone-800 dark:bg-stone-900/70 dark:text-stone-200",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200",
+    danger: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200",
+    pending: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200",
+    info: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-indigo-200",
+};
+
+function HistoryPill({ label, tone = "neutral", children, className = "" }: { label?: string; tone?: HistoryPillTone; children: ReactNode; className?: string }) {
+    return (
+        <span className={`inline-flex h-6 max-w-full items-center gap-1 overflow-hidden rounded-full border px-2 text-[11px] leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${HISTORY_PILL_TONE_CLASSES[tone]} ${className}`}>
+            {label ? <span className="shrink-0 font-medium opacity-65">{label}</span> : null}
+            <span className="min-w-0 truncate font-semibold">{children}</span>
+        </span>
     );
 }
 
@@ -799,7 +823,7 @@ function LogPanel({
                     <div>
                         <h2 className="text-base font-semibold">生成记录</h2>
                     </div>
-                    <Tag className="m-0">{logs.length}</Tag>
+                    <HistoryPill>{logs.length}</HistoryPill>
                 </div>
                 <div className="mb-4 flex flex-wrap gap-2">
                     <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreateSession}>
@@ -818,7 +842,7 @@ function LogPanel({
                     <div className="mb-5">
                         <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-stone-500 dark:text-stone-400">
                             <span>当前会话</span>
-                            <Tag className="m-0">{sessions.length}</Tag>
+                            <HistoryPill>{sessions.length}</HistoryPill>
                         </div>
                         <div className="space-y-3">
                             {sessions.map((session) => (
@@ -870,29 +894,31 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
                     <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
                     <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{session.model || "默认"}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">质量 {session.config.quality || "默认"}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">尺寸 {sizeLabel}</Tag>
+                        <HistoryPill label="模型" className="max-w-full">
+                            {session.model || "默认"}
+                        </HistoryPill>
+                        <HistoryPill label="质量">{session.config.quality || "默认"}</HistoryPill>
+                        <HistoryPill label="尺寸">{sizeLabel}</HistoryPill>
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1 pt-2">
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">请求 {session.requestCount}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
-                            成功 {session.successCount}
-                        </Tag>
+                        <HistoryPill label="请求">{session.requestCount}</HistoryPill>
+                        <HistoryPill tone="success" label="成功">
+                            {session.successCount}
+                        </HistoryPill>
                         {session.pendingCount ? (
-                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="cyan">
-                                生成中 {session.pendingCount}
-                            </Tag>
+                            <HistoryPill tone="pending" label="生成中">
+                                {session.pendingCount}
+                            </HistoryPill>
                         ) : null}
                         {session.failCount ? (
-                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="red">
-                                失败 {session.failCount}
-                            </Tag>
+                            <HistoryPill tone="danger" label="失败">
+                                {session.failCount}
+                            </HistoryPill>
                         ) : null}
                         {session.running && session.running.count > 1 ? (
-                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{session.running.count} 批</Tag>
+                            <HistoryPill label="并发">{session.running.count} 批</HistoryPill>
                         ) : null}
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{formatSessionTime(session.createdAt)}</Tag>
+                        <HistoryPill label="时间">{formatSessionTime(session.createdAt)}</HistoryPill>
                     </div>
                 </div>
             </div>
@@ -948,24 +974,26 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                     <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
                     <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.model || "默认"}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">质量 {log.quality || log.config.quality || "默认"}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">尺寸 {sizeLabel}</Tag>
+                        <HistoryPill label="模型" className="max-w-full">
+                            {log.model || "默认"}
+                        </HistoryPill>
+                        <HistoryPill label="质量">{log.quality || log.config.quality || "默认"}</HistoryPill>
+                        <HistoryPill label="尺寸">{sizeLabel}</HistoryPill>
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1 pt-2">
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">请求 {requestCount}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
-                            成功 {actualImageCount}
-                        </Tag>
+                        <HistoryPill label="请求">{requestCount}</HistoryPill>
+                        <HistoryPill tone="success" label="成功">
+                            {actualImageCount}
+                        </HistoryPill>
                         {log.failCount ? (
-                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="red">
-                                失败 {log.failCount}
-                            </Tag>
+                            <HistoryPill tone="danger" label="失败">
+                                {log.failCount}
+                            </HistoryPill>
                         ) : null}
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="green">
+                        <HistoryPill tone="info" label="耗时">
                             {formatDuration(log.durationMs)}
-                        </Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.time}</Tag>
+                        </HistoryPill>
+                        <HistoryPill label="时间">{log.time}</HistoryPill>
                     </div>
                 </div>
             </div>
