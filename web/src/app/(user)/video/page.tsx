@@ -171,22 +171,24 @@ export default function VideoPage() {
     const generate = async () => {
         const snapshot = buildRequestSnapshot();
         if (!snapshot) return;
+        const resultId = nanoid();
         setElapsedMs(0);
         setRunning(true);
         setPreviewLog(null);
-        setResults([{ id: nanoid(), status: "pending" }]);
+        setResults((value) => [...value, { id: resultId, status: "pending" }]);
         const batchStartedAt = performance.now();
-        setStartedAt(batchStartedAt);
+        setStartedAt((value) => value || batchStartedAt);
         try {
             const task = await createVideoGenerationTask(snapshot.config, snapshot.text, snapshot.references, snapshot.videoReferences, snapshot.audioReferences);
-            const log = buildLog({ prompt: snapshot.text, model, config: snapshot.config, references: snapshot.references, videoReferences: snapshot.videoReferences, audioReferences: snapshot.audioReferences, durationMs: 0, status: "生成中", task });
+            const log = buildLog({ id: resultId, prompt: snapshot.text, model, config: snapshot.config, references: snapshot.references, videoReferences: snapshot.videoReferences, audioReferences: snapshot.audioReferences, durationMs: 0, status: "生成中", task });
             await saveLog(log);
             void pollGenerationLog(log, snapshot.config);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "生成失败";
-            setResults([{ id: nanoid(), status: "failed", error: errorMessage }]);
+            setResults((value) => updateVideoResultById(value, resultId, { status: "failed", error: errorMessage }));
             await saveLog(
                 buildLog({
+                    id: resultId,
                     prompt: snapshot.text,
                     model,
                     config: snapshot.config,
@@ -199,7 +201,7 @@ export default function VideoPage() {
                 }),
             );
             message.error(errorMessage);
-            setRunning(false);
+            if (!activeLogIdsRef.current.size) setRunning(false);
         }
     };
 
@@ -241,6 +243,16 @@ export default function VideoPage() {
             metadata: { source: "video-page", prompt },
         });
         message.success("已加入我的素材");
+    };
+
+    const deleteResult = async (result: GenerationResult) => {
+        setResults((value) => value.filter((item) => item.id !== result.id));
+        const storedLog = await logStore.getItem<GenerationLog>(result.id);
+        const mediaKey = result.video?.storageKey || storedLog?.video?.storageKey;
+        if (mediaKey) await deleteStoredMedia([mediaKey]);
+        await logStore.removeItem(result.id);
+        if (previewLog?.id === result.id) setPreviewLog(null);
+        await refreshLogs();
     };
 
     const insertPickedAsset = async (payload: InsertAssetPayload) => {
@@ -304,7 +316,7 @@ export default function VideoPage() {
         activeLogIdsRef.current.add(log.id);
         setRunning(true);
         setStartedAt((value) => value || performance.now());
-        setResults((value) => (value.length ? value : [{ id: log.id, status: "pending" }]));
+        setResults((value) => (value.some((item) => item.id === log.id) ? value : [...value, { id: log.id, status: "pending" }]));
         const taskConfig = buildVideoConfig({ ...effectiveConfig, ...log.config }, log.task.model || log.model);
         try {
             const pollConfig = videoGenerationPollConfig(log.task);
@@ -322,7 +334,7 @@ export default function VideoPage() {
                         bytes: stored.bytes,
                         mimeType: stored.mimeType,
                     };
-                    setResults([{ id: nextVideo.id, status: "success", video: nextVideo }]);
+                    setResults((value) => updateVideoResultById(value, log.id, { status: "success", video: nextVideo, error: undefined }));
                     await saveLog({ ...log, status: "成功", durationMs: nextVideo.durationMs, video: nextVideo, error: undefined });
                     message.success("视频已生成");
                     return;
@@ -333,7 +345,7 @@ export default function VideoPage() {
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "生成失败";
-            setResults([{ id: log.id, status: "failed", error: errorMessage }]);
+            setResults((value) => updateVideoResultById(value, log.id, { status: "failed", error: errorMessage, video: undefined }));
             await saveLog({ ...log, status: "失败", durationMs: Date.now() - log.createdAt, error: errorMessage });
             message.error(errorMessage);
         } finally {
@@ -359,7 +371,7 @@ export default function VideoPage() {
         if (log.config.videoSeconds) updateConfig("videoSeconds", log.config.videoSeconds);
         if (log.config.videoGenerateAudio) updateConfig("videoGenerateAudio", log.config.videoGenerateAudio);
         if (log.config.videoWatermark) updateConfig("videoWatermark", log.config.videoWatermark);
-        setResults(log.status === "生成中" ? [{ id: log.id, status: "pending" }] : log.video ? [{ id: log.video.id, status: "success", video: log.video }] : [{ id: log.id, status: "failed", error: log.error || "生成失败" }]);
+        setResults(log.status === "生成中" ? [{ id: log.id, status: "pending" }] : log.video ? [{ id: log.id, status: "success", video: log.video }] : [{ id: log.id, status: "failed", error: log.error || "生成失败" }]);
     };
 
     return (
@@ -436,7 +448,7 @@ export default function VideoPage() {
                                             </button>
                                         </div>
                                     ))}
-                                    {!references.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">暂无参考图，最多 5 张</div> : null}
+                                    {!references.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">暂无参考图，最多 5 张，PNG/JPG，单张 30MB 内</div> : null}
                                 </div>
                             </div>
 
@@ -463,7 +475,7 @@ export default function VideoPage() {
                                             </button>
                                         </div>
                                     ))}
-                                    {!videoReferences.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">暂无参考视频，最多 3 个</div> : null}
+                                    {!videoReferences.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">暂无参考视频，最多 3 个，MP4/MOV，单个 50MB 内</div> : null}
                                 </div>
                             </div>
 
@@ -535,9 +547,9 @@ export default function VideoPage() {
                             <div className="grid gap-4">
                                 {results.map((result) =>
                                     result.status === "success" && result.video ? (
-                                        <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} />
+                                        <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => void deleteResult(result)} />
                                     ) : result.status === "failed" ? (
-                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} onRetry={retryResult} />
+                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} onRetry={retryResult} onDelete={() => void deleteResult(result)} />
                                     ) : (
                                         <PendingVideoCard key={result.id} />
                                     ),
@@ -623,7 +635,7 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedVideo; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void }) {
+function ResultVideoCard({ video, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
     return (
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
             <video src={video.url} controls className="aspect-video w-full bg-black object-contain" />
@@ -642,6 +654,9 @@ function ResultVideoCard({ video, onDownload, onSaveAsset }: { video: GeneratedV
                     <Button size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
                         下载
                     </Button>
+                    <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
+                        删除
+                    </Button>
                 </div>
             </div>
         </div>
@@ -659,7 +674,7 @@ function PendingVideoCard() {
     );
 }
 
-function FailedVideoCard({ error, onRetry }: { error: string; onRetry: () => void }) {
+function FailedVideoCard({ error, onRetry, onDelete }: { error: string; onRetry: () => void; onDelete: () => void }) {
     return (
         <div className="overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
             <div className="flex aspect-video flex-col items-center justify-center gap-3 p-5 text-center">
@@ -668,9 +683,12 @@ function FailedVideoCard({ error, onRetry }: { error: string; onRetry: () => voi
                     {error}
                 </Typography.Paragraph>
             </div>
-            <div className="flex justify-end border-t border-red-200 p-3 dark:border-red-950">
-                <Button size="small" danger onClick={onRetry}>
+            <div className="flex justify-end gap-2 border-t border-red-200 p-3 dark:border-red-950">
+                <Button size="small" onClick={onRetry}>
                     重试
+                </Button>
+                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
+                    删除
                 </Button>
             </div>
         </div>
@@ -949,6 +967,7 @@ function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
 }
 
 function buildLog({
+    id,
     prompt,
     model,
     config,
@@ -961,6 +980,7 @@ function buildLog({
     video,
     error,
 }: {
+    id?: string;
     prompt: string;
     model: string;
     config: AiConfig;
@@ -984,7 +1004,7 @@ function buildLog({
         videoWatermark: config.videoWatermark,
     };
     return {
-        id: nanoid(),
+        id: id || nanoid(),
         createdAt: Date.now(),
         title: prompt.slice(0, 12) || "未命名",
         prompt,
@@ -1033,6 +1053,10 @@ function videoSecondsBadge(value: string) {
 
 function videoResolutionBadge(value: string) {
     return `${normalizeResolution(value)}p`;
+}
+
+function updateVideoResultById(results: GenerationResult[], id: string, next: Partial<GenerationResult>) {
+    return results.map((item) => (item.id === id ? { ...item, ...next } : item));
 }
 
 function videoModeLabel(value: AiConfig["videoCallMode"] | undefined) {

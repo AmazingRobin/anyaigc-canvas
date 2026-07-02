@@ -16,6 +16,7 @@ export function CloudSyncAutoRunner() {
     const config = useConfigStore((state) => state.config);
     const cloudSync = useConfigStore((state) => state.cloudSync);
     const updateCloudSyncConfig = useConfigStore((state) => state.updateCloudSyncConfig);
+    const setCloudSyncActivity = useConfigStore((state) => state.setCloudSyncActivity);
     const apiKey = getCloudSyncApiKey(config.mediaApiKey, config.textApiKey);
 
     useEffect(() => {
@@ -28,6 +29,7 @@ export function CloudSyncAutoRunner() {
             const lastSyncedAt = useConfigStore.getState().cloudSync.lastSyncedAt;
             if (lastSyncedAt && Date.now() - new Date(lastSyncedAt).getTime() < RECENT_SYNC_SKIP_MS) return;
             syncingRef.current = true;
+            setCloudSyncActivity("auto");
             try {
                 const result = await syncAppDataToCloud(apiKey);
                 updateCloudSyncConfig("lastSyncedAt", result.syncedAt);
@@ -36,6 +38,7 @@ export function CloudSyncAutoRunner() {
                 updateCloudSyncConfig("lastError", error instanceof Error ? error.message : "RelayBases 云同步失败");
             } finally {
                 syncingRef.current = false;
+                if (useConfigStore.getState().cloudSyncActivity === "auto") setCloudSyncActivity("idle");
             }
         };
 
@@ -45,7 +48,7 @@ export function CloudSyncAutoRunner() {
             window.clearTimeout(timer);
             window.clearInterval(interval);
         };
-    }, [apiKey, cloudSync.enabled, updateCloudSyncConfig]);
+    }, [apiKey, cloudSync.enabled, setCloudSyncActivity, updateCloudSyncConfig]);
 
     return null;
 }

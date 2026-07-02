@@ -39,6 +39,12 @@ type GenerationResult = {
     error?: string;
 };
 
+type GeneratedFailure = {
+    id: string;
+    error: string;
+    durationMs: number;
+};
+
 type RunningSession = {
     startedAt: number;
     count: number;
@@ -47,6 +53,7 @@ type RunningSession = {
 type WorkbenchSession = {
     id: string;
     createdAt: number;
+    requestCount: number;
     prompt: string;
     model: string;
     config: GenerationLogConfig;
@@ -65,6 +72,7 @@ type WorkbenchSessionView = WorkbenchSession & {
 
 type GenerationLog = {
     id: string;
+    sessionId?: string;
     createdAt: number;
     title: string;
     prompt: string;
@@ -80,6 +88,7 @@ type GenerationLog = {
     quality: string;
     status: "成功" | "失败";
     images: GeneratedImage[];
+    failures: GeneratedFailure[];
     thumbnails: string[];
 };
 
@@ -103,6 +112,7 @@ export default function ImagePage() {
     const { message } = App.useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const previewRequestIdRef = useRef(0);
+    const deletedResultIdsRef = useRef<Set<string>>(new Set());
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
     const updateConfig = useConfigStore((state) => state.updateConfig);
@@ -141,7 +151,7 @@ export default function ImagePage() {
             return {
                 ...session,
                 running: runningBySession[session.id],
-                requestCount: sessionResults.length,
+                requestCount: session.requestCount || sessionResults.length,
                 successCount: successImages.length,
                 failCount,
                 pendingCount,
@@ -169,12 +179,13 @@ export default function ImagePage() {
         setResultsBySession((value) => ({ ...value, [sessionId]: updater(value[sessionId] || []) }));
     };
 
-    const rememberWorkbenchSession = (sessionId: string, next: Omit<WorkbenchSession, "id" | "createdAt">) => {
+    const rememberWorkbenchSession = (sessionId: string, next: Omit<WorkbenchSession, "id" | "createdAt" | "requestCount">, requestCountDelta = 0) => {
         setSessionsById((value) => ({
             ...value,
             [sessionId]: {
                 id: sessionId,
                 createdAt: value[sessionId]?.createdAt || Date.now(),
+                requestCount: (value[sessionId]?.requestCount || 0) + requestCountDelta,
                 ...next,
                 references: next.references.slice(0, IMAGE_REFERENCE_LIMIT),
             },
@@ -272,7 +283,7 @@ export default function ImagePage() {
             model,
             config: { ...snapshot.config, count: String(generationCount) },
             references: snapshot.references,
-        });
+        }, generationCount);
         if (!runningBySession[sessionId]) setElapsedMs(0);
         setPreviewLog(null);
         const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
@@ -280,7 +291,12 @@ export default function ImagePage() {
         const batchStartedAt = performance.now();
         startSessionRun(sessionId, batchStartedAt);
 
-        const tasks = pendingResults.map((item) => runGenerationSlot(sessionId, item.id, snapshot));
+        const tasks = pendingResults.map((item) =>
+            runGenerationSlot(sessionId, item.id, snapshot).then(
+                (image) => ({ resultId: item.id, status: "success" as const, image }),
+                (error) => ({ resultId: item.id, status: "failed" as const, error: error instanceof Error ? error.message : "生成失败" }),
+            ),
+        );
         void finishGenerationBatch({ sessionId, text, model, snapshot, generationCount, batchStartedAt, tasks });
     };
 
@@ -299,16 +315,20 @@ export default function ImagePage() {
         snapshot: { text: string; config: AiConfig; references: ReferenceImage[] };
         generationCount: number;
         batchStartedAt: number;
-        tasks: Array<Promise<GeneratedImage>>;
+        tasks: Array<Promise<{ resultId: string; status: "success"; image: GeneratedImage } | { resultId: string; status: "failed"; error: string }>>;
     }) => {
-        const result = await Promise.allSettled(tasks);
-        const successImages = result.filter((item): item is PromiseFulfilledResult<GeneratedImage> => item.status === "fulfilled").map((item) => item.value);
+        const result = await Promise.all(tasks);
+        const visibleResults = result.filter((item) => !deletedResultIdsRef.current.has(item.resultId));
+        const successImages = visibleResults.filter((item): item is { resultId: string; status: "success"; image: GeneratedImage } => item.status === "success").map((item) => item.image);
+        const failures = visibleResults
+            .filter((item): item is { resultId: string; status: "failed"; error: string } => item.status === "failed")
+            .map((item) => ({ id: item.resultId, error: item.error, durationMs: performance.now() - batchStartedAt }));
         const successCount = successImages.length;
-        const failCount = generationCount - successCount;
-        const failed = result.find((item): item is PromiseRejectedResult => item.status === "rejected");
+        const failCount = failures.length;
+        const failed = result.find((item): item is { resultId: string; status: "failed"; error: string } => item.status === "failed");
         const durationMs = performance.now() - batchStartedAt;
         finishSessionRun(sessionId);
-        successCount ? message.success("图片已生成") : message.error(failed?.reason instanceof Error ? failed.reason.message : "生成失败");
+        successCount ? message.success("图片已生成") : message.error(failed?.error || "生成失败");
 
         void (async () => {
             const logImages = await Promise.all(
@@ -318,8 +338,10 @@ export default function ImagePage() {
                 }),
             );
             const thumbnails = await createLogThumbnails(logImages);
+            if (!logImages.length && !failures.length) return;
             saveLog(
                 buildLog({
+                    sessionId,
                     prompt: text,
                     model,
                     config: { ...snapshot.config, count: String(generationCount) },
@@ -329,6 +351,7 @@ export default function ImagePage() {
                     failCount,
                     status: successCount ? "成功" : "失败",
                     images: logImages,
+                    failures,
                     thumbnails,
                 }),
             );
@@ -394,6 +417,19 @@ export default function ImagePage() {
         setDeleteConfirmOpen(false);
     };
 
+    const deleteResult = async (result: GenerationResult) => {
+        deletedResultIdsRef.current.add(result.id);
+        updateSessionResults(activeSessionId, (value) => value.filter((item) => item.id !== result.id));
+        const logId = previewLog?.id || (await findLogIdForSession(activeSessionId));
+        if (logId) {
+            const nextLog = await deleteResultFromLog(logId, result);
+            if (previewLog?.id === logId) setPreviewLog(nextLog);
+            await refreshLogs();
+            return;
+        }
+        if (result.image?.storageKey) await deleteStoredImages([result.image.storageKey]);
+    };
+
     const saveLog = (log: GenerationLog) => {
         void logStore.setItem(log.id, serializeLog(log)).then(refreshLogs);
     };
@@ -415,7 +451,10 @@ export default function ImagePage() {
         if (hydratedLog.config.quality) updateConfig("quality", hydratedLog.config.quality);
         if (hydratedLog.config.size) updateConfig("size", hydratedLog.config.size);
         if (hydratedLog.config.count) updateConfig("count", hydratedLog.config.count);
-        updateSessionResults(sessionId, () => hydratedLog.images.map((image) => ({ id: image.id, status: "success", image })));
+        updateSessionResults(sessionId, () => [
+            ...hydratedLog.images.map((image) => ({ id: image.id, status: "success" as const, image })),
+            ...hydratedLog.failures.map((failure) => ({ id: failure.id, status: "failed" as const, error: failure.error })),
+        ]);
     };
 
     const previewWorkbenchSession = (session: WorkbenchSession) => {
@@ -469,6 +508,7 @@ export default function ImagePage() {
         const resultId = results[index]?.id;
         if (!resultId) return;
         if (!runningBySession[sessionId]) setElapsedMs(0);
+        if (sessionsById[sessionId]) setSessionsById((value) => ({ ...value, [sessionId]: { ...value[sessionId], requestCount: (value[sessionId].requestCount || 0) + 1 } }));
         updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "pending", error: undefined, image: undefined }));
         startSessionRun(sessionId, performance.now());
         void runGenerationSlot(sessionId, resultId, snapshot)
@@ -564,7 +604,7 @@ export default function ImagePage() {
                                                 </button>
                                             </div>
                                         ))}
-                                        {!references.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">暂无参考图，最多 5 张</div> : null}
+                                        {!references.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">暂无参考图，最多 5 张，PNG/JPG，单张 50MB 内</div> : null}
                                     </div>
                                 </div>
 
@@ -606,9 +646,9 @@ export default function ImagePage() {
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                 {results.map((result, index) =>
                                     result.status === "success" && result.image ? (
-                                        <ResultImageCard key={result.id} image={result.image} index={index} onEdit={addResultToReferences} onDownload={downloadImage} onSaveAsset={saveResultToAssets} />
+                                        <ResultImageCard key={result.id} image={result.image} index={index} onEdit={addResultToReferences} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => void deleteResult(result)} />
                                     ) : result.status === "failed" ? (
-                                        <FailedImageCard key={result.id} error={result.error || "生成失败"} onRetry={() => retryResult(index)} />
+                                        <FailedImageCard key={result.id} error={result.error || "生成失败"} onRetry={() => retryResult(index)} onDelete={() => void deleteResult(result)} />
                                     ) : (
                                         <PendingImageCard key={result.id} />
                                     ),
@@ -703,12 +743,14 @@ function ResultImageCard({
     onEdit,
     onDownload,
     onSaveAsset,
+    onDelete,
 }: {
     image: GeneratedImage;
     index: number;
     onEdit: (image: GeneratedImage, index: number) => void;
     onDownload: (image: GeneratedImage, index: number) => void;
     onSaveAsset: (image: GeneratedImage, index: number) => void;
+    onDelete: () => void;
 }) {
     return (
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
@@ -721,20 +763,25 @@ function ResultImageCard({
                     <span>{formatBytes(image.bytes)}</span>
                     <span>{formatDuration(image.durationMs)}</span>
                 </div>
-                <div className="grid min-w-0 grid-cols-3 gap-2">
+                <div className="grid min-w-0 grid-cols-4 gap-2">
                     <Tooltip title="添加到素材">
                         <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(image, index)}>
-                            添加到素材
+                            素材
                         </Button>
                     </Tooltip>
                     <Tooltip title="加入参考图">
                         <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => void onEdit(image, index)}>
-                            加入参考图
+                            参考
                         </Button>
                     </Tooltip>
                     <Tooltip title="下载">
                         <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(image, index)}>
                             下载
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="删除结果">
+                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
+                            删除
                         </Button>
                     </Tooltip>
                 </div>
@@ -761,7 +808,7 @@ function PendingImageCard() {
     );
 }
 
-function FailedImageCard({ error, onRetry }: { error: string; onRetry: () => void }) {
+function FailedImageCard({ error, onRetry, onDelete }: { error: string; onRetry: () => void; onDelete: () => void }) {
     return (
         <div className="overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
             <div className="flex aspect-square flex-col items-center justify-center gap-3 p-5 text-center">
@@ -770,9 +817,12 @@ function FailedImageCard({ error, onRetry }: { error: string; onRetry: () => voi
                     {error}
                 </Typography.Paragraph>
             </div>
-            <div className="flex justify-end border-t border-red-200 p-3 dark:border-red-950">
-                <Button size="small" danger onClick={onRetry}>
+            <div className="flex justify-end gap-2 border-t border-red-200 p-3 dark:border-red-950">
+                <Button size="small" onClick={onRetry}>
                     重试
+                </Button>
+                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
+                    删除
                 </Button>
             </div>
         </div>
@@ -943,6 +993,7 @@ function SessionCover({ image, pending, count, ratioLabel, sizeLabel }: { image?
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
     const thumbnail = normalizeLogThumbnails(log.thumbnails)[0] || "";
     const actualImageCount = actualLogImageCount(log);
+    const actualFailureCount = actualLogFailureCount(log);
     const requestCount = requestedLogImageCount(log);
     const coverImage = log.images.find((image) => image.dataUrl || image.storageKey);
     const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
@@ -985,9 +1036,9 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                         <HistoryPill tone="success" label="成功">
                             {actualImageCount}
                         </HistoryPill>
-                        {log.failCount ? (
+                        {actualFailureCount ? (
                             <HistoryPill tone="danger" label="失败">
-                                {log.failCount}
+                                {actualFailureCount}
                             </HistoryPill>
                         ) : null}
                         <HistoryPill tone="info" label="耗时">
@@ -1099,8 +1150,12 @@ async function readStoredLogs() {
 
 function normalizeLogMetadata(log: Partial<GenerationLog>): GenerationLog {
     const config = normalizeLogConfig(log);
+    const images = (log.images || []).map(normalizeGeneratedImageMetadata);
+    const failures = normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0);
+    const hasImageList = Array.isArray(log.images);
     return {
         id: log.id || nanoid(),
+        sessionId: log.sessionId,
         createdAt: log.createdAt || Date.now(),
         title: log.title || log.model || "未命名",
         prompt: log.prompt || log.title || "",
@@ -1109,13 +1164,14 @@ function normalizeLogMetadata(log: Partial<GenerationLog>): GenerationLog {
         config,
         references: (log.references || []).map(normalizeReferenceMetadata),
         durationMs: log.durationMs || 0,
-        successCount: log.successCount ?? log.imageCount ?? 0,
-        failCount: log.failCount || 0,
+        successCount: hasImageList ? images.length : (log.successCount ?? log.imageCount ?? 0),
+        failCount: failures.length,
         imageCount: log.imageCount || log.successCount || 0,
         size: log.size || config.size || "",
         quality: log.quality || config.quality || "",
         status: log.status || "成功",
-        images: (log.images || []).map(normalizeGeneratedImageMetadata),
+        images,
+        failures,
         thumbnails: normalizeLogThumbnails(log.thumbnails),
     };
 }
@@ -1134,8 +1190,11 @@ async function hydrateLogMedia(log: Partial<GenerationLog>): Promise<GenerationL
         })),
     );
     const config = normalizeLogConfig(log);
+    const failures = normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0);
+    const hasImageList = Array.isArray(log.images);
     return {
         id: log.id || nanoid(),
+        sessionId: log.sessionId,
         createdAt: log.createdAt || Date.now(),
         title: log.title || log.model || "未命名",
         prompt: log.prompt || log.title || "",
@@ -1144,13 +1203,14 @@ async function hydrateLogMedia(log: Partial<GenerationLog>): Promise<GenerationL
         config,
         references,
         durationMs: log.durationMs || 0,
-        successCount: log.successCount ?? log.imageCount ?? 0,
-        failCount: log.failCount || 0,
+        successCount: hasImageList ? images.length : (log.successCount ?? log.imageCount ?? 0),
+        failCount: failures.length,
         imageCount: log.imageCount || log.successCount || 0,
         size: log.size || config.size || "",
         quality: log.quality || config.quality || "",
         status: log.status || "成功",
         images,
+        failures,
         thumbnails: normalizeLogThumbnails(log.thumbnails),
     };
 }
@@ -1160,6 +1220,7 @@ function serializeLog(log: GenerationLog): GenerationLog {
         ...log,
         references: log.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
         images: log.images.map((image) => ({ ...image, dataUrl: image.storageKey ? "" : image.dataUrl })),
+        failures: normalizeGeneratedFailures(log.failures),
         thumbnails: normalizeLogThumbnails(log.thumbnails),
     };
 }
@@ -1188,6 +1249,15 @@ function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: n
     };
 }
 
+function normalizeGeneratedFailures(failures?: Partial<GeneratedFailure>[], fallbackCount = 0) {
+    const items = failures?.length ? failures : Array.from({ length: Math.max(0, fallbackCount) }, (_, index) => ({ id: `legacy-failure-${index + 1}`, error: "生成失败", durationMs: 0 }));
+    return items.map((item) => ({
+        id: item.id || nanoid(),
+        error: item.error || "生成失败",
+        durationMs: item.durationMs || 0,
+    }));
+}
+
 function normalizeLogThumbnails(thumbnails?: string[]) {
     return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= LOG_THUMBNAIL_MAX_DATA_URL_LENGTH)).slice(0, 1);
 }
@@ -1196,10 +1266,14 @@ function actualLogImageCount(log: GenerationLog) {
     return (log.images || []).filter((image) => Boolean(image.storageKey || image.dataUrl)).length;
 }
 
+function actualLogFailureCount(log: GenerationLog) {
+    return log.failures.length;
+}
+
 function requestedLogImageCount(log: GenerationLog) {
     const configuredCount = Number(log.config?.count);
     const knownCount = log.imageCount || log.successCount || 0;
-    const completedCount = actualLogImageCount(log) + (log.failCount || 0);
+    const completedCount = actualLogImageCount(log) + actualLogFailureCount(log);
     return Math.max(Number.isFinite(configuredCount) && configuredCount > 0 ? configuredCount : 0, knownCount, completedCount, 1);
 }
 
@@ -1244,6 +1318,45 @@ async function cacheLogThumbnail(logId: string, thumbnail: string) {
     } catch {}
 }
 
+async function findLogIdForSession(sessionId: string) {
+    if (!sessionId || sessionId.startsWith("log:")) return "";
+    let matched = "";
+    await logStore.iterate<GenerationLog, void>((value, key) => {
+        if (!matched && value?.sessionId === sessionId) matched = key;
+    });
+    return matched;
+}
+
+async function deleteResultFromLog(logId: string, result: GenerationResult) {
+    const stored = await logStore.getItem<GenerationLog>(logId);
+    if (!stored) return null;
+    const log = normalizeLogMetadata(stored);
+    const resultIds = new Set([result.id, result.image?.id].filter((id): id is string => Boolean(id)));
+    const removedImages = log.images.filter((image) => resultIds.has(image.id));
+    const nextImages = log.images.filter((image) => !resultIds.has(image.id));
+    const nextFailures = log.failures.filter((failure) => !resultIds.has(failure.id));
+    const removedKeys = removedImages.map((image) => image.storageKey).filter((key): key is string => Boolean(key));
+    if (removedKeys.length) await deleteStoredImages(removedKeys);
+    if (!nextImages.length && !nextFailures.length) {
+        await logStore.removeItem(logId);
+        return null;
+    }
+    const nextLog = recalculateLogCounts({ ...log, images: nextImages, failures: nextFailures, thumbnails: [] });
+    await logStore.setItem(logId, serializeLog(nextLog));
+    return nextLog;
+}
+
+function recalculateLogCounts(log: GenerationLog): GenerationLog {
+    const successCount = actualLogImageCount(log);
+    const failCount = actualLogFailureCount(log);
+    return {
+        ...log,
+        successCount,
+        failCount,
+        status: successCount ? "成功" : "失败",
+    };
+}
+
 function compactLogTitle(value: string) {
     const text = value.replace(/\s+/g, " ").replace(/^[,.;:，。；：、\s]+/, "").trim();
     if (!text) return "未命名";
@@ -1281,6 +1394,7 @@ function ReferenceOrderButtons({ index, total, onMove }: { index: number; total:
 }
 
 function buildLog({
+    sessionId,
     prompt,
     model,
     config,
@@ -1290,8 +1404,10 @@ function buildLog({
     failCount,
     status,
     images,
+    failures = [],
     thumbnails,
 }: {
+    sessionId?: string;
     prompt: string;
     model: string;
     config: GenerationLogConfig;
@@ -1301,6 +1417,7 @@ function buildLog({
     failCount: number;
     status: GenerationLog["status"];
     images: GeneratedImage[];
+    failures?: GeneratedFailure[];
     thumbnails?: string[];
 }): GenerationLog {
     const logConfig = {
@@ -1312,6 +1429,7 @@ function buildLog({
     };
     return {
         id: nanoid(),
+        sessionId,
         createdAt: Date.now(),
         title: prompt.slice(0, 12) || "未命名",
         prompt,
@@ -1327,6 +1445,7 @@ function buildLog({
         quality: logConfig.quality,
         status,
         images,
+        failures: normalizeGeneratedFailures(failures),
         thumbnails: normalizeLogThumbnails(thumbnails),
     };
 }

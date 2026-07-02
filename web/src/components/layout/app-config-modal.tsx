@@ -87,6 +87,7 @@ export function AppConfigModal() {
     const updateConfigValues = useConfigStore((state) => state.updateConfigValues);
     const updateCloudSyncConfig = useConfigStore((state) => state.updateCloudSyncConfig);
     const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
+    const setCloudSyncActivity = useConfigStore((state) => state.setCloudSyncActivity);
     const isConfigOpen = useConfigStore((state) => state.isConfigOpen);
     const configActiveTab = useConfigStore((state) => state.configActiveTab);
     const cloudSyncManualRequestId = useConfigStore((state) => state.cloudSyncManualRequestId);
@@ -206,6 +207,7 @@ export function AppConfigModal() {
         setCloudSyncStatus("准备云同步");
         updateCloudSyncConfig("enabled", true);
         updateCloudSyncConfig("lastError", "");
+        setCloudSyncActivity("manual");
         try {
             const result = await syncAppDataToCloud(apiKey, updateCloudProgress);
             updateCloudSyncConfig("lastSyncedAt", result.syncedAt);
@@ -218,8 +220,9 @@ export function AppConfigModal() {
             message.error(messageText);
         } finally {
             setSyncingCloud(false);
+            if (useConfigStore.getState().cloudSyncActivity === "manual") setCloudSyncActivity("idle");
         }
-    }, [config.mediaApiKey, config.textApiKey, message, syncingCloud, updateCloudSyncConfig]);
+    }, [config.mediaApiKey, config.textApiKey, message, setCloudSyncActivity, syncingCloud, updateCloudSyncConfig]);
 
     useEffect(() => {
         if (!isConfigOpen || configActiveTab !== "sync" || !cloudSyncManualRequestId) return;

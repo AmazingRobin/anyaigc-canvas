@@ -1,7 +1,7 @@
 "use client";
 
 import { App } from "antd";
-import { AlertCircle, Cloud } from "lucide-react";
+import { AlertCircle, Cloud, RefreshCw } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -20,12 +20,14 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
     const canvasTheme = canvasThemes[themeName];
     const config = useConfigStore((state) => state.config);
     const cloudSync = useConfigStore((state) => state.cloudSync);
+    const cloudSyncActivity = useConfigStore((state) => state.cloudSyncActivity);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const requestCloudSyncDialog = useConfigStore((state) => state.requestCloudSyncDialog);
     const apiKey = getCloudSyncApiKey(config.mediaApiKey, config.textApiKey);
     const ready = Boolean(apiKey);
     const hasError = Boolean(cloudSync.lastError);
     const enabled = cloudSync.enabled;
+    const syncing = cloudSyncActivity !== "idle";
 
     const buttonStyle: CSSProperties | undefined =
         variant === "canvas"
@@ -37,7 +39,11 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
               }
             : undefined;
 
-    const title = !ready
+    const title = syncing
+        ? cloudSyncActivity === "auto"
+            ? "自动云同步正在后台运行"
+            : "云同步正在运行"
+        : !ready
         ? "填写媒体 API Key 或文本 API Key 后可使用云同步"
         : hasError
           ? `最近失败：${cloudSync.lastError}`
@@ -54,7 +60,7 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
         requestCloudSyncDialog();
     };
 
-    const Icon = hasError ? AlertCircle : Cloud;
+    const Icon = syncing ? RefreshCw : hasError ? AlertCircle : Cloud;
 
     return (
         <button
@@ -72,11 +78,11 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
             )}
             style={buttonStyle}
             onClick={openSyncPanel}
-            aria-label={enabled ? "打开云同步进度" : "开启云同步"}
+            aria-label={syncing ? "云同步正在运行" : enabled ? "打开云同步进度" : "开启云同步"}
             title={title}
         >
-            <Icon className="size-4" />
-            <span className="hidden sm:inline">{enabled ? "云同步" : "开启同步"}</span>
+            <Icon className={cn("size-4", syncing && "animate-spin")} />
+            <span className="hidden sm:inline">{syncing ? (cloudSyncActivity === "auto" ? "自动同步中" : "同步中") : enabled ? "云同步" : "开启同步"}</span>
         </button>
     );
 }
