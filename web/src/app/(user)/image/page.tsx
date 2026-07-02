@@ -476,7 +476,7 @@ export default function ImagePage() {
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[380px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
+            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[460px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[520px_minmax(0,1fr)]">
                 <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
                     <LogPanel
                         sessions={workbenchSessions}
@@ -846,20 +846,27 @@ function LogPanel({
 function SessionCard({ session, active, onClick }: { session: WorkbenchSessionView; active: boolean; onClick: () => void }) {
     const displayTitle = compactLogTitle(session.prompt || session.model || "");
     const promptPreview = session.prompt || session.model || "";
+    const ratioLabel = imageRatioLabel(session.config.size);
+    const sizeLabel = imageSizeLabel(session.config.size);
 
     return (
         <button
             type="button"
-            className={`block w-full rounded-lg border p-2.5 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
             title={promptPreview}
         >
-            <div className="space-y-3">
-                <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.successCount} />
-                <div className="min-w-0">
-                    <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
-                    <div className="mt-1 line-clamp-5 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+            <div className="grid min-h-[184px] grid-cols-[176px_minmax(0,1fr)] gap-3 xl:min-h-[204px] xl:grid-cols-[200px_minmax(0,1fr)]">
+                <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.successCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
+                <div className="flex min-w-0 flex-col py-1">
+                    <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
+                    <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{session.model || "默认"}</Tag>
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">质量 {session.config.quality || "默认"}</Tag>
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">尺寸 {sizeLabel}</Tag>
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-1 pt-2">
                         <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">请求 {session.requestCount}</Tag>
                         <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
                             成功 {session.successCount}
@@ -885,13 +892,15 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
     );
 }
 
-function SessionCover({ image, pending, count }: { image?: GeneratedImage; pending: boolean; count: number }) {
+function SessionCover({ image, pending, count, ratioLabel, sizeLabel }: { image?: GeneratedImage; pending: boolean; count: number; ratioLabel: string; sizeLabel: string }) {
     return (
         <span
-            className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            className="relative grid aspect-square w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={image?.dataUrl ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
         >
             {image?.dataUrl ? <img src={image.dataUrl} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : pending ? <LoaderCircle className="size-7 animate-spin opacity-60" /> : <ImagePlus className="size-7 opacity-75" />}
+            <span className="absolute left-2 top-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{ratioLabel}</span>
+            <span className="absolute left-2 top-8 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{sizeLabel}</span>
             {count > 1 ? <span className="absolute bottom-2 right-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{count}</span> : null}
         </span>
     );
@@ -904,23 +913,30 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
     const coverImage = log.images.find((image) => image.dataUrl || image.storageKey);
     const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
     const promptPreview = log.prompt || log.title || "";
+    const ratioLabel = imageRatioLabel(log.config.size || log.size);
+    const sizeLabel = imageSizeLabel(log.config.size || log.size);
 
     return (
         <button
             type="button"
-            className={`block w-full rounded-lg border p-2.5 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
             title={promptPreview}
         >
-            <div className="space-y-3">
+            <div className="grid min-h-[184px] grid-cols-[176px_minmax(0,1fr)] gap-3 xl:min-h-[204px] xl:grid-cols-[200px_minmax(0,1fr)]">
                 <div className="relative">
-                    <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} />
-                    <Checkbox className="absolute left-2 top-2 rounded bg-white/90 p-1 shadow-sm dark:bg-stone-950/85" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
+                    <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
+                    <Checkbox className="absolute right-2 top-2 rounded bg-white/90 p-1 shadow-sm dark:bg-stone-950/85" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
                 </div>
-                <div className="min-w-0">
-                    <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
-                    <div className="mt-1 line-clamp-5 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+                <div className="flex min-w-0 flex-col py-1">
+                    <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
+                    <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.model || "默认"}</Tag>
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">质量 {log.quality || log.config.quality || "默认"}</Tag>
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">尺寸 {sizeLabel}</Tag>
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-1 pt-2">
                         <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">请求 {requestCount}</Tag>
                         <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
                             成功 {actualImageCount}
@@ -941,7 +957,7 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
     );
 }
 
-function LogCover({ logId, image, source, count }: { logId: string; image: string; source?: GeneratedImage; count: number }) {
+function LogCover({ logId, image, source, count, ratioLabel, sizeLabel }: { logId: string; image: string; source?: GeneratedImage; count: number; ratioLabel: string; sizeLabel: string }) {
     const [thumbnail, setThumbnail] = useState(image);
     const coverRef = useRef<HTMLSpanElement>(null);
     const hasSource = Boolean(source?.dataUrl || source?.storageKey);
@@ -996,10 +1012,12 @@ function LogCover({ logId, image, source, count }: { logId: string; image: strin
     return (
         <span
             ref={coverRef}
-            className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            className="relative grid aspect-square w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
         >
             {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : hasSource ? <LoaderCircle className="size-7 animate-spin opacity-60" /> : <ImagePlus className="size-7 opacity-75" />}
+            <span className="absolute left-2 top-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{ratioLabel}</span>
+            <span className="absolute left-2 top-8 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{sizeLabel}</span>
             {count > 1 ? <span className="absolute bottom-2 right-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{count}</span> : null}
         </span>
     );
@@ -1123,6 +1141,34 @@ function requestedLogImageCount(log: GenerationLog) {
     const knownCount = log.imageCount || log.successCount || 0;
     const completedCount = actualLogImageCount(log) + (log.failCount || 0);
     return Math.max(Number.isFinite(configuredCount) && configuredCount > 0 ? configuredCount : 0, knownCount, completedCount, 1);
+}
+
+function imageSizeLabel(value?: string) {
+    const text = value?.trim();
+    if (!text) return "auto";
+    return text.replace(/^(\d+)[xX](\d+)$/, "$1×$2");
+}
+
+function imageRatioLabel(value?: string) {
+    const text = value?.trim();
+    if (!text || text.toLowerCase() === "auto") return "auto";
+    if (/^\d+\s*:\s*\d+$/.test(text)) return text.replace(/\s+/g, "");
+    const match = text.match(/^(\d+)[xX×](\d+)$/);
+    if (!match) return text;
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    if (!width || !height) return text;
+    const divisor = greatestCommonDivisor(width, height);
+    return `${width / divisor}:${height / divisor}`;
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y) {
+        [x, y] = [y, x % y];
+    }
+    return x || 1;
 }
 
 function formatSessionTime(value: number) {
