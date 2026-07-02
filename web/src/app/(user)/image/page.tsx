@@ -182,19 +182,25 @@ export default function ImagePage() {
         setElapsedMs(0);
         setRunning(true);
         setPreviewLog(null);
-        setResults(Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" })));
+        const baseResultIndex = results.length;
+        const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
+        setResults((value) => [...value, ...pendingResults]);
         const batchStartedAt = performance.now();
         setStartedAt(batchStartedAt);
 
-        const tasks = Array.from({ length: generationCount }, (_, index) => runGenerationSlot(index, snapshot));
+        const tasks = Array.from({ length: generationCount }, (_, index) => runGenerationSlot(baseResultIndex + index, snapshot));
 
         const result = await Promise.allSettled(tasks);
         const successImages = result.filter((item): item is PromiseFulfilledResult<GeneratedImage> => item.status === "fulfilled").map((item) => item.value);
         const successCount = successImages.length;
         const failCount = generationCount - successCount;
         const failed = result.find((item): item is PromiseRejectedResult => item.status === "rejected");
+        const durationMs = performance.now() - batchStartedAt;
+        setRunning(false);
+        setStartedAt(0);
+        successCount ? message.success("图片已生成") : message.error(failed?.reason instanceof Error ? failed.reason.message : "生成失败");
 
-        try {
+        void (async () => {
             const logImages = await Promise.all(
                 successImages.map(async (image) => {
                     const stored = await uploadImage(image.dataUrl);
@@ -208,7 +214,7 @@ export default function ImagePage() {
                     model,
                     config: { ...snapshot.config, count: String(generationCount) },
                     references: snapshot.references,
-                    durationMs: performance.now() - batchStartedAt,
+                    durationMs,
                     successCount,
                     failCount,
                     status: successCount ? "成功" : "失败",
@@ -216,10 +222,7 @@ export default function ImagePage() {
                     thumbnails,
                 }),
             );
-            successCount ? message.success("图片已生成") : message.error(failed?.reason instanceof Error ? failed.reason.message : "生成失败");
-        } finally {
-            setRunning(false);
-        }
+        })().catch(() => message.warning("生成记录保存失败"));
     };
 
     const downloadImage = (image: GeneratedImage, index: number) => {
