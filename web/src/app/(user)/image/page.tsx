@@ -133,13 +133,17 @@ export default function ImagePage() {
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
+    const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(15, Number(config.count) || 1));
     const results = resultsBySession[activeSessionId] || [];
+    const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
+    const allResultsSelected = Boolean(results.length) && selectedResultIds.length === results.length;
     const activeRunning = runningBySession[activeSessionId];
     const running = Boolean(activeRunning);
     const runningCount = activeRunning?.count || 0;
@@ -175,6 +179,15 @@ export default function ImagePage() {
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    useEffect(() => {
+        setSelectedResultIds((ids) => {
+            if (!ids.length) return ids;
+            const available = new Set(results.map((result) => result.id));
+            const next = ids.filter((id) => available.has(id));
+            return next.length === ids.length ? ids : next;
+        });
+    }, [results]);
 
     const updateSessionResults = (sessionId: string, updater: (value: GenerationResult[]) => GenerationResult[]) => {
         setResultsBySession((value) => ({ ...value, [sessionId]: updater(value[sessionId] || []) }));
@@ -287,6 +300,7 @@ export default function ImagePage() {
         }, generationCount);
         if (!runningBySession[sessionId]) setElapsedMs(0);
         setPreviewLog(null);
+        setSelectedResultIds([]);
         const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
         updateSessionResults(sessionId, (value) => [...value, ...pendingResults]);
         const batchStartedAt = performance.now();
@@ -403,6 +417,7 @@ export default function ImagePage() {
         setReferences([]);
         setElapsedMs(0);
         setSelectedLogIds([]);
+        setSelectedResultIds([]);
         setPreviewLog(null);
     };
 
@@ -435,6 +450,25 @@ export default function ImagePage() {
         if (result.image?.storageKey) await deleteStoredImages([result.image.storageKey]);
     };
 
+    const requestDeleteResults = (targets: GenerationResult[]) => {
+        if (!targets.length) return;
+        setResultDeleteTargets(targets);
+    };
+
+    const confirmDeleteResults = async () => {
+        const targets = resultDeleteTargets;
+        const targetIds = new Set(targets.map((result) => result.id));
+        setResultDeleteTargets([]);
+        for (const result of targets) {
+            await deleteResult(result);
+        }
+        setSelectedResultIds((ids) => ids.filter((id) => !targetIds.has(id)));
+    };
+
+    const toggleAllResults = () => {
+        setSelectedResultIds(allResultsSelected ? [] : results.map((result) => result.id));
+    };
+
     const saveLog = (log: GenerationLog) => {
         void logStore.setItem(log.id, serializeLog(log)).then(refreshLogs);
     };
@@ -446,6 +480,7 @@ export default function ImagePage() {
         const sessionId = `log:${log.id}`;
         setActiveSessionId(sessionId);
         setPreviewLog(log);
+        setSelectedResultIds([]);
         setLogsOpen(false);
         const hydratedLog = await hydrateLogMedia(log);
         if (requestId !== previewRequestIdRef.current) return;
@@ -466,6 +501,7 @@ export default function ImagePage() {
         previewRequestIdRef.current += 1;
         setActiveSessionId(session.id);
         setPreviewLog(null);
+        setSelectedResultIds([]);
         setLogsOpen(false);
         setPrompt(session.prompt);
         setReferences(session.references.slice(0, IMAGE_REFERENCE_LIMIT));
@@ -640,22 +676,34 @@ export default function ImagePage() {
                             <div>
                                 <h2 className="text-xl font-semibold">生成结果</h2>
                             </div>
-                            {running ? (
-                                <HistoryPill tone="pending" label="生成中">
-                                    {formatDuration(elapsedMs)}
-                                    {runningCount > 1 ? ` · ${runningCount} 批` : ""}
-                                </HistoryPill>
-                            ) : null}
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                {results.length ? (
+                                    <>
+                                        <Button size="small" icon={<CheckSquare className="size-3.5" />} onClick={toggleAllResults}>
+                                            {allResultsSelected ? "取消" : "全选"}
+                                        </Button>
+                                        <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedResults.length} onClick={() => requestDeleteResults(selectedResults)}>
+                                            删除选中
+                                        </Button>
+                                    </>
+                                ) : null}
+                                {running ? (
+                                    <HistoryPill tone="pending" label="生成中">
+                                        {formatDuration(elapsedMs)}
+                                        {runningCount > 1 ? ` · ${runningCount} 批` : ""}
+                                    </HistoryPill>
+                                ) : null}
+                            </div>
                         </div>
                         {results.length ? (
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                 {results.map((result, index) =>
                                     result.status === "success" && result.image ? (
-                                        <ResultImageCard key={result.id} image={result.image} index={index} onEdit={addResultToReferences} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => void deleteResult(result)} />
+                                        <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                     ) : result.status === "failed" ? (
-                                        <FailedImageCard key={result.id} error={result.error || "生成失败"} onRetry={() => retryResult(index)} onDelete={() => void deleteResult(result)} />
+                                        <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
                                     ) : (
-                                        <PendingImageCard key={result.id} />
+                                        <PendingImageCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
                                     ),
                                 )}
                             </div>
@@ -700,6 +748,9 @@ export default function ImagePage() {
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
+            <Modal title="删除生成结果" open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
+                确定删除选中的 {resultDeleteTargets.length} 个生成结果吗？成功图片会同步删除本地媒体文件。
+            </Modal>
             <Modal title="删除生成记录" open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={() => void deleteSelectedLogs()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
                 确定删除选中的 {selectedLogIds.length} 条生成记录吗？
             </Modal>
@@ -745,6 +796,8 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
 function ResultImageCard({
     image,
     index,
+    selected,
+    onSelectedChange,
     onEdit,
     onDownload,
     onSaveAsset,
@@ -752,6 +805,8 @@ function ResultImageCard({
 }: {
     image: GeneratedImage;
     index: number;
+    selected: boolean;
+    onSelectedChange: (checked: boolean) => void;
     onEdit: (image: GeneratedImage, index: number) => void;
     onDownload: (image: GeneratedImage, index: number) => void;
     onSaveAsset: (image: GeneratedImage, index: number) => void;
@@ -782,7 +837,10 @@ function ResultImageCard({
     const displayImage = resolvedUrl && !loadFailed ? { ...image, dataUrl: resolvedUrl } : null;
 
     return (
-        <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
+        <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
+            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
+            </div>
             {displayImage ? (
                 <Image src={displayImage.dataUrl} alt={`生成结果 ${index + 1}`} className="aspect-square object-cover" onError={() => setLoadFailed(true)} />
             ) : (
@@ -826,9 +884,12 @@ function ResultImageCard({
     );
 }
 
-function PendingImageCard() {
+function PendingImageCard({ selected, onSelectedChange }: { selected: boolean; onSelectedChange: (checked: boolean) => void }) {
     return (
         <div className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50 dark:border-stone-700 dark:bg-stone-900">
+            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
+            </div>
             <div
                 className="absolute inset-0 opacity-60"
                 style={{
@@ -844,9 +905,12 @@ function PendingImageCard() {
     );
 }
 
-function FailedImageCard({ error, onRetry, onDelete }: { error: string; onRetry: () => void; onDelete: () => void }) {
+function FailedImageCard({ error, selected, onSelectedChange, onRetry, onDelete }: { error: string; selected: boolean; onSelectedChange: (checked: boolean) => void; onRetry: () => void; onDelete: () => void }) {
     return (
-        <div className="overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
+        <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
+            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
+            </div>
             <div className="flex aspect-square flex-col items-center justify-center gap-3 p-5 text-center">
                 <div className="text-sm font-medium text-red-600 dark:text-red-300">生成失败</div>
                 <Typography.Paragraph ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">

@@ -96,12 +96,16 @@ export default function VideoPage() {
     const [startedAt, setStartedAt] = useState(0);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
+    const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
     const [playerVideo, setPlayerVideo] = useState<GeneratedVideo | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
 
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
+    const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
+    const allResultsSelected = Boolean(results.length) && selectedResultIds.length === results.length;
 
     useEffect(() => {
         if (!running || !startedAt) return;
@@ -112,6 +116,15 @@ export default function VideoPage() {
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    useEffect(() => {
+        setSelectedResultIds((ids) => {
+            if (!ids.length) return ids;
+            const available = new Set(results.map((result) => result.id));
+            const next = ids.filter((id) => available.has(id));
+            return next.length === ids.length ? ids : next;
+        });
+    }, [results]);
 
     const addReferences = async (files?: FileList | null) => {
         const selectedFiles = Array.from(files || []);
@@ -177,6 +190,7 @@ export default function VideoPage() {
         setElapsedMs(0);
         setRunning(true);
         setPreviewLog(null);
+        setSelectedResultIds([]);
         setResults((value) => [...value, { id: resultId, status: "pending" }]);
         const batchStartedAt = performance.now();
         setStartedAt((value) => value || batchStartedAt);
@@ -258,6 +272,25 @@ export default function VideoPage() {
         await refreshLogs();
     };
 
+    const requestDeleteResults = (targets: GenerationResult[]) => {
+        if (!targets.length) return;
+        setResultDeleteTargets(targets);
+    };
+
+    const confirmDeleteResults = async () => {
+        const targets = resultDeleteTargets;
+        const targetIds = new Set(targets.map((result) => result.id));
+        setResultDeleteTargets([]);
+        for (const result of targets) {
+            await deleteResult(result);
+        }
+        setSelectedResultIds((ids) => ids.filter((id) => !targetIds.has(id)));
+    };
+
+    const toggleAllResults = () => {
+        setSelectedResultIds(allResultsSelected ? [] : results.map((result) => result.id));
+    };
+
     const insertPickedAsset = async (payload: InsertAssetPayload) => {
         if (payload.kind === "text") {
             setPrompt(payload.content);
@@ -279,6 +312,7 @@ export default function VideoPage() {
         setElapsedMs(0);
         setStartedAt(0);
         setSelectedLogIds([]);
+        setSelectedResultIds([]);
         setPreviewLog(null);
     };
 
@@ -365,6 +399,7 @@ export default function VideoPage() {
 
     const previewGenerationLog = (log: GenerationLog) => {
         setPreviewLog(log);
+        setSelectedResultIds([]);
         setLogsOpen(false);
         setPrompt(log.prompt);
         setReferences(log.references || []);
@@ -542,22 +577,34 @@ export default function VideoPage() {
                     <div className="thin-scrollbar h-full min-h-0 rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:overflow-y-auto lg:p-5">
                         <div className="mb-4 flex items-center justify-between gap-3">
                             <h2 className="text-xl font-semibold">生成结果</h2>
-                            {running ? (
-                                <HistoryPill tone="pending" label="生成中">
-                                    {formatDuration(elapsedMs)}
-                                    {activeLogIdsRef.current.size > 1 ? ` · ${activeLogIdsRef.current.size} 个任务` : ""}
-                                </HistoryPill>
-                            ) : null}
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                {results.length ? (
+                                    <>
+                                        <Button size="small" icon={<CheckSquare className="size-3.5" />} onClick={toggleAllResults}>
+                                            {allResultsSelected ? "取消" : "全选"}
+                                        </Button>
+                                        <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedResults.length} onClick={() => requestDeleteResults(selectedResults)}>
+                                            删除选中
+                                        </Button>
+                                    </>
+                                ) : null}
+                                {running ? (
+                                    <HistoryPill tone="pending" label="生成中">
+                                        {formatDuration(elapsedMs)}
+                                        {activeLogIdsRef.current.size > 1 ? ` · ${activeLogIdsRef.current.size} 个任务` : ""}
+                                    </HistoryPill>
+                                ) : null}
+                            </div>
                         </div>
                         {results.length ? (
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                 {results.map((result) =>
                                     result.status === "success" && result.video ? (
-                                        <ResultVideoCard key={result.id} video={result.video} onPlay={() => setPlayerVideo(result.video || null)} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => void deleteResult(result)} />
+                                        <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                     ) : result.status === "failed" ? (
-                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} onRetry={retryResult} onDelete={() => void deleteResult(result)} />
+                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={retryResult} onDelete={() => requestDeleteResults([result])} />
                                     ) : (
-                                        <PendingVideoCard key={result.id} />
+                                        <PendingVideoCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
                                     ),
                                 )}
                             </div>
@@ -600,6 +647,9 @@ export default function VideoPage() {
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
             <VideoPlayerModal video={playerVideo} onClose={() => setPlayerVideo(null)} onDownload={downloadVideo} />
+            <Modal title="删除生成结果" open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
+                确定删除选中的 {resultDeleteTargets.length} 个生成结果吗？成功视频会同步删除本地媒体文件。
+            </Modal>
             <Modal title="删除生成记录" open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={() => void deleteSelectedLogs()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
                 确定删除选中的 {selectedLogIds.length} 条生成记录吗？
             </Modal>
@@ -642,9 +692,12 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, onPlay, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; onPlay: () => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
+function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
     return (
-        <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
+        <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
+            <div className="absolute right-3 top-3 z-20 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
+            </div>
             <button type="button" className="group relative block aspect-video w-full overflow-hidden bg-black text-left" onClick={onPlay} aria-label="播放视频">
                 <video src={video.url} className="size-full object-cover" muted playsInline preload="metadata" />
                 <span className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
@@ -683,9 +736,12 @@ function ResultVideoCard({ video, onPlay, onDownload, onSaveAsset, onDelete }: {
     );
 }
 
-function PendingVideoCard() {
+function PendingVideoCard({ selected, onSelectedChange }: { selected: boolean; onSelectedChange: (checked: boolean) => void }) {
     return (
         <div className="relative aspect-video overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50 dark:border-stone-700 dark:bg-stone-900">
+            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
+            </div>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-stone-500 dark:text-stone-400">
                 <LoaderCircle className="size-6 animate-spin" />
                 <span>生成中</span>
@@ -694,9 +750,12 @@ function PendingVideoCard() {
     );
 }
 
-function FailedVideoCard({ error, onRetry, onDelete }: { error: string; onRetry: () => void; onDelete: () => void }) {
+function FailedVideoCard({ error, selected, onSelectedChange, onRetry, onDelete }: { error: string; selected: boolean; onSelectedChange: (checked: boolean) => void; onRetry: () => void; onDelete: () => void }) {
     return (
-        <div className="overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
+        <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
+            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
+            </div>
             <div className="flex aspect-video flex-col items-center justify-center gap-3 p-5 text-center">
                 <div className="text-sm font-medium text-red-600 dark:text-red-300">生成失败</div>
                 <Typography.Paragraph ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
