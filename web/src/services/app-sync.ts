@@ -1,6 +1,7 @@
 "use client";
 
 import localforage from "localforage";
+import { nanoid } from "nanoid";
 
 import { createRelayBasesCloudSyncStorage } from "@/services/cloud-sync";
 import { getMediaBlob, resolveMediaUrl, setMediaBlob } from "@/services/file-storage";
@@ -128,7 +129,7 @@ async function syncAppDataToRemote(storage: RemoteSyncStorage, onProgress?: AppS
             key: "image-workbench",
             label: "生图工作台",
             emptyData: { logs: [] },
-            localData: async () => ({ logs: await readStoredLogs(imageLogStore) }),
+            localData: async () => ({ logs: await readStoredLogsForSync(imageLogStore) }),
             mergeData: (local, remote) => ({ logs: mergeById(local.logs, remote.logs, "createdAt") }),
             applyData: async (data) => replaceStoredLogs(imageLogStore, data.logs),
         }),
@@ -136,7 +137,7 @@ async function syncAppDataToRemote(storage: RemoteSyncStorage, onProgress?: AppS
             key: "video-workbench",
             label: "视频创作台",
             emptyData: { logs: [] },
-            localData: async () => ({ logs: await readStoredLogs(videoLogStore) }),
+            localData: async () => ({ logs: await readStoredLogsForSync(videoLogStore) }),
             mergeData: (local, remote) => ({ logs: mergeById(local.logs, remote.logs, "createdAt") }),
             applyData: async (data) => replaceStoredLogs(videoLogStore, data.logs),
         }),
@@ -423,6 +424,19 @@ async function readStoredLogs(store: LogStore) {
     return logs;
 }
 
+async function readStoredLogsForSync(store: LogStore) {
+    const logs = await readStoredLogs(store);
+    let changed = false;
+    const prepared: StoredLog[] = [];
+    for (const log of logs) {
+        const clone = clonePlainObject(log);
+        if (await compactStoredLogForSync(clone)) changed = true;
+        prepared.push(clone);
+    }
+    if (changed) await replaceStoredLogs(store, prepared);
+    return prepared;
+}
+
 async function replaceStoredLogs(store: LogStore, logs: StoredLog[]) {
     await store.clear();
     await runWithConcurrency(logs, FILE_CONCURRENCY, async (log) => {
@@ -457,6 +471,49 @@ function collectStorageKeys(value: unknown, keys = new Set<string>()) {
     return [...keys];
 }
 
+async function compactStoredLogForSync(value: unknown): Promise<boolean> {
+    if (!value || typeof value !== "object") return false;
+    if (Array.isArray(value)) {
+        let changed = false;
+        for (const item of value) {
+            if (await compactStoredLogForSync(item)) changed = true;
+        }
+        return changed;
+    }
+
+    const record = value as Record<string, unknown>;
+    let changed = false;
+
+    if (Array.isArray(record.thumbnails) && record.thumbnails.length) {
+        record.thumbnails = [];
+        changed = true;
+    }
+
+    const dataUrl = getStringField(record, "dataUrl");
+    const storageKey = getStringField(record, "storageKey");
+    if (storageKey && dataUrl) {
+        record.dataUrl = "";
+        changed = true;
+    } else if (!storageKey && dataUrl.startsWith("data:")) {
+        const blob = await dataUrlToBlob(dataUrl);
+        if (blob.size) {
+            const nextStorageKey = `${storagePrefixForBlob(blob)}:${nanoid()}`;
+            await (nextStorageKey.startsWith("image:") ? setImageBlob(nextStorageKey, blob) : setMediaBlob(nextStorageKey, blob));
+            record.storageKey = nextStorageKey;
+            record.dataUrl = "";
+            if (!getStringField(record, "mimeType") && !getStringField(record, "type")) record.mimeType = blob.type;
+            if (!Number(record.bytes || 0)) record.bytes = blob.size;
+            changed = true;
+        }
+    }
+
+    for (const [key, child] of Object.entries(record)) {
+        if (key === "dataUrl" || key === "thumbnails") continue;
+        if (await compactStoredLogForSync(child)) changed = true;
+    }
+    return changed;
+}
+
 function domainPath(domain: DomainKey, path: string) {
     return `${domain}/${path}`;
 }
@@ -482,6 +539,23 @@ function getTime(item: Record<string, unknown>, key: string) {
     if (typeof value === "number") return value;
     if (typeof value === "string") return Date.parse(value) || 0;
     return 0;
+}
+
+function clonePlainObject<T>(value: T): T {
+    if (typeof structuredClone === "function") return structuredClone(value);
+    return JSON.parse(JSON.stringify(value)) as T;
+}
+
+async function dataUrlToBlob(dataUrl: string) {
+    const response = await fetch(dataUrl);
+    return response.blob();
+}
+
+function storagePrefixForBlob(blob: Blob) {
+    if (blob.type.startsWith("image/")) return "image";
+    if (blob.type.startsWith("video/")) return "video";
+    if (blob.type.startsWith("audio/")) return "audio";
+    return "file";
 }
 
 function safeFileName(value: string) {

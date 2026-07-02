@@ -4,6 +4,7 @@ import type { RemoteSyncStorage } from "@/services/app-sync";
 
 const CLOUD_SYNC_BASE_URL = "https://relaybases.com/api/canvas-sync";
 const CLOUD_SYNC_TIMEOUT_MS = 120000;
+const CLOUD_SYNC_MAX_TIMEOUT_MS = 10 * 60 * 1000;
 const SESSION_REFRESH_SKEW_MS = 5 * 60 * 1000;
 const PUBLIC_MEDIA_MAX_BYTES = 100 * 1024 * 1024;
 
@@ -51,7 +52,7 @@ export function createRelayBasesCloudSyncStorage(apiKey: string): RemoteSyncStor
                 method: "PUT",
                 headers: { "Content-Type": contentType },
                 body: file,
-            });
+            }, cloudSyncTimeoutForFile(file));
             if (!response.ok) await throwCloudSyncError(response, "上传云端同步文件失败");
         },
         archivePublicMediaUrl: (url, options) => copyRelayBasesPublicMedia(normalizedApiKey, url, options),
@@ -141,12 +142,12 @@ export async function copyRelayBasesPublicMedia(apiKey: string, sourceUrl: strin
     }
 }
 
-async function cloudSyncFetch(apiKey: string, path: string, init: RequestInit) {
+async function cloudSyncFetch(apiKey: string, path: string, init: RequestInit, timeoutMs = CLOUD_SYNC_TIMEOUT_MS) {
     const session = await getCloudSyncSession(apiKey);
     const headers = new Headers(init.headers);
     headers.set("Authorization", `Bearer ${session.token}`);
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), CLOUD_SYNC_TIMEOUT_MS);
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
         return await fetch(`${CLOUD_SYNC_BASE_URL}/file?path=${encodeURIComponent(path)}`, {
             ...init,
@@ -154,7 +155,7 @@ async function cloudSyncFetch(apiKey: string, path: string, init: RequestInit) {
             signal: controller.signal,
         });
     } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") throw new Error("云同步请求超时，请稍后重试");
+        if (error instanceof Error && error.name === "AbortError") throw new Error(`云同步请求超时：${requestLabel(path, init)}，请稍后重试`);
         if (error instanceof TypeError) throw new Error("无法连接 RelayBases 云同步，请检查网络状态");
         throw error;
     } finally {
@@ -211,6 +212,23 @@ function withTimeout<T>(promise: Promise<T>, message: string) {
         const timer = window.setTimeout(() => reject(new Error(message)), CLOUD_SYNC_TIMEOUT_MS);
         promise.then(resolve, reject).finally(() => window.clearTimeout(timer));
     });
+}
+
+function cloudSyncTimeoutForFile(file: Blob) {
+    const slowUploadBudget = Math.ceil(file.size / (256 * 1024)) * 1000;
+    return Math.min(CLOUD_SYNC_MAX_TIMEOUT_MS, Math.max(CLOUD_SYNC_TIMEOUT_MS, 60_000 + slowUploadBudget));
+}
+
+function requestLabel(path: string, init: RequestInit) {
+    const method = init.method || "GET";
+    const size = init.body instanceof Blob ? `，${formatCloudSyncBytes(init.body.size)}` : "";
+    return `${method} ${path}${size}`;
+}
+
+function formatCloudSyncBytes(bytes: number) {
+    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)}MB`;
+    if (bytes >= 1024) return `${Math.round(bytes / 1024)}KB`;
+    return `${bytes}B`;
 }
 
 function isRelayBasesCanvasPublicMediaUrl(value: string) {
