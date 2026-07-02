@@ -64,7 +64,7 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "
 const IMAGE_REFERENCE_LIMIT = 5;
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
-const LOG_THUMBNAIL_SIZE = 72;
+const LOG_THUMBNAIL_SIZE = 96;
 const LOG_THUMBNAIL_QUALITY = 0.72;
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
@@ -699,7 +699,7 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             title={promptPreview}
         >
             <div className="grid grid-cols-[minmax(128px,1fr)_auto] gap-2">
-                <div className="grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2">
+                <div className="grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-3">
                     <Checkbox className="mt-0.5" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
                     <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} />
                     <div className="min-w-0">
@@ -790,11 +790,11 @@ function LogCover({ logId, image, source, count }: { logId: string; image: strin
     return (
         <span
             ref={coverRef}
-            className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
         >
-            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : hasSource ? <LoaderCircle className="size-4 animate-spin opacity-60" /> : <ImagePlus className="size-4 opacity-75" />}
-            {count > 1 ? <span className="absolute bottom-0.5 right-0.5 rounded bg-black/65 px-1 text-[10px] font-semibold leading-4 text-white shadow-sm">{count}</span> : null}
+            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : hasSource ? <LoaderCircle className="size-5 animate-spin opacity-60" /> : <ImagePlus className="size-5 opacity-75" />}
+            {count > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 text-[10px] font-semibold leading-4 text-white shadow-sm">{count}</span> : null}
         </span>
     );
 }
