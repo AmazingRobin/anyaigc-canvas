@@ -24,8 +24,8 @@ export function AppTopNav() {
         <>
             {!hideHeader ? (
                 <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-stone-200 bg-background/90 backdrop-blur-xl dark:border-stone-800">
-                    <div className="mx-auto flex h-full max-w-7xl items-stretch justify-between gap-5 px-6">
-                        <div className="flex min-w-0 items-center">
+                    <div className="mx-auto flex h-full w-full max-w-[1800px] items-stretch justify-between gap-4 px-4 sm:px-6 lg:px-8">
+                        <div className="flex min-w-0 flex-1 items-center">
                             <a
                                 href={RELAYBASES_HOME_URL}
                                 target="_blank"
@@ -57,7 +57,7 @@ export function AppTopNav() {
                                 <Menu className="size-5" />
                             </button>
 
-                            <nav className="hide-scrollbar ml-8 hidden h-16 min-w-0 items-center gap-7 overflow-x-auto md:flex">
+                            <nav className="hide-scrollbar ml-6 hidden h-16 min-w-0 items-center gap-5 overflow-x-auto lg:gap-6 md:flex xl:ml-8 xl:gap-7">
                                 {navigationTools.map((tool) => {
                                     const Icon = tool.icon;
                                     const active = tool.slug === activeToolSlug;
@@ -72,16 +72,16 @@ export function AppTopNav() {
                                                     : "text-stone-500 after:bg-transparent hover:text-stone-950 dark:text-stone-400 dark:hover:text-stone-100",
                                             )}
                                         >
-                                            <Icon className="size-4" />
-                                            <span className="truncate">{tool.label}</span>
+                                            <Icon className="size-4 shrink-0" />
+                                            <span className="whitespace-nowrap">{tool.label}</span>
                                         </Link>
                                     );
                                 })}
                             </nav>
                         </div>
 
-                        <div className="my-auto flex h-9 min-w-0 items-center justify-end gap-2 justify-self-end whitespace-nowrap">
-                            <nav className="mr-1 hidden items-center gap-1 xl:flex" aria-label="RelayBases 主站导航">
+                        <div className="my-auto flex h-9 shrink-0 items-center justify-end gap-2 justify-self-end whitespace-nowrap">
+                            <nav className="mr-1 hidden items-center gap-1 2xl:flex" aria-label="RelayBases 主站导航">
                                 {relayBasesLinks.map((link) => (
                                     <a
                                         key={link.href}
