@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { buildApiUrl, isRelayBasesAsyncImageModel, isRelayBasesSyncImageModel, modelOptionName, resolveModelRequestConfig, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { nanoid } from "nanoid";
-import { dataUrlToFile, normalizeAzureImageEditFile, validateAzureImageEditFile } from "@/lib/image-utils";
+import { AZURE_IMAGE_MASK_MAX_BYTES, dataUrlToFile, validateAzureImageEditFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { imageToDataUrl } from "@/services/image-storage";
 import type { ReferenceImage } from "@/types/image";
@@ -923,16 +923,19 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     if (requestSize) {
         formData.set("size", requestSize);
     }
+    let firstImageDimensions: { width: number; height: number } | undefined;
     const files = await Promise.all(
         references.map(async (image, index) => {
             const file = dataUrlToFile({ ...image, dataUrl: await imageToDataUrl(image) });
-            return normalizeAzureImageEditFile(file, { index: index + 1 });
+            const dimensions = await validateAzureImageEditFile(file, { index: index + 1 });
+            if (index === 0) firstImageDimensions = dimensions;
+            return file;
         }),
     );
     files.forEach((file) => formData.append("image[]", file));
     if (mask) {
         const maskFile = dataUrlToFile(mask);
-        await validateAzureImageEditFile(maskFile, { label: "遮罩图", pngOnly: true });
+        await validateAzureImageEditFile(maskFile, { label: "遮罩图", pngOnly: true, maxBytes: AZURE_IMAGE_MASK_MAX_BYTES, expectedDimensions: firstImageDimensions });
         formData.set("mask", maskFile);
     }
 
