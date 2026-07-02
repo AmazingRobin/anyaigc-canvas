@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Music2, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { App, Button, Checkbox, Drawer, Empty, Input, Modal, Tag, Typography } from "antd";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { App, Button, Checkbox, Drawer, Empty, Input, Modal, Typography } from "antd";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
 import { saveAs } from "file-saver";
@@ -67,6 +67,8 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "videoCallMod
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
+const INITIAL_LOG_VISIBLE_COUNT = 60;
+const LOG_VISIBLE_BATCH_SIZE = 60;
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
@@ -361,9 +363,9 @@ export default function VideoPage() {
     };
 
     return (
-        <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
-                <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
+        <div className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+            <main className="grid h-full min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[460px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[520px_minmax(0,1fr)]">
+                <aside className="hidden h-full min-h-0 overflow-hidden rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
                     <LogPanel
                         logs={logs}
                         selectedLogIds={selectedLogIds}
@@ -375,21 +377,22 @@ export default function VideoPage() {
                     />
                 </aside>
 
-                <section className="grid gap-3 lg:min-h-0 lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
-                    <div className="thin-scrollbar flex flex-col rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:min-h-0 lg:overflow-y-auto">
-                        <div className="flex items-start justify-between gap-3">
-                            <h1 className="text-2xl font-semibold text-stone-950 dark:text-stone-100">视频创作台</h1>
-                            <div className="flex shrink-0 gap-2 lg:hidden">
-                                <Button icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
-                                    记录
-                                </Button>
-                                <Button icon={<SlidersHorizontal className="size-4" />} onClick={() => setSettingsOpen(true)}>
-                                    参数
-                                </Button>
+                <section className="grid h-full min-h-0 gap-3 lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
+                    <div className="flex h-full min-h-0 flex-col rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800">
+                        <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+                            <div className="flex items-start justify-between gap-3">
+                                <h1 className="text-2xl font-semibold text-stone-950 dark:text-stone-100">视频创作台</h1>
+                                <div className="flex shrink-0 gap-2 lg:hidden">
+                                    <Button icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
+                                        记录
+                                    </Button>
+                                    <Button icon={<SlidersHorizontal className="size-4" />} onClick={() => setSettingsOpen(true)}>
+                                        参数
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="mt-6 space-y-5">
+                            <div className="mt-6 space-y-5">
                             <div>
                                 <div className="mb-2 flex items-center justify-between gap-3">
                                     <span className="text-base font-semibold">提示词</span>
@@ -507,19 +510,26 @@ export default function VideoPage() {
                             <div className="hidden gap-4 sm:grid sm:grid-cols-2">
                                 <GenerationSettings config={effectiveConfig} model={model} updateConfig={updateConfig} openConfigDialog={openConfigDialog} />
                             </div>
+                            </div>
+
                         </div>
 
-                        <div className="mt-auto pt-6">
-                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} loading={running} disabled={!canGenerate || running} onClick={() => void generate()}>
+                        <div className="shrink-0 border-t border-stone-200 pt-3 dark:border-stone-800">
+                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => void generate()}>
                                 开始生成
                             </Button>
                         </div>
                     </div>
 
-                    <div className="thin-scrollbar rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:min-h-0 lg:overflow-y-auto lg:p-5">
+                    <div className="thin-scrollbar h-full min-h-0 rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:overflow-y-auto lg:p-5">
                         <div className="mb-4 flex items-center justify-between gap-3">
                             <h2 className="text-xl font-semibold">生成结果</h2>
-                            {running ? <Tag className="m-0 px-2 py-1">等待 {formatDuration(elapsedMs)}</Tag> : null}
+                            {running ? (
+                                <HistoryPill tone="pending" label="生成中">
+                                    {formatDuration(elapsedMs)}
+                                    {activeLogIdsRef.current.size > 1 ? ` · ${activeLogIdsRef.current.size} 个任务` : ""}
+                                </HistoryPill>
+                            ) : null}
                         </div>
                         {results.length ? (
                             <div className="grid gap-4">
@@ -591,6 +601,25 @@ function GenerationSettings({ config, model, updateConfig, openConfigDialog }: {
                 <VideoSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4" />
             </div>
         </>
+    );
+}
+
+type HistoryPillTone = "neutral" | "success" | "danger" | "pending" | "info";
+
+const HISTORY_PILL_TONE_CLASSES: Record<HistoryPillTone, string> = {
+    neutral: "border-stone-200 bg-stone-50 text-stone-700 dark:border-stone-800 dark:bg-stone-900/70 dark:text-stone-200",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200",
+    danger: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200",
+    pending: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200",
+    info: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-indigo-200",
+};
+
+function HistoryPill({ label, tone = "neutral", children, className = "" }: { label?: string; tone?: HistoryPillTone; children: ReactNode; className?: string }) {
+    return (
+        <span className={`inline-flex h-6 max-w-full items-center gap-1 overflow-hidden rounded-full border px-2 text-[11px] leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${HISTORY_PILL_TONE_CLASSES[tone]} ${className}`}>
+            {label ? <span className="shrink-0 font-medium opacity-65">{label}</span> : null}
+            <span className="min-w-0 truncate font-semibold">{children}</span>
+        </span>
     );
 }
 
@@ -666,70 +695,135 @@ function LogPanel({
     onPreviewLog: (log: GenerationLog) => void;
 }) {
     const allSelected = Boolean(logs.length) && selectedLogIds.length === logs.length;
+    const [visibleCount, setVisibleCount] = useState(INITIAL_LOG_VISIBLE_COUNT);
+    const visibleLogs = logs.slice(0, visibleCount);
+    const hiddenCount = Math.max(0, logs.length - visibleLogs.length);
     const toggleAll = () => onSelectedLogIdsChange(allSelected ? [] : logs.map((log) => log.id));
 
+    useEffect(() => {
+        setVisibleCount(INITIAL_LOG_VISIBLE_COUNT);
+    }, [logs.length]);
+
     return (
-        <>
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold">生成记录</h2>
-                <Tag className="m-0">{logs.length}</Tag>
+        <div className="flex h-full min-h-0 flex-col">
+            <div className="shrink-0">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <h2 className="text-base font-semibold">生成记录</h2>
+                    <HistoryPill>{logs.length}</HistoryPill>
+                </div>
+                <div className="mb-4 flex flex-wrap gap-2">
+                    <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreateSession}>
+                        新建
+                    </Button>
+                    <Button size="small" icon={<CheckSquare className="size-3.5" />} disabled={!logs.length} onClick={toggleAll}>
+                        {allSelected ? "取消" : "全选"}
+                    </Button>
+                    <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedLogIds.length} onClick={onDeleteSelected}>
+                        删除
+                    </Button>
+                </div>
             </div>
-            <div className="mb-4 flex flex-wrap gap-2">
-                <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreateSession}>
-                    新建
-                </Button>
-                <Button size="small" icon={<CheckSquare className="size-3.5" />} disabled={!logs.length} onClick={toggleAll}>
-                    {allSelected ? "取消" : "全选"}
-                </Button>
-                <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedLogIds.length} onClick={onDeleteSelected}>
-                    删除
-                </Button>
+            <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+                {logs.length ? <div className="mb-2 text-xs font-semibold text-stone-500 dark:text-stone-400">历史记录</div> : null}
+                <div className="space-y-3">
+                    {visibleLogs.map((log) => (
+                        <LogCard
+                            key={log.id}
+                            log={log}
+                            selected={selectedLogIds.includes(log.id)}
+                            active={activeLogId === log.id}
+                            onSelectedChange={(checked) => onSelectedLogIdsChange(checked ? [...selectedLogIds, log.id] : selectedLogIds.filter((id) => id !== log.id))}
+                            onClick={() => onPreviewLog(log)}
+                        />
+                    ))}
+                    {hiddenCount ? (
+                        <Button block size="small" onClick={() => setVisibleCount((value) => value + LOG_VISIBLE_BATCH_SIZE)}>
+                            加载更多 {hiddenCount}
+                        </Button>
+                    ) : null}
+                    {!logs.length ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-stone-300 text-center text-sm text-stone-500 dark:border-stone-700">暂无生成记录</div> : null}
+                </div>
             </div>
-            <div className="space-y-3">
-                {logs.map((log) => (
-                    <LogCard
-                        key={log.id}
-                        log={log}
-                        selected={selectedLogIds.includes(log.id)}
-                        active={activeLogId === log.id}
-                        onSelectedChange={(checked) => onSelectedLogIdsChange(checked ? [...selectedLogIds, log.id] : selectedLogIds.filter((id) => id !== log.id))}
-                        onClick={() => onPreviewLog(log)}
-                    />
-                ))}
-                {!logs.length ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-stone-300 text-center text-sm text-stone-500 dark:border-stone-700">暂无生成记录</div> : null}
-            </div>
-        </>
+        </div>
     );
 }
 
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
+    const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
+    const promptPreview = log.prompt || log.title || "";
+    const sizeLabel = videoSizeLabel(log.config.size || log.size, log.model);
+    const resolutionLabel = videoResolutionBadge(log.config.vquality || log.resolution);
+    const secondsLabel = videoSecondsBadge(log.config.videoSeconds || log.seconds);
+    const statusTone = log.status === "成功" ? "success" : log.status === "生成中" ? "pending" : "danger";
+
     return (
-        <button
-            type="button"
-            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+        <div
+            role="button"
+            tabIndex={0}
+            className={`relative block w-full cursor-pointer rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
+            onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                onClick();
+            }}
+            title={promptPreview}
         >
-            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
-                <Checkbox className="mt-0.5" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
-                <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold leading-5">{log.title}</div>
+            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700" onClick={(event) => event.stopPropagation()}>
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成记录" />
+            </div>
+            <div className="grid min-h-[184px] grid-cols-[176px_minmax(0,1fr)] gap-3 xl:min-h-[204px] xl:grid-cols-[200px_minmax(0,1fr)]">
+                <div className="relative pt-1">
+                    <LogVideoCover video={log.video} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
+                </div>
+                <div className="flex min-w-0 flex-col py-1 pr-9">
+                    <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
+                    <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.size}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{videoModeLabel(log.config.videoCallMode)}</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.resolution}p</Tag>
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.seconds}s</Tag>
+                        <HistoryPill label="模型" className="max-w-full">
+                            {log.model || "默认"}
+                        </HistoryPill>
+                        <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode)}</HistoryPill>
+                        <HistoryPill label="比例">{sizeLabel}</HistoryPill>
+                        <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-1 pt-2">
+                        <HistoryPill label="请求">1</HistoryPill>
+                        {log.status === "成功" && log.video ? <HistoryPill tone="success" label="成功">1</HistoryPill> : null}
+                        {log.status === "生成中" ? <HistoryPill tone="pending" label="生成中">1</HistoryPill> : null}
+                        {log.status === "失败" ? <HistoryPill tone="danger" label="失败">1</HistoryPill> : null}
+                        <HistoryPill tone={statusTone} label="状态">
+                            {log.status}
+                        </HistoryPill>
+                        <HistoryPill tone="info" label="耗时">
+                            {formatDuration(log.durationMs)}
+                        </HistoryPill>
+                        <HistoryPill label="时长">{secondsLabel}</HistoryPill>
+                        <HistoryPill label="时间">{log.time}</HistoryPill>
                     </div>
                 </div>
-                <div className="grid justify-items-end gap-2">
-                    <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color={log.status === "成功" ? "blue" : log.status === "生成中" ? "processing" : "red"}>
-                        {log.status}
-                    </Tag>
-                    <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="green">
-                        {formatDuration(log.durationMs)}
-                    </Tag>
-                </div>
             </div>
-        </button>
+        </div>
+    );
+}
+
+function LogVideoCover({ video, status, sizeLabel, resolutionLabel }: { video?: GeneratedVideo; status: GenerationLog["status"]; sizeLabel: string; resolutionLabel: string }) {
+    const hasVideo = Boolean(video?.url || video?.storageKey);
+    return (
+        <span
+            className="relative grid aspect-video w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            style={hasVideo ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(20,184,166,.14), rgba(99,102,241,.10))" }}
+        >
+            {hasVideo ? (
+                <video src={video?.url} className="size-full bg-black object-cover" muted playsInline preload="metadata" />
+            ) : status === "生成中" ? (
+                <LoaderCircle className="size-7 animate-spin opacity-60" />
+            ) : (
+                <VideoIcon className="size-7 opacity-75" />
+            )}
+            <span className="absolute left-2 top-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{sizeLabel}</span>
+            <span className="absolute left-2 top-8 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{resolutionLabel}</span>
+        </span>
     );
 }
 
@@ -932,6 +1026,15 @@ function normalizeVideoSeconds(value: string) {
     return String(Math.max(1, Math.min(20, seconds)));
 }
 
+function videoSecondsBadge(value: string) {
+    const seconds = normalizeVideoSeconds(value);
+    return seconds === "-1" ? "智能" : `${seconds}s`;
+}
+
+function videoResolutionBadge(value: string) {
+    return `${normalizeResolution(value)}p`;
+}
+
 function videoModeLabel(value: AiConfig["videoCallMode"] | undefined) {
     return normalizeVideoCallMode(value) === "async" ? "异步·4倍扣费" : "同步";
 }
@@ -946,4 +1049,12 @@ function normalizeResolution(value: string) {
 
 function delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function compactLogTitle(value: string) {
+    const text = value.replace(/\s+/g, " ").replace(/^[,.;:，。；：、\s]+/, "").trim();
+    if (!text) return "未命名";
+    const sentence = text.split(/[。！？!?]/, 1)[0]?.trim() || text;
+    if (sentence.length <= 30) return sentence;
+    return `${sentence.slice(0, 30)}…`;
 }

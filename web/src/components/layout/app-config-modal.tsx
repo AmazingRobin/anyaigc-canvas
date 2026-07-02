@@ -2,7 +2,7 @@
 
 import { App, Button, Form, Input, Modal, Progress, Segmented, Select, Switch, Tabs } from "antd";
 import { Cloud, RefreshCw, Wifi } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ModelPicker } from "@/components/model-picker";
 import { fetchChannelModels } from "@/services/api/image";
@@ -56,6 +56,7 @@ const webdavDomainLabels: Record<AppSyncDomainKey, string> = {
     "image-workbench": "生图工作台",
     "video-workbench": "视频创作台",
 };
+const CLOUD_SYNC_MANUAL_STARTED_AT_KEY = "infinite-canvas:cloud_sync_manual_started_at";
 
 function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProgress> {
     return webdavDomainKeys.reduce(
@@ -70,7 +71,7 @@ function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProg
 export function AppConfigModal() {
     const { message } = App.useApp();
     const { language, t } = useI18n();
-    const [activeTab, setActiveTab] = useState("channels");
+    const lastHandledCloudSyncRequestRef = useRef(0);
     const [syncingCloud, setSyncingCloud] = useState(false);
     const [testingWebdav, setTestingWebdav] = useState(false);
     const [syncingWebdav, setSyncingWebdav] = useState(false);
@@ -87,8 +88,11 @@ export function AppConfigModal() {
     const updateCloudSyncConfig = useConfigStore((state) => state.updateCloudSyncConfig);
     const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
     const isConfigOpen = useConfigStore((state) => state.isConfigOpen);
+    const configActiveTab = useConfigStore((state) => state.configActiveTab);
+    const cloudSyncManualRequestId = useConfigStore((state) => state.cloudSyncManualRequestId);
     const shouldPromptContinue = useConfigStore((state) => state.shouldPromptContinue);
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
+    const setConfigActiveTab = useConfigStore((state) => state.setConfigActiveTab);
     const clearPromptContinue = useConfigStore((state) => state.clearPromptContinue);
     const cloudSyncReady = hasCloudSyncKey(config.mediaApiKey, config.textApiKey);
     const webdavReady = Boolean(webdav.url.trim());
@@ -189,15 +193,19 @@ export function AppConfigModal() {
         }));
     };
 
-    const syncCloud = async () => {
+    const syncCloud = useCallback(async () => {
         const apiKey = getCloudSyncApiKey(config.mediaApiKey, config.textApiKey);
         if (!apiKey) {
             message.error("请先填写媒体 API Key 或文本 API Key");
             return;
         }
+        if (syncingCloud) return;
+        window.localStorage.setItem(CLOUD_SYNC_MANUAL_STARTED_AT_KEY, String(Date.now()));
         setSyncingCloud(true);
         setCloudDomainProgress(createWebdavDomainProgress());
         setCloudSyncStatus("准备云同步");
+        updateCloudSyncConfig("enabled", true);
+        updateCloudSyncConfig("lastError", "");
         try {
             const result = await syncAppDataToCloud(apiKey, updateCloudProgress);
             updateCloudSyncConfig("lastSyncedAt", result.syncedAt);
@@ -211,7 +219,14 @@ export function AppConfigModal() {
         } finally {
             setSyncingCloud(false);
         }
-    };
+    }, [config.mediaApiKey, config.textApiKey, message, syncingCloud, updateCloudSyncConfig]);
+
+    useEffect(() => {
+        if (!isConfigOpen || configActiveTab !== "sync" || !cloudSyncManualRequestId) return;
+        if (lastHandledCloudSyncRequestRef.current === cloudSyncManualRequestId) return;
+        lastHandledCloudSyncRequestRef.current = cloudSyncManualRequestId;
+        void syncCloud();
+    }, [cloudSyncManualRequestId, configActiveTab, isConfigOpen, syncCloud]);
 
     const syncWebdav = async () => {
         if (!webdavReady) {
@@ -253,8 +268,8 @@ export function AppConfigModal() {
             }
         >
             <Tabs
-                activeKey={activeTab}
-                onChange={setActiveTab}
+                activeKey={configActiveTab}
+                onChange={setConfigActiveTab}
                 items={[
                     {
                         key: "channels",

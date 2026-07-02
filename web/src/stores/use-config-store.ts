@@ -159,14 +159,18 @@ type ConfigStore = {
     cloudSync: CloudSyncConfig;
     webdav: WebdavSyncConfig;
     isConfigOpen: boolean;
+    configActiveTab: string;
+    cloudSyncManualRequestId: number;
     shouldPromptContinue: boolean;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
     updateConfigValues: (values: Partial<AiConfig>) => void;
     updateCloudSyncConfig: <K extends keyof CloudSyncConfig>(key: K, value: CloudSyncConfig[K]) => void;
     updateWebdavConfig: <K extends keyof WebdavSyncConfig>(key: K, value: WebdavSyncConfig[K]) => void;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
-    openConfigDialog: (shouldPromptContinue?: boolean) => void;
+    openConfigDialog: (shouldPromptContinue?: boolean, activeTab?: string) => void;
     setConfigDialogOpen: (isOpen: boolean) => void;
+    setConfigActiveTab: (activeTab: string) => void;
+    requestCloudSyncDialog: () => void;
     clearPromptContinue: () => void;
 };
 
@@ -236,6 +240,8 @@ export const useConfigStore = create<ConfigStore>()(
             cloudSync: defaultCloudSyncConfig,
             webdav: defaultWebdavSyncConfig,
             isConfigOpen: false,
+            configActiveTab: "channels",
+            cloudSyncManualRequestId: 0,
             shouldPromptContinue: false,
             updateConfig: (key, value) => set((state) => ({ config: normalizeRelayBasesConfig({ ...state.config, [key]: value }) })),
             updateConfigValues: (values) => set((state) => ({ config: normalizeRelayBasesConfig({ ...state.config, ...values }) })),
@@ -254,8 +260,10 @@ export const useConfigStore = create<ConfigStore>()(
                     },
                 })),
             isAiConfigReady: (config, model) => isAiConfigReady(config, model),
-            openConfigDialog: (shouldPromptContinue = false) => set({ isConfigOpen: true, shouldPromptContinue }),
+            openConfigDialog: (shouldPromptContinue = false, activeTab) => set((state) => ({ isConfigOpen: true, shouldPromptContinue, configActiveTab: activeTab || state.configActiveTab })),
             setConfigDialogOpen: (isConfigOpen) => set({ isConfigOpen }),
+            setConfigActiveTab: (configActiveTab) => set({ configActiveTab }),
+            requestCloudSyncDialog: () => set({ isConfigOpen: true, shouldPromptContinue: false, configActiveTab: "sync", cloudSyncManualRequestId: Date.now() }),
             clearPromptContinue: () => set({ shouldPromptContinue: false }),
         }),
         {
