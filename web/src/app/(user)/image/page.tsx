@@ -44,6 +44,24 @@ type RunningSession = {
     count: number;
 };
 
+type WorkbenchSession = {
+    id: string;
+    createdAt: number;
+    prompt: string;
+    model: string;
+    config: GenerationLogConfig;
+    references: ReferenceImage[];
+};
+
+type WorkbenchSessionView = WorkbenchSession & {
+    running?: RunningSession;
+    successCount: number;
+    failCount: number;
+    pendingCount: number;
+    imageCount: number;
+    firstImage?: GeneratedImage;
+};
+
 type GenerationLog = {
     id: string;
     createdAt: number;
@@ -92,6 +110,7 @@ export default function ImagePage() {
     const [references, setReferences] = useState<ReferenceImage[]>([]);
     const [activeSessionId, setActiveSessionId] = useState(() => nanoid());
     const [resultsBySession, setResultsBySession] = useState<Record<string, GenerationResult[]>>({});
+    const [sessionsById, setSessionsById] = useState<Record<string, WorkbenchSession>>({});
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [runningBySession, setRunningBySession] = useState<Record<string, RunningSession>>({});
     const [logsOpen, setLogsOpen] = useState(false);
@@ -110,6 +129,24 @@ export default function ImagePage() {
     const activeRunning = runningBySession[activeSessionId];
     const running = Boolean(activeRunning);
     const runningCount = activeRunning?.count || 0;
+    const workbenchSessions: WorkbenchSessionView[] = Object.values(sessionsById)
+        .map((session) => {
+            const sessionResults = resultsBySession[session.id] || [];
+            const successImages = sessionResults.filter((item) => item.status === "success" && item.image).map((item) => item.image as GeneratedImage);
+            const failCount = sessionResults.filter((item) => item.status === "failed").length;
+            const pendingCount = sessionResults.filter((item) => item.status === "pending").length;
+            return {
+                ...session,
+                running: runningBySession[session.id],
+                successCount: successImages.length,
+                failCount,
+                pendingCount,
+                imageCount: successImages.length,
+                firstImage: successImages[0],
+            };
+        })
+        .filter((session) => session.running || session.pendingCount || session.successCount || session.failCount || session.id === activeSessionId)
+        .sort((a, b) => b.createdAt - a.createdAt);
 
     useEffect(() => {
         if (!activeRunning?.startedAt) {
@@ -126,6 +163,18 @@ export default function ImagePage() {
 
     const updateSessionResults = (sessionId: string, updater: (value: GenerationResult[]) => GenerationResult[]) => {
         setResultsBySession((value) => ({ ...value, [sessionId]: updater(value[sessionId] || []) }));
+    };
+
+    const rememberWorkbenchSession = (sessionId: string, next: Omit<WorkbenchSession, "id" | "createdAt">) => {
+        setSessionsById((value) => ({
+            ...value,
+            [sessionId]: {
+                id: sessionId,
+                createdAt: value[sessionId]?.createdAt || Date.now(),
+                ...next,
+                references: next.references.slice(0, IMAGE_REFERENCE_LIMIT),
+            },
+        }));
     };
 
     const startSessionRun = (sessionId: string, startedAt: number) => {
@@ -214,6 +263,12 @@ export default function ImagePage() {
         if (!snapshot) return;
 
         const sessionId = activeSessionId;
+        rememberWorkbenchSession(sessionId, {
+            prompt: text,
+            model,
+            config: { ...snapshot.config, count: String(generationCount) },
+            references: snapshot.references,
+        });
         if (!runningBySession[sessionId]) setElapsedMs(0);
         setPreviewLog(null);
         const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
@@ -340,6 +395,19 @@ export default function ImagePage() {
         updateSessionResults(sessionId, () => hydratedLog.images.map((image) => ({ id: image.id, status: "success", image })));
     };
 
+    const previewWorkbenchSession = (session: WorkbenchSession) => {
+        previewRequestIdRef.current += 1;
+        setActiveSessionId(session.id);
+        setPreviewLog(null);
+        setLogsOpen(false);
+        setPrompt(session.prompt);
+        setReferences(session.references.slice(0, IMAGE_REFERENCE_LIMIT));
+        if (session.config.imageModel || session.model) updateConfig("imageModel", session.config.imageModel || session.model);
+        if (session.config.quality) updateConfig("quality", session.config.quality);
+        if (session.config.size) updateConfig("size", session.config.size);
+        if (session.config.count) updateConfig("count", session.config.count);
+    };
+
     const buildRequestSnapshot = () => {
         const text = prompt.trim();
         if (!text) {
@@ -390,12 +458,15 @@ export default function ImagePage() {
             <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
                 <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
                     <LogPanel
+                        sessions={workbenchSessions}
                         logs={logs}
+                        activeSessionId={activeSessionId}
                         selectedLogIds={selectedLogIds}
                         activeLogId={previewLog?.id}
                         onSelectedLogIdsChange={setSelectedLogIds}
                         onCreateSession={createSession}
                         onDeleteSelected={() => setDeleteConfirmOpen(true)}
+                        onPreviewSession={previewWorkbenchSession}
                         onPreviewLog={(log) => void previewGenerationLog(log)}
                     />
                 </aside>
@@ -535,12 +606,15 @@ export default function ImagePage() {
             />
             <Drawer title="生成记录" placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
                 <LogPanel
+                    sessions={workbenchSessions}
                     logs={logs}
+                    activeSessionId={activeSessionId}
                     selectedLogIds={selectedLogIds}
                     activeLogId={previewLog?.id}
                     onSelectedLogIdsChange={setSelectedLogIds}
                     onCreateSession={createSession}
                     onDeleteSelected={() => setDeleteConfirmOpen(true)}
+                    onPreviewSession={previewWorkbenchSession}
                     onPreviewLog={(log) => void previewGenerationLog(log)}
                 />
             </Drawer>
@@ -661,20 +735,26 @@ function updateResultById(results: GenerationResult[], id: string, next: Partial
 }
 
 function LogPanel({
+    sessions,
     logs,
+    activeSessionId,
     selectedLogIds,
     activeLogId,
     onSelectedLogIdsChange,
     onCreateSession,
     onDeleteSelected,
+    onPreviewSession,
     onPreviewLog,
 }: {
+    sessions: WorkbenchSessionView[];
     logs: GenerationLog[];
+    activeSessionId: string;
     selectedLogIds: string[];
     activeLogId?: string;
     onSelectedLogIdsChange: (ids: string[]) => void;
     onCreateSession: () => void;
     onDeleteSelected: () => void;
+    onPreviewSession: (session: WorkbenchSession) => void;
     onPreviewLog: (log: GenerationLog) => void;
 }) {
     const allSelected = Boolean(logs.length) && selectedLogIds.length === logs.length;
@@ -706,6 +786,20 @@ function LogPanel({
                     删除
                 </Button>
             </div>
+            {sessions.length ? (
+                <div className="mb-5">
+                    <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-stone-500 dark:text-stone-400">
+                        <span>当前会话</span>
+                        <Tag className="m-0">{sessions.length}</Tag>
+                    </div>
+                    <div className="space-y-3">
+                        {sessions.map((session) => (
+                            <SessionCard key={session.id} session={session} active={!activeLogId && activeSessionId === session.id} onClick={() => onPreviewSession(session)} />
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+            {logs.length ? <div className="mb-2 text-xs font-semibold text-stone-500 dark:text-stone-400">历史记录</div> : null}
             <div className="space-y-3">
                 {visibleLogs.map((log) => (
                     <LogCard
@@ -722,9 +816,64 @@ function LogPanel({
                         加载更多 {hiddenCount}
                     </Button>
                 ) : null}
-                {!logs.length ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-stone-300 text-center text-sm text-stone-500 dark:border-stone-700">暂无生成记录</div> : null}
+                {!logs.length && !sessions.length ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-stone-300 text-center text-sm text-stone-500 dark:border-stone-700">暂无生成记录</div> : null}
             </div>
         </>
+    );
+}
+
+function SessionCard({ session, active, onClick }: { session: WorkbenchSessionView; active: boolean; onClick: () => void }) {
+    const displayTitle = compactLogTitle(session.prompt || session.model || "");
+    const promptPreview = session.prompt || session.model || "";
+
+    return (
+        <button
+            type="button"
+            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+            onClick={onClick}
+            title={promptPreview}
+        >
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+                <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.imageCount} />
+                <div className="min-w-0">
+                    <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
+                    <div className="mt-1 line-clamp-2 text-xs leading-4 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        {session.pendingCount ? (
+                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="cyan">
+                                生成中 {session.pendingCount}
+                            </Tag>
+                        ) : null}
+                        {session.successCount ? (
+                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
+                                成功 {session.successCount}
+                            </Tag>
+                        ) : null}
+                        {session.failCount ? (
+                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="red">
+                                失败 {session.failCount}
+                            </Tag>
+                        ) : null}
+                        {session.running && session.running.count > 1 ? (
+                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{session.running.count} 批</Tag>
+                        ) : null}
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{formatSessionTime(session.createdAt)}</Tag>
+                    </div>
+                </div>
+            </div>
+        </button>
+    );
+}
+
+function SessionCover({ image, pending, count }: { image?: GeneratedImage; pending: boolean; count: number }) {
+    return (
+        <span
+            className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            style={image?.dataUrl ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
+        >
+            {image?.dataUrl ? <img src={image.dataUrl} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : pending ? <LoaderCircle className="size-5 animate-spin opacity-60" /> : <ImagePlus className="size-5 opacity-75" />}
+            {count > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 text-[10px] font-semibold leading-4 text-white shadow-sm">{count}</span> : null}
+        </span>
     );
 }
 
@@ -954,6 +1103,10 @@ function normalizeLogThumbnails(thumbnails?: string[]) {
 
 function actualLogImageCount(log: GenerationLog) {
     return (log.images || []).filter((image) => Boolean(image.storageKey || image.dataUrl)).length;
+}
+
+function formatSessionTime(value: number) {
+    return new Date(value).toLocaleTimeString("zh-CN", { hour12: false, hour: "2-digit", minute: "2-digit" });
 }
 
 async function cacheLogThumbnail(logId: string, thumbnail: string) {
