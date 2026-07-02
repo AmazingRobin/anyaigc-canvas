@@ -18,7 +18,8 @@ export type AppSyncDomainKey = "canvas" | "assets" | "image-workbench" | "video-
 type DomainKey = AppSyncDomainKey;
 type CanvasDomainData = { projects: CanvasProject[] };
 type AssetDomainData = { assets: Asset[] };
-type LogDomainData = { logs: StoredLog[] };
+type DeletedSyncIds = Record<string, number>;
+type LogDomainData = { logs: StoredLog[]; deletedLogIds?: DeletedSyncIds };
 
 type AppSyncFile = {
     storageKey: string;
@@ -85,10 +86,23 @@ export type AppSyncProgressEvent = {
 export type AppSyncProgress = (event: AppSyncProgressEvent) => void;
 
 const FILE_CONCURRENCY = 3;
+const MAX_DELETED_SYNC_IDS = 5000;
 const imageLogStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
 const videoLogStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
+const syncTombstoneStore = localforage.createInstance({ name: "infinite-canvas", storeName: "sync_tombstones" });
 type LogStore = typeof imageLogStore;
 const storageKeyPattern = /^(image|video|audio|file|video-reference|audio-reference):/;
+
+export async function recordDeletedSyncIds(domain: AppSyncDomainKey, ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+    if (!uniqueIds.length) return;
+    const deleted = await readDeletedSyncIds(domain);
+    const deletedAt = Date.now();
+    uniqueIds.forEach((id) => {
+        deleted[id] = deletedAt;
+    });
+    await writeDeletedSyncIds(domain, deleted);
+}
 
 export async function syncAppDataToWebdav(config: WebdavSyncConfig, onProgress?: AppSyncProgress): Promise<AppSyncResult> {
     return syncAppDataToRemote(
@@ -129,17 +143,23 @@ async function syncAppDataToRemote(storage: RemoteSyncStorage, onProgress?: AppS
             key: "image-workbench",
             label: "生图工作台",
             emptyData: { logs: [] },
-            localData: async () => ({ logs: await readStoredLogsForSync(imageLogStore) }),
-            mergeData: (local, remote) => ({ logs: mergeById(local.logs, remote.logs, "createdAt") }),
-            applyData: async (data) => replaceStoredLogs(imageLogStore, data.logs),
+            localData: async () => ({ logs: await readStoredLogsForSync(imageLogStore), deletedLogIds: await readDeletedSyncIds("image-workbench") }),
+            mergeData: mergeLogDomainData,
+            applyData: async (data) => {
+                await replaceStoredLogs(imageLogStore, data.logs);
+                await writeDeletedSyncIds("image-workbench", data.deletedLogIds || {});
+            },
         }),
         syncDomain<LogDomainData>(storage, onProgress, {
             key: "video-workbench",
             label: "视频创作台",
             emptyData: { logs: [] },
-            localData: async () => ({ logs: await readStoredLogsForSync(videoLogStore) }),
-            mergeData: (local, remote) => ({ logs: mergeById(local.logs, remote.logs, "createdAt") }),
-            applyData: async (data) => replaceStoredLogs(videoLogStore, data.logs),
+            localData: async () => ({ logs: await readStoredLogsForSync(videoLogStore), deletedLogIds: await readDeletedSyncIds("video-workbench") }),
+            mergeData: mergeLogDomainData,
+            applyData: async (data) => {
+                await replaceStoredLogs(videoLogStore, data.logs);
+                await writeDeletedSyncIds("video-workbench", data.deletedLogIds || {});
+            },
         }),
     ]);
 
@@ -443,6 +463,56 @@ async function replaceStoredLogs(store: LogStore, logs: StoredLog[]) {
         const id = getStringField(log, "id");
         if (id) await store.setItem(id, log);
     });
+}
+
+function mergeLogDomainData(local: LogDomainData, remote: LogDomainData): LogDomainData {
+    const deletedLogIds = mergeDeletedSyncIds(local.deletedLogIds, remote.deletedLogIds);
+    return {
+        logs: mergeById(filterDeletedLogs(local.logs, deletedLogIds), filterDeletedLogs(remote.logs, deletedLogIds), "createdAt"),
+        deletedLogIds,
+    };
+}
+
+function filterDeletedLogs(logs: StoredLog[], deletedLogIds: DeletedSyncIds) {
+    return logs.filter((log) => {
+        const id = log.id || "";
+        return !id || !deletedLogIds[id];
+    });
+}
+
+async function readDeletedSyncIds(domain: DomainKey): Promise<DeletedSyncIds> {
+    return normalizeDeletedSyncIds(await syncTombstoneStore.getItem<DeletedSyncIds>(deletedSyncIdsStoreKey(domain)));
+}
+
+async function writeDeletedSyncIds(domain: DomainKey, deletedIds: DeletedSyncIds) {
+    const normalized = pruneDeletedSyncIds(normalizeDeletedSyncIds(deletedIds));
+    await syncTombstoneStore.setItem(deletedSyncIdsStoreKey(domain), normalized);
+}
+
+function mergeDeletedSyncIds(local?: DeletedSyncIds, remote?: DeletedSyncIds) {
+    const merged: DeletedSyncIds = { ...normalizeDeletedSyncIds(remote) };
+    Object.entries(normalizeDeletedSyncIds(local)).forEach(([id, deletedAt]) => {
+        merged[id] = Math.max(merged[id] || 0, deletedAt);
+    });
+    return pruneDeletedSyncIds(merged);
+}
+
+function normalizeDeletedSyncIds(value: unknown): DeletedSyncIds {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const normalized: DeletedSyncIds = {};
+    Object.entries(value as Record<string, unknown>).forEach(([id, deletedAt]) => {
+        const timestamp = typeof deletedAt === "number" ? deletedAt : typeof deletedAt === "string" ? Date.parse(deletedAt) : 0;
+        if (id && Number.isFinite(timestamp) && timestamp > 0) normalized[id] = timestamp;
+    });
+    return normalized;
+}
+
+function pruneDeletedSyncIds(deletedIds: DeletedSyncIds) {
+    return Object.fromEntries(Object.entries(deletedIds).sort((a, b) => b[1] - a[1]).slice(0, MAX_DELETED_SYNC_IDS));
+}
+
+function deletedSyncIdsStoreKey(domain: DomainKey) {
+    return `deleted:${domain}`;
 }
 
 function mergeById<T extends { id?: string }>(local: T[], remote: T[], timeKey: string) {

@@ -17,6 +17,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
 import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
+import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { useAssetStore } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
@@ -405,16 +406,19 @@ export default function ImagePage() {
         setPreviewLog(null);
     };
 
-    const deleteSelectedLogs = () => {
+    const deleteSelectedLogs = async () => {
         previewRequestIdRef.current += 1;
-        const imageKeys = logs.filter((log) => selectedLogIds.includes(log.id)).flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
-        void Promise.all([deleteStoredImages(imageKeys), ...selectedLogIds.map((id) => logStore.removeItem(id))]).then(refreshLogs);
-        if (previewLog && selectedLogIds.includes(previewLog.id)) {
+        const ids = [...selectedLogIds];
+        const imageKeys = logs.filter((log) => ids.includes(log.id)).flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
+        await recordDeletedSyncIds("image-workbench", ids);
+        await Promise.all([deleteStoredImages(imageKeys), ...ids.map((id) => logStore.removeItem(id))]);
+        if (previewLog && ids.includes(previewLog.id)) {
             setPreviewLog(null);
             updateSessionResults(activeSessionId, () => []);
         }
         setSelectedLogIds([]);
         setDeleteConfirmOpen(false);
+        await refreshLogs();
     };
 
     const deleteResult = async (result: GenerationResult) => {
@@ -423,6 +427,7 @@ export default function ImagePage() {
         const logId = previewLog?.id || (await findLogIdForSession(activeSessionId));
         if (logId) {
             const nextLog = await deleteResultFromLog(logId, result);
+            if (!nextLog) await recordDeletedSyncIds("image-workbench", [logId]);
             if (previewLog?.id === logId) setPreviewLog(nextLog);
             await refreshLogs();
             return;
@@ -695,7 +700,7 @@ export default function ImagePage() {
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
-            <Modal title="删除生成记录" open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={deleteSelectedLogs} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
+            <Modal title="删除生成记录" open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={() => void deleteSelectedLogs()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
                 确定删除选中的 {selectedLogIds.length} 条生成记录吗？
             </Modal>
         </div>
@@ -752,9 +757,40 @@ function ResultImageCard({
     onSaveAsset: (image: GeneratedImage, index: number) => void;
     onDelete: () => void;
 }) {
+    const [resolvedUrl, setResolvedUrl] = useState(image.dataUrl);
+    const [loadFailed, setLoadFailed] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        setResolvedUrl(image.dataUrl);
+        setLoadFailed(false);
+        if (image.dataUrl) return;
+        if (!image.storageKey) {
+            setLoadFailed(true);
+            return;
+        }
+        void resolveImageUrl(image.storageKey).then((url) => {
+            if (cancelled) return;
+            setResolvedUrl(url);
+            setLoadFailed(!url);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [image.dataUrl, image.id, image.storageKey]);
+
+    const displayImage = resolvedUrl && !loadFailed ? { ...image, dataUrl: resolvedUrl } : null;
+
     return (
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
-            <Image src={image.dataUrl} alt={`生成结果 ${index + 1}`} className="aspect-square object-cover" />
+            {displayImage ? (
+                <Image src={displayImage.dataUrl} alt={`生成结果 ${index + 1}`} className="aspect-square object-cover" onError={() => setLoadFailed(true)} />
+            ) : (
+                <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-stone-50 p-5 text-center text-sm text-stone-500 dark:bg-stone-900 dark:text-stone-400">
+                    {loadFailed ? <ImagePlus className="size-8 opacity-70" /> : <LoaderCircle className="size-6 animate-spin opacity-60" />}
+                    <span>{loadFailed ? "图片文件缺失" : "正在读取图片"}</span>
+                </div>
+            )}
             <div className="space-y-2 border-t border-stone-200 px-3 py-2.5 dark:border-stone-800">
                 <div className="flex min-w-0 gap-x-2 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
                     <span>
@@ -765,17 +801,17 @@ function ResultImageCard({
                 </div>
                 <div className="grid min-w-0 grid-cols-4 gap-2">
                     <Tooltip title="添加到素材">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(image, index)}>
+                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<FolderPlus className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onSaveAsset(displayImage, index)}>
                             素材
                         </Button>
                     </Tooltip>
                     <Tooltip title="加入参考图">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => void onEdit(image, index)}>
+                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onEdit(displayImage, index)}>
                             参考
                         </Button>
                     </Tooltip>
                     <Tooltip title="下载">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(image, index)}>
+                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && onDownload(displayImage, index)}>
                             下载
                         </Button>
                     </Tooltip>
@@ -1054,15 +1090,17 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
 
 function LogCover({ logId, image, source, count, ratioLabel, sizeLabel }: { logId: string; image: string; source?: GeneratedImage; count: number; ratioLabel: string; sizeLabel: string }) {
     const [thumbnail, setThumbnail] = useState(image);
+    const [failed, setFailed] = useState(false);
     const coverRef = useRef<HTMLSpanElement>(null);
     const hasSource = Boolean(source?.dataUrl || source?.storageKey);
 
     useEffect(() => {
         setThumbnail(image);
+        setFailed(false);
     }, [image, logId]);
 
     useEffect(() => {
-        if (thumbnail || !source || !hasSource) return;
+        if (thumbnail || failed || !source || !hasSource) return;
         let cancelled = false;
         let idleId = 0;
         let timerId: ReturnType<typeof globalThis.setTimeout> | null = null;
@@ -1070,9 +1108,17 @@ function LogCover({ logId, image, source, count, ratioLabel, sizeLabel }: { logI
         const run = () => {
             const load = async () => {
                 const sourceUrl = await resolveImageUrl(source.storageKey, source.dataUrl);
-                if (!sourceUrl || cancelled) return;
+                if (cancelled) return;
+                if (!sourceUrl) {
+                    setFailed(true);
+                    return;
+                }
                 const nextThumbnail = await createImageThumbnail(sourceUrl);
-                if (!nextThumbnail || cancelled) return;
+                if (cancelled) return;
+                if (!nextThumbnail) {
+                    setFailed(true);
+                    return;
+                }
                 setThumbnail(nextThumbnail);
                 void cacheLogThumbnail(logId, nextThumbnail);
             };
@@ -1102,7 +1148,7 @@ function LogCover({ logId, image, source, count, ratioLabel, sizeLabel }: { logI
             if (idleId) window.cancelIdleCallback(idleId);
             if (timerId) globalThis.clearTimeout(timerId);
         };
-    }, [hasSource, logId, source, thumbnail]);
+    }, [failed, hasSource, logId, source, thumbnail]);
 
     return (
         <span
@@ -1119,11 +1165,23 @@ function LogCover({ logId, image, source, count, ratioLabel, sizeLabel }: { logI
                     decoding="async"
                     onLoad={(event) => {
                         const image = event.currentTarget;
-                        if (hasSource && Math.max(image.naturalWidth, image.naturalHeight) < LOG_THUMBNAIL_MIN_RENDER_EDGE) setThumbnail("");
+                        if (hasSource && Math.max(image.naturalWidth, image.naturalHeight) < LOG_THUMBNAIL_MIN_RENDER_EDGE) {
+                            setThumbnail("");
+                            setFailed(true);
+                        }
+                    }}
+                    onError={() => {
+                        setThumbnail("");
+                        setFailed(true);
                     }}
                 />
-            ) : hasSource ? (
+            ) : hasSource && !failed ? (
                 <LoaderCircle className="size-7 animate-spin opacity-60" />
+            ) : failed ? (
+                <span className="flex flex-col items-center gap-1 text-[11px] font-medium">
+                    <ImagePlus className="size-7 opacity-75" />
+                    图片缺失
+                </span>
             ) : (
                 <ImagePlus className="size-7 opacity-75" />
             )}
