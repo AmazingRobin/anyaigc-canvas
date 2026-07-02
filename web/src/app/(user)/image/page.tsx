@@ -15,7 +15,7 @@ import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
-import { formatBytes, formatDuration, getDataUrlByteSize, readImageMeta } from "@/lib/image-utils";
+import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
 import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { useAssetStore } from "@/stores/use-asset-store";
@@ -108,9 +108,16 @@ export default function ImagePage() {
     }, []);
 
     const addReferences = async (files?: FileList | null) => {
-        const imageFiles = Array.from(files || [])
-            .filter((file) => file.type.startsWith("image/"))
-            .slice(0, Math.max(0, IMAGE_REFERENCE_LIMIT - references.length));
+        const imageFiles: File[] = [];
+        for (const file of Array.from(files || [])) {
+            if (imageFiles.length >= Math.max(0, IMAGE_REFERENCE_LIMIT - references.length)) break;
+            try {
+                await validateAzureImageEditFile(file, { index: imageFiles.length + references.length + 1 });
+                imageFiles.push(file);
+            } catch (error) {
+                message.warning(error instanceof Error ? error.message : "已忽略不支持的参考图");
+            }
+        }
         const nextReferences = await Promise.all(
             imageFiles.map(async (file) => {
                 const image = await uploadImage(file);
@@ -128,8 +135,19 @@ export default function ImagePage() {
                 message.error("剪切板里没有可读取的图片");
                 return;
             }
+            const validBlobs: Blob[] = [];
+            for (const blob of blobs) {
+                if (validBlobs.length >= Math.max(0, IMAGE_REFERENCE_LIMIT - references.length)) break;
+                try {
+                    await validateAzureImageEditFile(blob, { index: validBlobs.length + references.length + 1 });
+                    validBlobs.push(blob);
+                } catch (error) {
+                    message.warning(error instanceof Error ? error.message : "已忽略不支持的参考图");
+                }
+            }
+            if (!validBlobs.length) return;
             const nextReferences = await Promise.all(
-                blobs.slice(0, Math.max(0, IMAGE_REFERENCE_LIMIT - references.length)).map(async (blob, index) => {
+                validBlobs.map(async (blob, index) => {
                     const image = await uploadImage(blob);
                     return { id: nanoid(), name: `clipboard-${index + 1}.png`, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey };
                 }),
@@ -450,7 +468,7 @@ export default function ImagePage() {
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept={AZURE_IMAGE_EDIT_ACCEPT}
                 multiple
                 className="hidden"
                 onChange={(event) => {

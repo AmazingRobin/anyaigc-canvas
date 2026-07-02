@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { buildApiUrl, isRelayBasesAsyncImageModel, isRelayBasesSyncImageModel, modelOptionName, resolveModelRequestConfig, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { nanoid } from "nanoid";
-import { dataUrlToFile } from "@/lib/image-utils";
+import { dataUrlToFile, normalizeAzureImageEditFile, validateAzureImageEditFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { imageToDataUrl } from "@/services/image-storage";
 import type { ReferenceImage } from "@/types/image";
@@ -923,9 +923,18 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     if (requestSize) {
         formData.set("size", requestSize);
     }
-    const files = await Promise.all(references.map(async (image) => dataUrlToFile({ ...image, dataUrl: await imageToDataUrl(image) })));
+    const files = await Promise.all(
+        references.map(async (image, index) => {
+            const file = dataUrlToFile({ ...image, dataUrl: await imageToDataUrl(image) });
+            return normalizeAzureImageEditFile(file, { index: index + 1 });
+        }),
+    );
     files.forEach((file) => formData.append("image[]", file));
-    if (mask) formData.set("mask", dataUrlToFile(mask));
+    if (mask) {
+        const maskFile = dataUrlToFile(mask);
+        await validateAzureImageEditFile(maskFile, { label: "遮罩图", pngOnly: true });
+        formData.set("mask", maskFile);
+    }
 
     try {
         const response = await axios.post<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { headers: aiHeaders(requestConfig), signal: options?.signal });
