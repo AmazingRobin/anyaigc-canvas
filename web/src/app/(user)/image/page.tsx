@@ -685,7 +685,8 @@ function LogPanel({
 }
 
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
-    const thumbnails = (log.thumbnails || []).filter(Boolean).slice(0, 4);
+    const thumbnail = normalizeLogThumbnails(log.thumbnails)[0] || "";
+    const imageCount = log.imageCount || log.successCount || 0;
 
     return (
         <button
@@ -694,17 +695,12 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             onClick={onClick}
         >
             <div className="grid grid-cols-[minmax(128px,1fr)_auto] gap-2">
-                <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2">
+                <div className="grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2">
                     <Checkbox className="mt-0.5" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
+                    <LogCover image={thumbnail} count={imageCount} />
                     <div className="min-w-0">
                         <div className="truncate text-sm font-semibold leading-5">{log.title}</div>
-                        {thumbnails.length ? (
-                            <div className="mt-2 flex gap-1 overflow-hidden">
-                                {thumbnails.map((image, index) => (
-                                    <img key={`${log.id}-${index}`} src={image} alt="" className="size-8 shrink-0 rounded-md object-cover" loading="lazy" decoding="async" />
-                                ))}
-                            </div>
-                        ) : null}
+                        <div className="mt-1 line-clamp-2 text-xs leading-4 text-stone-500 dark:text-stone-400">{log.prompt}</div>
                     </div>
                 </div>
                 <div className="grid justify-items-end gap-2">
@@ -730,6 +726,18 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                 </div>
             </div>
         </button>
+    );
+}
+
+function LogCover({ image, count }: { image: string; count: number }) {
+    return (
+        <span
+            className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            style={image ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
+        >
+            {image ? <img src={image} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : <ImagePlus className="size-4 opacity-75" />}
+            {count > 1 ? <span className="absolute bottom-0.5 right-0.5 rounded bg-black/65 px-1 text-[10px] font-semibold leading-4 text-white shadow-sm">{count}</span> : null}
+        </span>
     );
 }
 
@@ -839,7 +847,7 @@ function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: n
 }
 
 function normalizeLogThumbnails(thumbnails?: string[]) {
-    return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= 120_000)).slice(0, 4);
+    return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= 120_000)).slice(0, 1);
 }
 
 function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
@@ -923,7 +931,7 @@ function buildLog({
 
 async function createLogThumbnails(images: GeneratedImage[]) {
     if (typeof window === "undefined") return [];
-    const thumbnails = await Promise.all(images.slice(0, 4).map((image) => createImageThumbnail(image.dataUrl)));
+    const thumbnails = await Promise.all(images.slice(0, 1).map((image) => createImageThumbnail(image.dataUrl)));
     return thumbnails.filter(Boolean);
 }
 
