@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Music2, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Checkbox, Drawer, Empty, Input, Modal, Typography } from "antd";
 import localforage from "localforage";
@@ -96,6 +96,7 @@ export default function VideoPage() {
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
+    const [playerVideo, setPlayerVideo] = useState<GeneratedVideo | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
     const model = effectiveConfig.videoModel || effectiveConfig.model;
@@ -544,10 +545,10 @@ export default function VideoPage() {
                             ) : null}
                         </div>
                         {results.length ? (
-                            <div className="grid gap-4">
+                            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                 {results.map((result) =>
                                     result.status === "success" && result.video ? (
-                                        <ResultVideoCard key={result.id} video={result.video} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => void deleteResult(result)} />
+                                        <ResultVideoCard key={result.id} video={result.video} onPlay={() => setPlayerVideo(result.video || null)} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => void deleteResult(result)} />
                                     ) : result.status === "failed" ? (
                                         <FailedVideoCard key={result.id} error={result.error || "生成失败"} onRetry={retryResult} onDelete={() => void deleteResult(result)} />
                                     ) : (
@@ -593,6 +594,7 @@ export default function VideoPage() {
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
+            <VideoPlayerModal video={playerVideo} onClose={() => setPlayerVideo(null)} onDownload={downloadVideo} />
             <Modal title="删除生成记录" open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={deleteSelectedLogs} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
                 确定删除选中的 {selectedLogIds.length} 条生成记录吗？
             </Modal>
@@ -635,21 +637,34 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
+function ResultVideoCard({ video, onPlay, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; onPlay: () => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
     return (
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
-            <video src={video.url} controls className="aspect-video w-full bg-black object-contain" />
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-stone-200 px-3 py-2.5 dark:border-stone-800">
-                <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
-                    <span>
-                        {video.width}x{video.height}
+            <button type="button" className="group relative block aspect-video w-full overflow-hidden bg-black text-left" onClick={onPlay} aria-label="播放视频">
+                <video src={video.url} className="size-full object-cover" muted playsInline preload="metadata" />
+                <span className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
+                <span className="absolute left-3 top-3 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{videoRatioLabel(video)}</span>
+                <span className="absolute left-3 top-9 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">
+                    {video.width}×{video.height}
+                </span>
+                <span className="absolute inset-0 grid place-items-center">
+                    <span className="grid size-12 place-items-center rounded-full bg-white/92 text-stone-950 shadow-lg transition group-hover:scale-105">
+                        <Play className="ml-0.5 size-5 fill-current" />
                     </span>
+                </span>
+            </button>
+            <div className="space-y-2 border-t border-stone-200 px-3 py-2.5 dark:border-stone-800">
+                <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
+                    <span>{videoRatioLabel(video)}</span>
                     <span>{formatBytes(video.bytes)}</span>
                     <span>{formatDuration(video.durationMs)}</span>
                 </div>
-                <div className="flex shrink-0 gap-1">
+                <div className="grid grid-cols-4 gap-2">
+                    <Button size="small" icon={<Play className="size-3.5" />} onClick={onPlay}>
+                        播放
+                    </Button>
                     <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
-                        添加到素材
+                        素材
                     </Button>
                     <Button size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
                         下载
@@ -692,6 +707,98 @@ function FailedVideoCard({ error, onRetry, onDelete }: { error: string; onRetry:
                 </Button>
             </div>
         </div>
+    );
+}
+
+function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVideo | null; onClose: () => void; onDownload: (video: GeneratedVideo) => void }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [playing, setPlaying] = useState(false);
+    const [muted, setMuted] = useState(false);
+
+    useEffect(() => {
+        setPlaying(false);
+        setMuted(false);
+    }, [video?.id]);
+
+    const togglePlay = async () => {
+        const node = videoRef.current;
+        if (!node) return;
+        if (node.paused) {
+            await node.play().catch(() => {});
+            setPlaying(!node.paused);
+        } else {
+            node.pause();
+            setPlaying(false);
+        }
+    };
+
+    const restart = async () => {
+        const node = videoRef.current;
+        if (!node) return;
+        node.currentTime = 0;
+        await node.play().catch(() => {});
+        setPlaying(!node.paused);
+    };
+
+    const toggleMute = () => {
+        const node = videoRef.current;
+        if (!node) return;
+        node.muted = !node.muted;
+        setMuted(node.muted);
+    };
+
+    const fullscreen = async () => {
+        const node = videoRef.current;
+        await node?.requestFullscreen?.().catch(() => {});
+    };
+
+    return (
+        <Modal title="视频播放" open={Boolean(video)} width={960} centered onCancel={onClose} footer={null} destroyOnHidden>
+            {video ? (
+                <div className="space-y-3">
+                    <div className="overflow-hidden rounded-lg bg-black">
+                        <video
+                            ref={videoRef}
+                            src={video.url}
+                            className="max-h-[72vh] w-full bg-black object-contain"
+                            controls
+                            autoPlay
+                            playsInline
+                            onPlay={() => setPlaying(true)}
+                            onPause={() => setPlaying(false)}
+                            onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
+                        />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap gap-1 text-xs text-stone-500 dark:text-stone-400">
+                            <HistoryPill label="比例">{videoRatioLabel(video)}</HistoryPill>
+                            <HistoryPill label="尺寸">
+                                {video.width}×{video.height}
+                            </HistoryPill>
+                            <HistoryPill label="大小">{formatBytes(video.bytes)}</HistoryPill>
+                            <HistoryPill label="耗时">{formatDuration(video.durationMs)}</HistoryPill>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button size="small" icon={playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />} onClick={() => void togglePlay()}>
+                                {playing ? "暂停" : "播放"}
+                            </Button>
+                            <Button size="small" icon={<RotateCcw className="size-3.5" />} onClick={() => void restart()}>
+                                重播
+                            </Button>
+                            <Button size="small" icon={muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />} onClick={toggleMute}>
+                                {muted ? "取消静音" : "静音"}
+                            </Button>
+                            <Button size="small" icon={<Maximize2 className="size-3.5" />} onClick={() => void fullscreen()}>
+                                全屏
+                            </Button>
+                            <Button size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
+                                下载
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+        </Modal>
     );
 }
 
@@ -790,35 +897,33 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700" onClick={(event) => event.stopPropagation()}>
                 <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成记录" />
             </div>
-            <div className="grid min-h-[184px] grid-cols-[176px_minmax(0,1fr)] gap-3 xl:min-h-[204px] xl:grid-cols-[200px_minmax(0,1fr)]">
-                <div className="relative pt-1">
-                    <LogVideoCover video={log.video} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
+            <div className="space-y-3">
+                <LogVideoCover video={log.video} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
+                <div className="min-w-0 pr-9">
+                    <div className="line-clamp-2 text-base font-medium leading-6">{displayTitle}</div>
+                    <div className="mt-1 line-clamp-3 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                 </div>
-                <div className="flex min-w-0 flex-col py-1 pr-9">
-                    <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
-                    <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                        <HistoryPill label="模型" className="max-w-full">
-                            {log.model || "默认"}
-                        </HistoryPill>
-                        <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode)}</HistoryPill>
-                        <HistoryPill label="比例">{sizeLabel}</HistoryPill>
-                        <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
-                    </div>
-                    <div className="mt-auto flex flex-wrap gap-1 pt-2">
-                        <HistoryPill label="请求">1</HistoryPill>
-                        {log.status === "成功" && log.video ? <HistoryPill tone="success" label="成功">1</HistoryPill> : null}
-                        {log.status === "生成中" ? <HistoryPill tone="pending" label="生成中">1</HistoryPill> : null}
-                        {log.status === "失败" ? <HistoryPill tone="danger" label="失败">1</HistoryPill> : null}
-                        <HistoryPill tone={statusTone} label="状态">
-                            {log.status}
-                        </HistoryPill>
-                        <HistoryPill tone="info" label="耗时">
-                            {formatDuration(log.durationMs)}
-                        </HistoryPill>
-                        <HistoryPill label="时长">{secondsLabel}</HistoryPill>
-                        <HistoryPill label="时间">{log.time}</HistoryPill>
-                    </div>
+                <div className="flex flex-wrap gap-1">
+                    <HistoryPill label="模型" className="max-w-full">
+                        {log.model || "默认"}
+                    </HistoryPill>
+                    <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode)}</HistoryPill>
+                    <HistoryPill label="比例">{sizeLabel}</HistoryPill>
+                    <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                    <HistoryPill label="请求">1</HistoryPill>
+                    {log.status === "成功" && log.video ? <HistoryPill tone="success" label="成功">1</HistoryPill> : null}
+                    {log.status === "生成中" ? <HistoryPill tone="pending" label="生成中">1</HistoryPill> : null}
+                    {log.status === "失败" ? <HistoryPill tone="danger" label="失败">1</HistoryPill> : null}
+                    <HistoryPill tone={statusTone} label="状态">
+                        {log.status}
+                    </HistoryPill>
+                    <HistoryPill tone="info" label="耗时">
+                        {formatDuration(log.durationMs)}
+                    </HistoryPill>
+                    <HistoryPill label="时长">{secondsLabel}</HistoryPill>
+                    <HistoryPill label="时间">{log.time}</HistoryPill>
                 </div>
             </div>
         </div>
@@ -1053,6 +1158,23 @@ function videoSecondsBadge(value: string) {
 
 function videoResolutionBadge(value: string) {
     return `${normalizeResolution(value)}p`;
+}
+
+function videoRatioLabel(video: Pick<GeneratedVideo, "width" | "height">) {
+    const width = Math.round(video.width || 0);
+    const height = Math.round(video.height || 0);
+    if (!width || !height) return "视频";
+    const divisor = greatestCommonDivisor(width, height);
+    return `${width / divisor}:${height / divisor}`;
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y) {
+        [x, y] = [y, x % y];
+    }
+    return x || 1;
 }
 
 function updateVideoResultById(results: GenerationResult[], id: string, next: Partial<GenerationResult>) {
