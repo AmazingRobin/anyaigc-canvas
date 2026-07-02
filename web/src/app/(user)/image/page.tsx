@@ -686,7 +686,7 @@ function LogPanel({
 
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
     const thumbnail = normalizeLogThumbnails(log.thumbnails)[0] || "";
-    const imageCount = log.imageCount || log.successCount || 0;
+    const actualImageCount = actualLogImageCount(log);
     const coverImage = log.images.find((image) => image.dataUrl || image.storageKey);
     const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
     const promptPreview = log.prompt || log.title || "";
@@ -701,7 +701,7 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             <div className="grid grid-cols-[minmax(128px,1fr)_auto] gap-2">
                 <div className="grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2">
                     <Checkbox className="mt-0.5" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
-                    <LogCover logId={log.id} image={thumbnail} source={coverImage} count={imageCount} />
+                    <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} />
                     <div className="min-w-0">
                         <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
                         <div className="mt-1 line-clamp-3 text-xs leading-4 text-stone-500 dark:text-stone-400">{promptPreview}</div>
@@ -709,9 +709,11 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                 </div>
                 <div className="grid justify-items-end gap-2">
                     <div className="flex gap-1">
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
-                            成功 {log.successCount ?? log.imageCount}
-                        </Tag>
+                        {actualImageCount ? (
+                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
+                                成功 {actualImageCount}
+                            </Tag>
+                        ) : null}
                         {log.failCount ? (
                             <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="red">
                                 失败 {log.failCount}
@@ -719,7 +721,7 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                         ) : null}
                     </div>
                     <div className="flex flex-wrap justify-end gap-1">
-                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.imageCount} 张</Tag>
+                        {actualImageCount ? <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{actualImageCount} 张</Tag> : null}
                         <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="green">
                             {formatDuration(log.durationMs)}
                         </Tag>
@@ -904,6 +906,10 @@ function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: n
 
 function normalizeLogThumbnails(thumbnails?: string[]) {
     return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= 120_000)).slice(0, 1);
+}
+
+function actualLogImageCount(log: GenerationLog) {
+    return (log.images || []).filter((image) => Boolean(image.storageKey || image.dataUrl)).length;
 }
 
 async function cacheLogThumbnail(logId: string, thumbnail: string) {
