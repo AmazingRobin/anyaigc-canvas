@@ -88,8 +88,10 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "
 const IMAGE_REFERENCE_LIMIT = 5;
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
-const LOG_THUMBNAIL_SIZE = 96;
-const LOG_THUMBNAIL_QUALITY = 0.72;
+const LOG_THUMBNAIL_SIZE = 512;
+const LOG_THUMBNAIL_MIN_RENDER_EDGE = 320;
+const LOG_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
+const LOG_THUMBNAIL_QUALITY = 0.84;
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
@@ -1015,7 +1017,23 @@ function LogCover({ logId, image, source, count, ratioLabel, sizeLabel }: { logI
             className="relative grid aspect-square w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
         >
-            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : hasSource ? <LoaderCircle className="size-7 animate-spin opacity-60" /> : <ImagePlus className="size-7 opacity-75" />}
+            {thumbnail ? (
+                <img
+                    src={thumbnail}
+                    alt=""
+                    className="size-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    onLoad={(event) => {
+                        const image = event.currentTarget;
+                        if (hasSource && Math.max(image.naturalWidth, image.naturalHeight) < LOG_THUMBNAIL_MIN_RENDER_EDGE) setThumbnail("");
+                    }}
+                />
+            ) : hasSource ? (
+                <LoaderCircle className="size-7 animate-spin opacity-60" />
+            ) : (
+                <ImagePlus className="size-7 opacity-75" />
+            )}
             <span className="absolute left-2 top-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{ratioLabel}</span>
             <span className="absolute left-2 top-8 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{sizeLabel}</span>
             {count > 1 ? <span className="absolute bottom-2 right-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{count}</span> : null}
@@ -1129,7 +1147,7 @@ function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: n
 }
 
 function normalizeLogThumbnails(thumbnails?: string[]) {
-    return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= 120_000)).slice(0, 1);
+    return (thumbnails || []).filter((item) => Boolean(item) && (!item.startsWith("data:") || item.length <= LOG_THUMBNAIL_MAX_DATA_URL_LENGTH)).slice(0, 1);
 }
 
 function actualLogImageCount(log: GenerationLog) {
