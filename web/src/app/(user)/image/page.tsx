@@ -39,6 +39,11 @@ type GenerationResult = {
     error?: string;
 };
 
+type RunningSession = {
+    startedAt: number;
+    count: number;
+};
+
 type GenerationLog = {
     id: string;
     createdAt: number;
@@ -88,7 +93,7 @@ export default function ImagePage() {
     const [activeSessionId, setActiveSessionId] = useState(() => nanoid());
     const [resultsBySession, setResultsBySession] = useState<Record<string, GenerationResult[]>>({});
     const [logs, setLogs] = useState<GenerationLog[]>([]);
-    const [runningBySession, setRunningBySession] = useState<Record<string, { startedAt: number }>>({});
+    const [runningBySession, setRunningBySession] = useState<Record<string, RunningSession>>({});
     const [logsOpen, setLogsOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
@@ -104,6 +109,7 @@ export default function ImagePage() {
     const results = resultsBySession[activeSessionId] || [];
     const activeRunning = runningBySession[activeSessionId];
     const running = Boolean(activeRunning);
+    const runningCount = activeRunning?.count || 0;
 
     useEffect(() => {
         if (!activeRunning?.startedAt) {
@@ -123,11 +129,17 @@ export default function ImagePage() {
     };
 
     const startSessionRun = (sessionId: string, startedAt: number) => {
-        setRunningBySession((value) => ({ ...value, [sessionId]: { startedAt } }));
+        setRunningBySession((value) => {
+            const current = value[sessionId];
+            return { ...value, [sessionId]: { startedAt: current?.startedAt || startedAt, count: (current?.count || 0) + 1 } };
+        });
     };
 
     const finishSessionRun = (sessionId: string) => {
         setRunningBySession((value) => {
+            const current = value[sessionId];
+            if (!current) return value;
+            if (current.count > 1) return { ...value, [sessionId]: { ...current, count: current.count - 1 } };
             const next = { ...value };
             delete next[sessionId];
             return next;
@@ -202,16 +214,14 @@ export default function ImagePage() {
         if (!snapshot) return;
 
         const sessionId = activeSessionId;
-        const sessionResults = resultsBySession[sessionId] || [];
-        setElapsedMs(0);
+        if (!runningBySession[sessionId]) setElapsedMs(0);
         setPreviewLog(null);
-        const baseResultIndex = sessionResults.length;
         const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
         updateSessionResults(sessionId, (value) => [...value, ...pendingResults]);
         const batchStartedAt = performance.now();
         startSessionRun(sessionId, batchStartedAt);
 
-        const tasks = Array.from({ length: generationCount }, (_, index) => runGenerationSlot(sessionId, baseResultIndex + index, snapshot));
+        const tasks = pendingResults.map((item) => runGenerationSlot(sessionId, item.id, snapshot));
 
         const result = await Promise.allSettled(tasks);
         const successImages = result.filter((item): item is PromiseFulfilledResult<GeneratedImage> => item.status === "fulfilled").map((item) => item.value);
@@ -344,7 +354,7 @@ export default function ImagePage() {
         return { text, config: { ...effectiveConfig, model, count: "1" }, references: [...references] };
     };
 
-    const runGenerationSlot = async (sessionId: string, index: number, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }) => {
+    const runGenerationSlot = async (sessionId: string, resultId: string, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }) => {
         const itemStartedAt = performance.now();
         try {
             const result = snapshot.references.length ? await requestEdit(snapshot.config, snapshot.text, snapshot.references) : await requestGeneration(snapshot.config, snapshot.text);
@@ -352,10 +362,10 @@ export default function ImagePage() {
             if (!image) throw new Error("接口没有返回图片");
             const meta = await readImageMeta(image.dataUrl);
             const nextImage = { id: image.id, dataUrl: image.dataUrl, durationMs: performance.now() - itemStartedAt, width: meta.width, height: meta.height, bytes: getDataUrlByteSize(image.dataUrl) };
-            updateSessionResults(sessionId, (value) => updateResultAt(value, index, { status: "success", image: nextImage }));
+            updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "success", image: nextImage }));
             return nextImage;
         } catch (error) {
-            updateSessionResults(sessionId, (value) => updateResultAt(value, index, { status: "failed", error: error instanceof Error ? error.message : "生成失败" }));
+            updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "failed", error: error instanceof Error ? error.message : "生成失败" }));
             throw error;
         }
     };
@@ -365,8 +375,14 @@ export default function ImagePage() {
         if (!snapshot) return;
         setPreviewLog(null);
         const sessionId = activeSessionId;
-        updateSessionResults(sessionId, (value) => updateResultAt(value, index, { status: "pending", error: undefined, image: undefined }));
-        void runGenerationSlot(sessionId, index, snapshot).catch(() => {});
+        const resultId = results[index]?.id;
+        if (!resultId) return;
+        if (!runningBySession[sessionId]) setElapsedMs(0);
+        updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "pending", error: undefined, image: undefined }));
+        startSessionRun(sessionId, performance.now());
+        void runGenerationSlot(sessionId, resultId, snapshot)
+            .catch(() => {})
+            .finally(() => finishSessionRun(sessionId));
     };
 
     return (
@@ -472,7 +488,7 @@ export default function ImagePage() {
                         </div>
 
                         <div className="mt-auto pt-6">
-                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} loading={running} disabled={!canGenerate || running} onClick={() => void generate()}>
+                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => void generate()}>
                                 开始生成
                             </Button>
                         </div>
@@ -483,7 +499,7 @@ export default function ImagePage() {
                             <div>
                                 <h2 className="text-xl font-semibold">生成结果</h2>
                             </div>
-                            {running ? <Tag className="m-0 px-2 py-1">等待 {formatDuration(elapsedMs)}</Tag> : null}
+                            {running ? <Tag className="m-0 px-2 py-1">等待 {formatDuration(elapsedMs)}{runningCount > 1 ? ` · ${runningCount} 批` : ""}</Tag> : null}
                         </div>
                         {results.length ? (
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
@@ -640,8 +656,8 @@ function FailedImageCard({ error, onRetry }: { error: string; onRetry: () => voi
     );
 }
 
-function updateResultAt(results: GenerationResult[], index: number, next: Partial<GenerationResult>) {
-    return results.map((item, itemIndex) => (itemIndex === index ? { ...item, ...next } : item));
+function updateResultById(results: GenerationResult[], id: string, next: Partial<GenerationResult>) {
+    return results.map((item) => (item.id === id ? { ...item, ...next } : item));
 }
 
 function LogPanel({
