@@ -55,6 +55,7 @@ type WorkbenchSession = {
 
 type WorkbenchSessionView = WorkbenchSession & {
     running?: RunningSession;
+    requestCount: number;
     successCount: number;
     failCount: number;
     pendingCount: number;
@@ -138,6 +139,7 @@ export default function ImagePage() {
             return {
                 ...session,
                 running: runningBySession[session.id],
+                requestCount: sessionResults.length,
                 successCount: successImages.length,
                 failCount,
                 pendingCount,
@@ -145,7 +147,7 @@ export default function ImagePage() {
                 firstImage: successImages[0],
             };
         })
-        .filter((session) => session.running || session.pendingCount || session.successCount || session.failCount || session.id === activeSessionId)
+        .filter((session) => session.running || session.requestCount || session.id === activeSessionId)
         .sort((a, b) => b.createdAt - a.createdAt);
 
     useEffect(() => {
@@ -474,7 +476,7 @@ export default function ImagePage() {
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
+            <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[380px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
                 <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
                     <LogPanel
                         sessions={workbenchSessions}
@@ -848,24 +850,23 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
     return (
         <button
             type="button"
-            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+            className={`block w-full rounded-lg border p-2.5 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
             title={promptPreview}
         >
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-                <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.imageCount} />
+            <div className="space-y-3">
+                <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.successCount} />
                 <div className="min-w-0">
                     <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
-                    <div className="mt-1 line-clamp-2 text-xs leading-4 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+                    <div className="mt-1 line-clamp-5 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">请求 {session.requestCount}</Tag>
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
+                            成功 {session.successCount}
+                        </Tag>
                         {session.pendingCount ? (
                             <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="cyan">
                                 生成中 {session.pendingCount}
-                            </Tag>
-                        ) : null}
-                        {session.successCount ? (
-                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
-                                成功 {session.successCount}
                             </Tag>
                         ) : null}
                         {session.failCount ? (
@@ -887,11 +888,11 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
 function SessionCover({ image, pending, count }: { image?: GeneratedImage; pending: boolean; count: number }) {
     return (
         <span
-            className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={image?.dataUrl ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
         >
-            {image?.dataUrl ? <img src={image.dataUrl} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : pending ? <LoaderCircle className="size-5 animate-spin opacity-60" /> : <ImagePlus className="size-5 opacity-75" />}
-            {count > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 text-[10px] font-semibold leading-4 text-white shadow-sm">{count}</span> : null}
+            {image?.dataUrl ? <img src={image.dataUrl} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : pending ? <LoaderCircle className="size-7 animate-spin opacity-60" /> : <ImagePlus className="size-7 opacity-75" />}
+            {count > 1 ? <span className="absolute bottom-2 right-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{count}</span> : null}
         </span>
     );
 }
@@ -899,6 +900,7 @@ function SessionCover({ image, pending, count }: { image?: GeneratedImage; pendi
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
     const thumbnail = normalizeLogThumbnails(log.thumbnails)[0] || "";
     const actualImageCount = actualLogImageCount(log);
+    const requestCount = requestedLogImageCount(log);
     const coverImage = log.images.find((image) => image.dataUrl || image.storageKey);
     const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
     const promptPreview = log.prompt || log.title || "";
@@ -906,39 +908,31 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
     return (
         <button
             type="button"
-            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+            className={`block w-full rounded-lg border p-2.5 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
             title={promptPreview}
         >
-            <div className="grid grid-cols-[minmax(128px,1fr)_auto] gap-2">
-                <div className="grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-3">
-                    <Checkbox className="mt-0.5" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
+            <div className="space-y-3">
+                <div className="relative">
                     <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} />
-                    <div className="min-w-0">
-                        <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
-                        <div className="mt-1 line-clamp-3 text-xs leading-4 text-stone-500 dark:text-stone-400">{promptPreview}</div>
-                    </div>
+                    <Checkbox className="absolute left-2 top-2 rounded bg-white/90 p-1 shadow-sm dark:bg-stone-950/85" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
                 </div>
-                <div className="grid justify-items-end gap-2">
-                    <div className="flex gap-1">
-                        {actualImageCount ? (
-                            <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
-                                成功 {actualImageCount}
-                            </Tag>
-                        ) : null}
+                <div className="min-w-0">
+                    <div className="line-clamp-2 text-sm font-semibold leading-5">{displayTitle}</div>
+                    <div className="mt-1 line-clamp-5 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">请求 {requestCount}</Tag>
+                        <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="blue">
+                            成功 {actualImageCount}
+                        </Tag>
                         {log.failCount ? (
                             <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="red">
                                 失败 {log.failCount}
                             </Tag>
                         ) : null}
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-1">
-                        {actualImageCount ? <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{actualImageCount} 张</Tag> : null}
                         <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none" color="green">
                             {formatDuration(log.durationMs)}
                         </Tag>
-                    </div>
-                    <div className="flex justify-end">
                         <Tag className="m-0 flex h-6 items-center rounded-md px-1.5 text-xs leading-none">{log.time}</Tag>
                     </div>
                 </div>
@@ -1002,11 +996,11 @@ function LogCover({ logId, image, source, count }: { logId: string; image: strin
     return (
         <span
             ref={coverRef}
-            className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(47,125,225,.14), rgba(233,76,137,.10))" }}
         >
-            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : hasSource ? <LoaderCircle className="size-5 animate-spin opacity-60" /> : <ImagePlus className="size-5 opacity-75" />}
-            {count > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 text-[10px] font-semibold leading-4 text-white shadow-sm">{count}</span> : null}
+            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : hasSource ? <LoaderCircle className="size-7 animate-spin opacity-60" /> : <ImagePlus className="size-7 opacity-75" />}
+            {count > 1 ? <span className="absolute bottom-2 right-2 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{count}</span> : null}
         </span>
     );
 }
@@ -1122,6 +1116,13 @@ function normalizeLogThumbnails(thumbnails?: string[]) {
 
 function actualLogImageCount(log: GenerationLog) {
     return (log.images || []).filter((image) => Boolean(image.storageKey || image.dataUrl)).length;
+}
+
+function requestedLogImageCount(log: GenerationLog) {
+    const configuredCount = Number(log.config?.count);
+    const knownCount = log.imageCount || log.successCount || 0;
+    const completedCount = actualLogImageCount(log) + (log.failCount || 0);
+    return Math.max(Number.isFinite(configuredCount) && configuredCount > 0 ? configuredCount : 0, knownCount, completedCount, 1);
 }
 
 function formatSessionTime(value: number) {
