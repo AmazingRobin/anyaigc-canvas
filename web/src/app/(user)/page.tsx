@@ -195,9 +195,9 @@ export default function IndexPage() {
                                             setPreviewOpen(true);
                                         }}
                                         style={heroPosterLayouts[index]}
-                                        className="group relative overflow-hidden rounded-2xl border border-black/10 bg-stone-950 shadow-md shadow-stone-900/10 transition hover:-translate-y-0.5 dark:border-white/10 dark:shadow-black/30"
+                                        className="group relative isolate overflow-hidden rounded-2xl bg-stone-100 shadow-md shadow-stone-900/10 ring-1 ring-black/10 transition [background-clip:padding-box] [contain:paint] hover:-translate-y-0.5 dark:bg-stone-950 dark:ring-white/10 dark:shadow-black/30"
                                     >
-                                        <img src={item.coverUrl} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" onError={() => hidePrompt(item.id)} />
+                                        <img src={item.coverUrl} alt={item.title} className="absolute -inset-px block h-[calc(100%+2px)] w-[calc(100%+2px)] rounded-[inherit] object-cover transform-gpu [backface-visibility:hidden] transition duration-500 group-hover:scale-[1.04]" onError={() => hidePrompt(item.id)} />
                                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 text-left text-white">
                                             <p className="line-clamp-1 text-xs font-semibold">{item.title}</p>
                                         </div>
@@ -239,9 +239,9 @@ export default function IndexPage() {
                                     setPreviewIndex(Math.max(promptIndex, index));
                                     setPreviewOpen(true);
                                 }}
-                                className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 text-left shadow-sm transition hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/5"
+                                className="group relative isolate aspect-square cursor-pointer overflow-hidden rounded-2xl bg-stone-100 text-left shadow-sm ring-1 ring-stone-200 transition [background-clip:padding-box] [contain:paint] hover:-translate-y-0.5 dark:bg-white/5 dark:ring-white/10"
                             >
-                                <img src={item.coverUrl} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" onError={() => hidePrompt(item.id)} />
+                                <img src={item.coverUrl} alt={item.title} className="absolute -inset-px block h-[calc(100%+2px)] w-[calc(100%+2px)] rounded-[inherit] object-cover transform-gpu [backface-visibility:hidden] transition duration-500 group-hover:scale-[1.03]" onError={() => hidePrompt(item.id)} />
                                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent p-4 text-white">
                                     <div className="mb-2 flex flex-wrap gap-1.5">
                                         {item.tags.slice(0, 2).map((tag, tagIndex) => (
