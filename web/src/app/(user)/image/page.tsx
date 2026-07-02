@@ -925,18 +925,26 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
     const sizeLabel = imageSizeLabel(log.config.size || log.size);
 
     return (
-        <button
-            type="button"
-            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+        <div
+            role="button"
+            tabIndex={0}
+            className={`relative block w-full cursor-pointer rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
+            onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                onClick();
+            }}
             title={promptPreview}
         >
+            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700" onClick={(event) => event.stopPropagation()}>
+                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成记录" />
+            </div>
             <div className="grid min-h-[184px] grid-cols-[176px_minmax(0,1fr)] gap-3 xl:min-h-[204px] xl:grid-cols-[200px_minmax(0,1fr)]">
                 <div className="relative">
                     <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
-                    <Checkbox className="absolute right-2 top-2 rounded bg-white/90 p-1 shadow-sm dark:bg-stone-950/85" checked={selected} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectedChange(event.target.checked)} />
                 </div>
-                <div className="flex min-w-0 flex-col py-1">
+                <div className="flex min-w-0 flex-col py-1 pr-9">
                     <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
                     <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -961,7 +969,7 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
                     </div>
                 </div>
             </div>
-        </button>
+        </div>
     );
 }
 
