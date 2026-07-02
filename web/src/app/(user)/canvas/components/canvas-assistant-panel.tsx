@@ -1335,7 +1335,7 @@ function resolveGenerationModel(config: AiConfig, mode: "text" | "image" | "vide
 }
 
 function generationCount(value: string) {
-    return Math.max(1, Math.min(3, Math.floor(Math.abs(Number(value)) || 1)));
+    return Math.max(1, Math.min(15, Math.floor(Math.abs(Number(value)) || 1)));
 }
 
 function cleanRecord(value: Record<string, unknown>) {

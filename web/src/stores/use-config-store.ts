@@ -135,8 +135,8 @@ export const defaultConfig: AiConfig = {
     audioModels: [],
     quality: "auto",
     size: "1:1",
-    count: "1",
-    canvasImageCount: "1",
+    count: "3",
+    canvasImageCount: "3",
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -260,7 +260,7 @@ export const useConfigStore = create<ConfigStore>()(
         }),
         {
             name: CONFIG_STORE_KEY,
-            version: 1,
+            version: 2,
             migrate: (persisted, version) => {
                 const persistedState = (persisted || {}) as {
                     config?: Partial<AiConfig>;
@@ -268,10 +268,9 @@ export const useConfigStore = create<ConfigStore>()(
                     webdav?: Partial<WebdavSyncConfig>;
                 };
                 const migratedConfig = { ...defaultConfig, ...(persistedState.config || {}) };
-                if (version < 1) {
-                    if (String(migratedConfig.canvasImageCount || "") === "3") {
-                        migratedConfig.canvasImageCount = "1";
-                    }
+                if (version < 2) {
+                    if (!migratedConfig.count || String(migratedConfig.count) === "1") migratedConfig.count = "3";
+                    if (!migratedConfig.canvasImageCount || String(migratedConfig.canvasImageCount) === "1") migratedConfig.canvasImageCount = "3";
                 }
                 return {
                     config: migratedConfig,
