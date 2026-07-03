@@ -15,7 +15,7 @@ import { VideoSettingsPanel, normalizeVideoResolutionValue, normalizeVideoSizeVa
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceRatio, seedanceReferenceLabel, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
-import { createVideoThumbnail, normalizeVideoThumbnail } from "@/lib/video-thumbnail";
+import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
@@ -278,7 +278,7 @@ export default function VideoPage() {
             tags: [],
             source: "视频创作台",
             data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType },
-            metadata: { source: "video-page", prompt, sourceResultId: video.id, sourceStorageKey: video.storageKey || "", sourceUrl: video.url || "", thumbnail: coverUrl },
+            metadata: { source: "video-page", prompt, sourceResultId: video.id, sourceStorageKey: video.storageKey || "", sourceUrl: video.url || "", thumbnail: coverUrl, thumbnailVersion: VIDEO_THUMBNAIL_VERSION },
         });
         message.success("已加入我的素材");
     };

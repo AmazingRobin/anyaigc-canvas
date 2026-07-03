@@ -7,7 +7,7 @@ import { saveAs } from "file-saver";
 
 import { useCopyText } from "@/hooks/use-copy-text";
 import { formatBytes, readFileAsDataUrl } from "@/lib/image-utils";
-import { createVideoThumbnail, normalizeVideoThumbnail } from "@/lib/video-thumbnail";
+import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { uploadImage } from "@/services/image-storage";
 import { cn } from "@/lib/utils";
 import { useAssetStore, type Asset, type AssetKind, type ImageAsset, type VideoAsset } from "@/stores/use-asset-store";
@@ -80,14 +80,14 @@ export default function AssetsPage() {
 
     const updateVideoAssetCover = useCallback(
         (asset: VideoAsset, thumbnail: string) => {
-            updateAsset(asset.id, { coverUrl: thumbnail, metadata: { ...(asset.metadata || {}), thumbnail } });
+            updateAsset(asset.id, { coverUrl: thumbnail, metadata: { ...(asset.metadata || {}), thumbnail, thumbnailVersion: VIDEO_THUMBNAIL_VERSION } });
         },
         [updateAsset],
     );
 
     useEffect(() => {
         let cancelled = false;
-        const targets = visibleAssets.filter((asset): asset is VideoAsset => asset.kind === "video" && !assetCoverUrl(asset) && Boolean(asset.data.url));
+        const targets = visibleAssets.filter((asset): asset is VideoAsset => asset.kind === "video" && !isFreshVideoAssetCover(asset) && Boolean(asset.data.url));
         targets.forEach((asset) => {
             void createVideoThumbnail(asset.data.url).then((thumbnail) => {
                 if (cancelled || !thumbnail) return;
@@ -644,12 +644,12 @@ function VideoCoverPlaceholder() {
 }
 
 function useVideoThumbnail(asset: VideoAsset, cover: string, onCoverReady: (asset: VideoAsset, thumbnail: string) => void) {
-    const [thumbnail, setThumbnail] = useState(cover);
+    const [thumbnail, setThumbnail] = useState(isFreshVideoAssetCover(asset) ? cover : "");
 
     useEffect(() => {
         let cancelled = false;
-        setThumbnail(cover);
-        if (cover || !asset.data.url) return;
+        setThumbnail(isFreshVideoAssetCover(asset) ? cover : "");
+        if (isFreshVideoAssetCover(asset) || !asset.data.url) return;
         void createVideoThumbnail(asset.data.url).then((nextThumbnail) => {
             if (cancelled || !nextThumbnail) return;
             setThumbnail(nextThumbnail);
@@ -664,10 +664,14 @@ function useVideoThumbnail(asset: VideoAsset, cover: string, onCoverReady: (asse
 }
 
 function assetCoverUrl(asset: Asset) {
+    if (asset.kind === "video") return isFreshVideoAssetCover(asset) ? normalizeVideoThumbnail(asset.coverUrl) || normalizeVideoThumbnail(assetMetadataString(asset, "thumbnail")) : "";
     if (asset.coverUrl) return asset.coverUrl;
     if (asset.kind === "image") return asset.data.dataUrl;
-    if (asset.kind === "video") return normalizeVideoThumbnail(assetMetadataString(asset, "thumbnail"));
     return "";
+}
+
+function isFreshVideoAssetCover(asset: VideoAsset) {
+    return assetMetadataString(asset, "thumbnailVersion") === VIDEO_THUMBNAIL_VERSION && Boolean(normalizeVideoThumbnail(asset.coverUrl) || normalizeVideoThumbnail(assetMetadataString(asset, "thumbnail")));
 }
 
 function assetMetadataString(asset: Asset, key: string) {
