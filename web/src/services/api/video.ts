@@ -14,7 +14,10 @@ type VideoResponse = {
     id?: string;
     task_id?: string;
     status?: string;
+    state?: string;
     task_status?: string;
+    success?: boolean;
+    final?: boolean;
     progress?: number;
     image_url?: string | null;
     video_url?: string | null;
@@ -27,7 +30,11 @@ type VideoResponse = {
         result_urls?: string[] | null;
         [key: string]: unknown;
     } | null;
-    error?: { message?: string };
+    error?: { code?: string | number; message?: string };
+    fail_reason?: string | null;
+    failure_reason?: string | null;
+    message?: string | null;
+    code?: string | number;
 };
 type ApiVideoResponse = VideoResponse | { code?: number; data?: VideoResponse | null; msg?: string };
 type SeedanceTask = {
@@ -294,16 +301,50 @@ function readRelayBasesResultUrl(video: VideoResponse) {
     return video.video_url || video.url || video.result_urls?.find(Boolean) || metadata.video_url || metadata.url || metadata.result_urls?.find(Boolean) || video.image_url || metadata.image_url || "";
 }
 
+function normalizeVideoTaskStatus(video: VideoResponse) {
+    return `${video.task_status || ""} ${video.status || ""} ${video.state || ""}`.trim().toLowerCase();
+}
+
+function isOpenAIVideoTaskCompleted(video: VideoResponse) {
+    const status = normalizeVideoTaskStatus(video);
+    return status === "completed" || status === "succeeded" || status === "success" || (video.success === true && Boolean(readRelayBasesResultUrl(video)));
+}
+
+function isOpenAIVideoTaskFailed(video: VideoResponse) {
+    const status = normalizeVideoTaskStatus(video);
+    if (video.success === false) return true;
+    if (status.includes("fail") || status.includes("error") || status.includes("cancel") || status.includes("expire")) return true;
+    return Boolean(video.final && !readRelayBasesResultUrl(video));
+}
+
+function stringValue(value: unknown) {
+    return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function readOpenAIVideoTaskError(video: VideoResponse) {
+    const metadata = video.metadata || {};
+    return (
+        stringValue(video.error?.message) ||
+        stringValue(video.fail_reason) ||
+        stringValue(video.failure_reason) ||
+        stringValue(video.message) ||
+        stringValue(metadata.error) ||
+        stringValue(metadata.fail_reason) ||
+        stringValue(metadata.failure_reason) ||
+        stringValue(metadata.message) ||
+        "视频生成失败"
+    );
+}
+
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     try {
         const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal })).data);
-        const status = video.task_status || video.status;
-        if (status === "completed" || status === "succeeded") {
+        if (isOpenAIVideoTaskCompleted(video)) {
             const url = readRelayBasesResultUrl(video);
             if (!url) return { status: "failed", error: "视频任务完成但没有返回结果 URL" };
             return { status: "completed", result: await videoResultFromUrl(url, options) };
         }
-        if (status === "failed" || status === "cancelled" || status === "expired") return { status: "failed", error: video.error?.message || "视频生成失败" };
+        if (isOpenAIVideoTaskFailed(video)) return { status: "failed", error: readOpenAIVideoTaskError(video) };
         return { status: "pending" };
     } catch (error) {
         throw new Error(readAxiosError(error, "视频任务查询失败"));
