@@ -19,6 +19,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
 import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
+import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api/prompt";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { queueImageToVideoReferences } from "@/services/workbench-handoff";
@@ -136,6 +137,7 @@ export default function ImagePage() {
     const [logsOpen, setLogsOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
+    const [promptOptimizing, setPromptOptimizing] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
@@ -282,6 +284,28 @@ export default function ImagePage() {
         }
     };
 
+    const optimizePrompt = async () => {
+        const text = prompt.trim();
+        if (!text) {
+            message.warning("请先输入提示词梗概");
+            return;
+        }
+        if (!isPromptOptimizerReady(effectiveConfig)) {
+            message.warning("请先配置文本 API Key 并获取文本模型");
+            openConfigDialog(true, "channels");
+            return;
+        }
+        setPromptOptimizing(true);
+        try {
+            setPrompt(await optimizeGenerationPrompt(effectiveConfig, "image", text));
+            message.success("提示词已优化");
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "提示词优化失败");
+        } finally {
+            setPromptOptimizing(false);
+        }
+    };
+
     const generate = () => {
         const text = prompt.trim();
         if (!text) {
@@ -305,7 +329,7 @@ export default function ImagePage() {
             references: snapshot.references,
         }, generationCount);
         if (!runningBySession[sessionId]) setElapsedMs(0);
-        setPreviewLog(null);
+        if (!logIdFromSession(sessionId)) setPreviewLog(null);
         setSelectedResultIds([]);
         const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
         updateSessionResults(sessionId, (value) => [...value, ...pendingResults]);
@@ -360,22 +384,20 @@ export default function ImagePage() {
             );
             const thumbnails = await createLogThumbnails(logImages);
             if (!logImages.length && !failures.length) return;
-            saveLog(
-                buildLog({
-                    sessionId,
-                    prompt: text,
-                    model,
-                    config: { ...snapshot.config, count: String(generationCount) },
-                    references: snapshot.references,
-                    durationMs,
-                    successCount,
-                    failCount,
-                    status: successCount ? "成功" : "失败",
-                    images: logImages,
-                    failures,
-                    thumbnails,
-                }),
-            );
+            await saveBatchLog({
+                sessionId,
+                prompt: text,
+                model,
+                config: { ...snapshot.config, count: String(generationCount) },
+                references: snapshot.references,
+                durationMs,
+                successCount,
+                failCount,
+                status: successCount ? "成功" : "失败",
+                images: logImages,
+                failures,
+                thumbnails,
+            });
         })().catch(() => message.warning("生成记录保存失败"));
     };
 
@@ -493,6 +515,33 @@ export default function ImagePage() {
         void logStore.setItem(log.id, serializeLog(log)).then(refreshLogs);
     };
 
+    const saveBatchLog = async (payload: Parameters<typeof buildLog>[0]) => {
+        const nextBatch = buildLog(payload);
+        const targetLogId = logIdFromSession(payload.sessionId || "");
+        if (targetLogId) {
+            const stored = await logStore.getItem<GenerationLog>(targetLogId);
+            if (stored) {
+                const existing = normalizeLogMetadata(stored);
+                const merged = recalculateLogCounts({
+                    ...nextBatch,
+                    id: targetLogId,
+                    sessionId: existing.sessionId,
+                    createdAt: existing.createdAt,
+                    time: existing.time,
+                    durationMs: existing.durationMs + nextBatch.durationMs,
+                    images: [...existing.images, ...nextBatch.images],
+                    failures: [...existing.failures, ...nextBatch.failures],
+                    thumbnails: normalizeLogThumbnails([...existing.thumbnails, ...nextBatch.thumbnails]),
+                });
+                await logStore.setItem(targetLogId, serializeLog(merged));
+                setPreviewLog(merged);
+                await refreshLogs();
+                return;
+            }
+        }
+        saveLog(nextBatch);
+    };
+
     const refreshLogs = async () => setLogs(await readStoredLogs());
 
     const previewGenerationLog = async (log: GenerationLog) => {
@@ -564,8 +613,8 @@ export default function ImagePage() {
     const retryResult = (index: number) => {
         const snapshot = buildRequestSnapshot();
         if (!snapshot) return;
-        setPreviewLog(null);
         const sessionId = activeSessionId;
+        if (!logIdFromSession(sessionId)) setPreviewLog(null);
         const resultId = results[index]?.id;
         if (!resultId) return;
         if (!runningBySession[sessionId]) setElapsedMs(0);
@@ -619,6 +668,11 @@ export default function ImagePage() {
                                     <div className="mb-2 flex items-center justify-between gap-3">
                                         <span className="text-base font-semibold">提示词</span>
                                         <div className="flex gap-2">
+                                            <Tooltip title="使用文本模型优化和丰富提示词">
+                                                <Button size="small" icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} disabled={!prompt.trim() || promptOptimizing} onClick={() => void optimizePrompt()}>
+                                                    AI 优化
+                                                </Button>
+                                            </Tooltip>
                                             <Button size="small" icon={<BookOpen className="size-3.5" />} onClick={() => setPromptDialogOpen(true)}>
                                                 查看提示词库
                                             </Button>
@@ -1484,6 +1538,10 @@ async function findLogIdForSession(sessionId: string) {
         if (!matched && value?.sessionId === sessionId) matched = key;
     });
     return matched;
+}
+
+function logIdFromSession(sessionId: string) {
+    return sessionId.startsWith("log:") ? sessionId.slice(4) : "";
 }
 
 async function deleteResultFromLog(logId: string, result: GenerationResult) {
