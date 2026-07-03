@@ -492,9 +492,11 @@ function unwrapSeedanceTask(payload: ApiEnvelope<SeedanceTask>) {
 
 function unwrapEnvelope<T>(payload: ApiEnvelope<T>, emptyMessage: string): T {
     if (!payload) throw new Error(emptyMessage);
+    if (typeof payload !== "object") throw new Error(emptyMessage);
     if (typeof payload === "object" && "code" in payload && typeof payload.code === "number") {
         if (payload.code !== 0) throw new Error(payload.msg || "请求失败");
         if (!payload.data) throw new Error(emptyMessage);
+        if (typeof payload.data !== "object") throw new Error(emptyMessage);
         return payload.data;
     }
     return payload as T;

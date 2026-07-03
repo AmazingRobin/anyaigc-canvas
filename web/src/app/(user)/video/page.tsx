@@ -149,8 +149,9 @@ export default function VideoPage() {
 
     useEffect(() => {
         if (!configHydrated) return;
+        if (!effectiveConfig.apiKey && !effectiveConfig.mediaApiKey) return;
         void refreshLogs({ resumePending: true });
-    }, [configHydrated]);
+    }, [configHydrated, effectiveConfig.apiKey, effectiveConfig.mediaApiKey, effectiveConfig.baseUrl]);
 
     useEffect(() => {
         const handoff = consumeImageToVideoReferences();
@@ -513,7 +514,7 @@ export default function VideoPage() {
                     const completedLog = appendVideoToLog(log, nextVideo);
                     setResults((value) => updateVideoResultById(value, resultId, { status: "success", video: nextVideo, error: undefined }));
                     await saveLog(completedLog);
-                    if (previewLog?.id === completedLog.id) setPreviewLog(completedLog);
+                    setPreviewLog((current) => (current?.id === completedLog.id ? completedLog : current));
                     message.success("视频已生成");
                     void createVideoThumbnail(stored.url).then(async (thumbnail) => {
                         const normalized = normalizeVideoThumbnail(thumbnail);
@@ -533,7 +534,7 @@ export default function VideoPage() {
             const failedLog = appendFailureToVideoLog(log, { id: resultId, error: errorMessage, durationMs: Date.now() - log.createdAt });
             setResults((value) => updateVideoResultById(value, resultId, { status: "failed", error: errorMessage, video: undefined }));
             await saveLog(failedLog);
-            if (previewLog?.id === failedLog.id) setPreviewLog(failedLog);
+            setPreviewLog((current) => (current?.id === failedLog.id ? failedLog : current));
             message.error(errorMessage);
         } finally {
             activeLogIdsRef.current.delete(resultId);
@@ -566,6 +567,7 @@ export default function VideoPage() {
             ...failures.map((failure) => ({ id: failure.id, status: "failed" as const, error: failure.error })),
             ...(log.status === "生成中" ? [{ id: log.id, status: "pending" as const }] : []),
         ]);
+        if (log.status === "生成中" && log.task) void pollGenerationLog(log);
     };
 
     return (
