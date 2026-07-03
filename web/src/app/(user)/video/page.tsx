@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Input, Modal, Typography } from "antd";
 import localforage from "localforage";
@@ -19,6 +19,7 @@ import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, videoGenerationPollConfig, type VideoGenerationTask } from "@/services/api/video";
+import { consumeImageToVideoReferences } from "@/services/workbench-handoff";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { modelOptionLabel, normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -121,6 +122,14 @@ export default function VideoPage() {
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    useEffect(() => {
+        const handoff = consumeImageToVideoReferences();
+        if (!handoff?.references.length) return;
+        setReferences((value) => mergeReferenceImages(handoff.references, value).slice(0, SEEDANCE_REFERENCE_LIMITS.images));
+        if (handoff.prompt) setPrompt((value) => (value.trim() ? value : handoff.prompt || value));
+        message.success(`已带入 ${Math.min(handoff.references.length, SEEDANCE_REFERENCE_LIMITS.images)} 张参考图`);
+    }, [message]);
 
     useEffect(() => {
         setSelectedResultIds((ids) => {
@@ -264,6 +273,13 @@ export default function VideoPage() {
             metadata: { source: "video-page", prompt },
         });
         message.success("已加入我的素材");
+    };
+
+    const editResultVideo = (video: GeneratedVideo) => {
+        const reference: ReferenceVideo = { id: nanoid(), name: "generated-video.mp4", type: video.mimeType || "video/mp4", url: video.url, storageKey: video.storageKey, bytes: video.bytes, width: video.width, height: video.height, durationMs: video.durationMs };
+        const referenceKey = reference.storageKey || reference.url;
+        setVideoReferences((value) => [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)].slice(0, SEEDANCE_REFERENCE_LIMITS.videos));
+        message.success("已进入视频编辑模式");
     };
 
     const deleteResult = async (result: GenerationResult) => {
@@ -607,7 +623,7 @@ export default function VideoPage() {
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                 {results.map((result) =>
                                     result.status === "success" && result.video ? (
-                                        <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                        <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                     ) : result.status === "failed" ? (
                                         <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={retryResult} onDelete={() => requestDeleteResults([result])} />
                                     ) : (
@@ -699,7 +715,7 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
+function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
             <SelectionBubble className="absolute right-3 top-3 z-20" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
@@ -722,9 +738,12 @@ function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onDownload
                     <span>{formatBytes(video.bytes)}</span>
                     <span>{formatDuration(video.durationMs)}</span>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-1.5">
                     <Button size="small" icon={<Play className="size-3.5" />} onClick={onPlay}>
                         播放
+                    </Button>
+                    <Button size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)}>
+                        编辑
                     </Button>
                     <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
                         素材
@@ -1166,6 +1185,16 @@ function moveListItem<T>(items: T[], index: number, offset: number) {
     const next = [...items];
     [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
     return next;
+}
+
+function mergeReferenceImages(primary: ReferenceImage[], secondary: ReferenceImage[]) {
+    const seen = new Set<string>();
+    return [...primary, ...secondary].filter((item) => {
+        const key = item.storageKey || item.dataUrl || item.url || item.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 function ReferenceOrderButtons({ index, total, onMove }: { index: number; total: number; onMove: (offset: number) => void }) {

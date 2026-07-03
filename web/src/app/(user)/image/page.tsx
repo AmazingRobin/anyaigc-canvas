@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
 import localforage from "localforage";
@@ -20,6 +21,7 @@ import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSiz
 import { requestEdit, requestGeneration } from "@/services/api/image";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
+import { queueImageToVideoReferences } from "@/services/workbench-handoff";
 import { useAssetStore } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
 
@@ -112,6 +114,7 @@ const logStore = localforage.createInstance({ name: "infinite-canvas", storeName
 
 export default function ImagePage() {
     const { message } = App.useApp();
+    const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const previewRequestIdRef = useRef(0);
     const deletedResultIdsRef = useRef<Set<string>>(new Set());
@@ -380,8 +383,15 @@ export default function ImagePage() {
 
     const addResultToReferences = async (image: GeneratedImage, index: number) => {
         const stored = await uploadImage(image.dataUrl);
-        setReferences((value) => [...value, { id: nanoid(), name: `result-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, IMAGE_REFERENCE_LIMIT));
-        message.success("已加入参考图");
+        setReferences((value) => [{ id: nanoid(), name: `result-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }, ...value].slice(0, IMAGE_REFERENCE_LIMIT));
+        message.success("已进入编辑模式");
+    };
+
+    const generateVideoFromImage = async (image: GeneratedImage, index: number) => {
+        const stored = await uploadImage(image.dataUrl);
+        queueImageToVideoReferences([{ id: nanoid(), name: `image-to-video-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }], prompt);
+        message.success("已带入视频工作台参考图");
+        router.push("/video");
     };
 
     const saveResultToAssets = async (image: GeneratedImage, index: number) => {
@@ -701,7 +711,7 @@ export default function ImagePage() {
                                 <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                     {results.map((result, index) =>
                                         result.status === "success" && result.image ? (
-                                            <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                            <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
                                             <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
@@ -802,6 +812,7 @@ function ResultImageCard({
     selected,
     onSelectedChange,
     onEdit,
+    onGenerateVideo,
     onDownload,
     onSaveAsset,
     onDelete,
@@ -811,6 +822,7 @@ function ResultImageCard({
     selected: boolean;
     onSelectedChange: (checked: boolean) => void;
     onEdit: (image: GeneratedImage, index: number) => void;
+    onGenerateVideo: (image: GeneratedImage, index: number) => void;
     onDownload: (image: GeneratedImage, index: number) => void;
     onSaveAsset: (image: GeneratedImage, index: number) => void;
     onDelete: () => void;
@@ -858,15 +870,20 @@ function ResultImageCard({
                     <span>{formatBytes(image.bytes)}</span>
                     <span>{formatDuration(image.durationMs)}</span>
                 </div>
-                <div className="grid min-w-0 grid-cols-4 gap-2">
+                <div className="grid min-w-0 grid-cols-5 gap-1.5">
                     <Tooltip title="添加到素材">
                         <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<FolderPlus className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onSaveAsset(displayImage, index)}>
                             素材
                         </Button>
                     </Tooltip>
-                    <Tooltip title="加入参考图">
+                    <Tooltip title="作为参考图继续编辑">
                         <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onEdit(displayImage, index)}>
-                            参考
+                            编辑
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="用这张图生成视频">
+                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<VideoIcon className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onGenerateVideo(displayImage, index)}>
+                            视频
                         </Button>
                     </Tooltip>
                     <Tooltip title="下载">
