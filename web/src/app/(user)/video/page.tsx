@@ -1337,10 +1337,28 @@ async function createVideoThumbnail(url?: string) {
                 done("");
             }
         };
+        const seekOrCapture = () => {
+            const duration = Number.isFinite(video.duration) ? video.duration : 0;
+            const targetTime = duration > 0.4 ? Math.min(0.25, duration / 3) : 0;
+            if (!targetTime) {
+                capture();
+                return;
+            }
+            video.onseeked = capture;
+            try {
+                video.currentTime = targetTime;
+            } catch {
+                capture();
+            }
+        };
+        video.crossOrigin = "anonymous";
         video.muted = true;
         video.playsInline = true;
         video.preload = "auto";
-        video.onloadeddata = capture;
+        video.onloadedmetadata = seekOrCapture;
+        video.onloadeddata = () => {
+            if (!Number.isFinite(video.duration) || video.duration <= 0.4) capture();
+        };
         video.onerror = () => done("");
         video.src = url;
         video.load();

@@ -554,6 +554,17 @@ async function compactStoredLogForSync(value: unknown): Promise<boolean> {
     const record = value as Record<string, unknown>;
     let changed = false;
 
+    if (Array.isArray(record.thumbnails) && record.thumbnails.length) {
+        record.thumbnails = [];
+        changed = true;
+    }
+
+    const thumbnail = getStringField(record, "thumbnail");
+    if (isInlinePreviewUrl(thumbnail)) {
+        record.thumbnail = "";
+        changed = true;
+    }
+
     const dataUrl = getStringField(record, "dataUrl");
     const storageKey = getStringField(record, "storageKey");
     if (storageKey && dataUrl) {
@@ -597,6 +608,10 @@ function emitProgress(onProgress: AppSyncProgress | undefined, event: AppSyncPro
 function getStringField(item: Record<string, unknown>, key: string) {
     const value = item[key];
     return typeof value === "string" ? value : "";
+}
+
+function isInlinePreviewUrl(value: string) {
+    return value.startsWith("data:") || value.startsWith("blob:");
 }
 
 function getTime(item: Record<string, unknown>, key: string) {
