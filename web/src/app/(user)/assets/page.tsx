@@ -1,15 +1,16 @@
 "use client";
 
-import { Copy, Download, PencilLine, Search, Trash2, Upload } from "lucide-react";
+import { Copy, Download, PencilLine, Search, Trash2, Upload, VideoIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Card, Drawer, Empty, Form, Image, Input, Modal, Pagination, Select, Space, Tag, Typography } from "antd";
 import { saveAs } from "file-saver";
 
 import { useCopyText } from "@/hooks/use-copy-text";
 import { formatBytes, readFileAsDataUrl } from "@/lib/image-utils";
+import { createVideoThumbnail, normalizeVideoThumbnail } from "@/lib/video-thumbnail";
 import { uploadImage } from "@/services/image-storage";
 import { cn } from "@/lib/utils";
-import { useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
+import { useAssetStore, type Asset, type AssetKind, type ImageAsset, type VideoAsset } from "@/stores/use-asset-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 
 type AssetFormValues = {
@@ -76,6 +77,20 @@ export default function AssetsPage() {
         const maxPage = Math.max(1, Math.ceil(filteredAssets.length / pageSize));
         setPage((value) => Math.min(value, maxPage));
     }, [filteredAssets.length, pageSize]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const targets = visibleAssets.filter((asset): asset is VideoAsset => asset.kind === "video" && !assetCoverUrl(asset) && Boolean(asset.data.url));
+        targets.forEach((asset) => {
+            void createVideoThumbnail(asset.data.url).then((thumbnail) => {
+                if (cancelled || !thumbnail) return;
+                updateAsset(asset.id, { coverUrl: thumbnail, metadata: { ...(asset.metadata || {}), thumbnail } });
+            });
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [updateAsset, visibleAssets]);
 
     const openCreate = () => {
         setEditingAsset(null);
@@ -405,7 +420,7 @@ export default function AssetsPage() {
 }
 
 function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { asset: Asset; onOpen: () => void; onEdit: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onDelete: () => void }) {
-    const cover = asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "");
+    const cover = assetCoverUrl(asset);
     const summary = assetSummary(asset);
     return (
         <Card
@@ -416,6 +431,8 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
                 <button type="button" className="block w-full text-left" onClick={onOpen}>
                     {cover ? (
                         <img src={cover} alt={asset.title} className="aspect-[4/3] w-full object-cover" />
+                    ) : asset.kind === "video" ? (
+                        <VideoCoverPlaceholder />
                     ) : (
                         <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm leading-6 text-stone-600 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : "暂无封面"}</div>
                     )}
@@ -474,13 +491,15 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
 }
 
 function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | null; onClose: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void }) {
-    const cover = asset ? asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "") : "";
+    const cover = asset ? assetCoverUrl(asset) : "";
     return (
         <Drawer title="素材详情" open={Boolean(asset)} size="large" onClose={onClose}>
             {asset ? (
                 <div className="space-y-5">
                     {cover ? (
                         <Image src={cover} alt={asset.title} className="rounded-lg" />
+                    ) : asset.kind === "video" ? (
+                        <VideoCoverPlaceholder />
                     ) : (
                         <div className="rounded-lg border border-stone-200 bg-stone-50 p-5 text-sm leading-6 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : "暂无封面"}</div>
                     )}
@@ -531,6 +550,26 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
             ) : null}
         </Drawer>
     );
+}
+
+function VideoCoverPlaceholder() {
+    return (
+        <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,rgba(20,184,166,.14),rgba(99,102,241,.10))] p-5 text-stone-400 dark:text-stone-500">
+            <VideoIcon className="size-9" />
+        </div>
+    );
+}
+
+function assetCoverUrl(asset: Asset) {
+    if (asset.coverUrl) return asset.coverUrl;
+    if (asset.kind === "image") return asset.data.dataUrl;
+    if (asset.kind === "video") return normalizeVideoThumbnail(assetMetadataString(asset, "thumbnail"));
+    return "";
+}
+
+function assetMetadataString(asset: Asset, key: string) {
+    const value = asset.metadata?.[key];
+    return typeof value === "string" ? value : "";
 }
 
 function assetSummary(asset: Asset) {

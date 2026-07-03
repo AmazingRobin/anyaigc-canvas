@@ -15,6 +15,7 @@ import { VideoSettingsPanel, normalizeVideoResolutionValue, normalizeVideoSizeVa
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceRatio, seedanceReferenceLabel, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
+import { createVideoThumbnail, normalizeVideoThumbnail } from "@/lib/video-thumbnail";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
@@ -73,9 +74,6 @@ type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
-const VIDEO_THUMBNAIL_SIZE = 512;
-const VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
-const VIDEO_THUMBNAIL_QUALITY = 0.82;
 const RESULT_ACTION_BUTTON_CLASS = "!inline-flex !items-center !justify-center whitespace-nowrap px-2 [&_.ant-btn-icon]:shrink-0";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
@@ -265,21 +263,22 @@ export default function VideoPage() {
         saveAs(video.url, "video.mp4");
     };
 
-    const saveResultToAssets = (video: GeneratedVideo) => {
+    const saveResultToAssets = async (video: GeneratedVideo) => {
         const savedAsset = findGeneratedVideoAsset(video, assets);
         if (savedAsset) {
             replaceAssets(assets.filter((asset) => asset.id !== savedAsset.id));
             message.success("已取消加入素材");
             return;
         }
+        const coverUrl = normalizeVideoThumbnail(video.thumbnail) || (await createVideoThumbnail(video.url));
         addAsset({
             kind: "video",
             title: "生成视频",
-            coverUrl: "",
+            coverUrl,
             tags: [],
             source: "视频创作台",
             data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType },
-            metadata: { source: "video-page", prompt, sourceResultId: video.id, sourceStorageKey: video.storageKey || "", sourceUrl: video.url || "" },
+            metadata: { source: "video-page", prompt, sourceResultId: video.id, sourceStorageKey: video.storageKey || "", sourceUrl: video.url || "", thumbnail: coverUrl },
         });
         message.success("已加入我的素材");
     };
@@ -724,7 +723,7 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; savedToAsset: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
+function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; savedToAsset: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void | Promise<void>; onDelete: () => void }) {
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
             <SelectionBubble className="absolute right-3 top-3 z-20" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
@@ -751,7 +750,7 @@ function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPl
                     <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)}>
                         编辑
                     </Button>
-                    <Button className={`${RESULT_ACTION_BUTTON_CLASS} ${savedToAsset ? "!border-emerald-200 !bg-emerald-50 !text-emerald-700 hover:!border-emerald-300 hover:!bg-emerald-100 dark:!border-emerald-900 dark:!bg-emerald-950/35 dark:!text-emerald-300" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
+                    <Button className={`${RESULT_ACTION_BUTTON_CLASS} ${savedToAsset ? "!border-emerald-200 !bg-emerald-50 !text-emerald-700 hover:!border-emerald-300 hover:!bg-emerald-100 dark:!border-emerald-900 dark:!bg-emerald-950/35 dark:!text-emerald-300" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(video)}>
                         素材
                     </Button>
                     <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
@@ -1339,12 +1338,6 @@ function videoRatioLabel(video: Pick<GeneratedVideo, "width" | "height">) {
     return `${width / divisor}:${height / divisor}`;
 }
 
-function normalizeVideoThumbnail(thumbnail?: string) {
-    if (!thumbnail) return "";
-    if (thumbnail.startsWith("data:") && thumbnail.length > VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH) return "";
-    return thumbnail;
-}
-
 async function cacheVideoThumbnail(logId: string, thumbnail: string) {
     const normalized = normalizeVideoThumbnail(thumbnail);
     if (!normalized) return;
@@ -1353,67 +1346,6 @@ async function cacheVideoThumbnail(logId: string, thumbnail: string) {
         if (!log?.video) return;
         await logStore.setItem(logId, { ...log, video: { ...log.video, thumbnail: normalized } });
     } catch {}
-}
-
-async function createVideoThumbnail(url?: string) {
-    if (!url || typeof document === "undefined") return "";
-    return new Promise<string>((resolve) => {
-        const video = document.createElement("video");
-        const timer = window.setTimeout(() => done(""), 4200);
-        let settled = false;
-        const done = (value: string) => {
-            if (settled) return;
-            settled = true;
-            window.clearTimeout(timer);
-            video.removeAttribute("src");
-            video.load();
-            resolve(normalizeVideoThumbnail(value));
-        };
-        const capture = () => {
-            try {
-                const width = video.videoWidth || 1280;
-                const height = video.videoHeight || 720;
-                const scale = Math.min(1, VIDEO_THUMBNAIL_SIZE / Math.max(width, height));
-                const canvas = document.createElement("canvas");
-                canvas.width = Math.max(1, Math.round(width * scale));
-                canvas.height = Math.max(1, Math.round(height * scale));
-                const context = canvas.getContext("2d");
-                if (!context) {
-                    done("");
-                    return;
-                }
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                done(canvas.toDataURL("image/webp", VIDEO_THUMBNAIL_QUALITY));
-            } catch {
-                done("");
-            }
-        };
-        const seekOrCapture = () => {
-            const duration = Number.isFinite(video.duration) ? video.duration : 0;
-            const targetTime = duration > 0.4 ? Math.min(0.25, duration / 3) : 0;
-            if (!targetTime) {
-                capture();
-                return;
-            }
-            video.onseeked = capture;
-            try {
-                video.currentTime = targetTime;
-            } catch {
-                capture();
-            }
-        };
-        video.crossOrigin = "anonymous";
-        video.muted = true;
-        video.playsInline = true;
-        video.preload = "auto";
-        video.onloadedmetadata = seekOrCapture;
-        video.onloadeddata = () => {
-            if (!Number.isFinite(video.duration) || video.duration <= 0.4) capture();
-        };
-        video.onerror = () => done("");
-        video.src = url;
-        video.load();
-    });
 }
 
 function greatestCommonDivisor(a: number, b: number): number {
