@@ -23,8 +23,8 @@ export function AppTopNav() {
     return (
         <>
             {!hideHeader ? (
-                <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-stone-200 bg-background/90 backdrop-blur-xl dark:border-stone-800">
-                    <div className="mx-auto flex h-full w-full max-w-[1800px] items-stretch justify-between gap-4 px-4 sm:px-6 lg:px-8">
+                <header className="sticky top-0 z-20 shrink-0 border-b border-stone-200 bg-background/90 backdrop-blur-xl dark:border-stone-800">
+                    <div className="mx-auto flex h-16 w-full max-w-[1800px] items-stretch justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
                         <div className="flex min-w-0 flex-1 items-center">
                             <a
                                 href={RELAYBASES_HOME_URL}
@@ -39,23 +39,13 @@ export function AppTopNav() {
                                         WebkitMask: "url(/relaybases-mark.svg) center / contain no-repeat",
                                     }}
                                 />
-                                <span className="text-base font-semibold">RelayBases</span>
+                                <span className="hidden text-base font-semibold sm:inline">RelayBases</span>
                             </a>
                             <span className="mx-3 hidden h-5 w-px shrink-0 bg-stone-200 sm:block dark:bg-stone-800" />
-                            <Link href="/" className="group flex h-full shrink-0 items-center gap-2.5 rounded-full px-2.5 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:bg-stone-950/[0.04] hover:text-stone-700 dark:text-stone-100 dark:hover:bg-white/[0.07] dark:hover:text-white">
+                            <Link href="/" className="group flex h-full shrink-0 items-center gap-2 rounded-full px-1.5 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:bg-stone-950/[0.04] hover:text-stone-700 sm:gap-2.5 sm:px-2.5 dark:text-stone-100 dark:hover:bg-white/[0.07] dark:hover:text-white">
                                 <RelayBasesCanvasIcon className="size-8 transition duration-300 group-hover:scale-105" />
                                 <span className="text-base font-semibold">无限画布</span>
                             </Link>
-
-                            <button
-                                type="button"
-                                className="ml-3 inline-flex size-8 shrink-0 items-center justify-center text-stone-600 transition hover:text-stone-950 md:hidden dark:text-stone-300 dark:hover:text-white"
-                                onClick={() => setMobileNavOpen(true)}
-                                aria-label="打开导航菜单"
-                                title="导航菜单"
-                            >
-                                <Menu className="size-5" />
-                            </button>
 
                             <nav className="hide-scrollbar ml-6 hidden h-16 min-w-0 items-center gap-5 overflow-x-auto lg:gap-6 md:flex xl:ml-8 xl:gap-7">
                                 {navigationTools.map((tool) => {
@@ -81,6 +71,15 @@ export function AppTopNav() {
                         </div>
 
                         <div className="my-auto flex h-9 shrink-0 items-center justify-end gap-2 justify-self-end whitespace-nowrap">
+                            <button
+                                type="button"
+                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white/80 text-stone-900 shadow-sm transition hover:border-stone-300 hover:bg-white md:hidden dark:border-stone-800 dark:bg-stone-950/70 dark:text-stone-100 dark:hover:border-stone-700 dark:hover:bg-stone-900"
+                                onClick={() => setMobileNavOpen(true)}
+                                aria-label="打开导航菜单"
+                                title="导航菜单"
+                            >
+                                <Menu className="size-5" />
+                            </button>
                             <nav className="mr-1 hidden items-center gap-1 2xl:flex" aria-label="RelayBases 主站导航">
                                 {relayBasesLinks.map((link) => (
                                     <a
