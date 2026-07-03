@@ -121,7 +121,7 @@ export default function VideoPage() {
     }, [running, startedAt]);
 
     useEffect(() => {
-        void refreshLogs();
+        void refreshLogs({ resumePending: true });
     }, []);
 
     useEffect(() => {
@@ -255,7 +255,15 @@ export default function VideoPage() {
         return { text, config: buildVideoConfig(effectiveConfig, model), references: [...references], videoReferences: [...videoReferences], audioReferences: [...audioReferences] };
     };
 
-    const retryResult = () => {
+    const retryResult = (resultId?: string) => {
+        const recoverableLog = resultId ? logs.find((log) => log.id === resultId && log.task) : previewLog?.task ? previewLog : null;
+        if (recoverableLog?.task) {
+            const task = recoverableLog.task;
+            const recoveryLog = { ...recoverableLog, status: "生成中" as const, error: undefined };
+            setResults((value) => updateVideoResultById(value, recoveryLog.id, { status: "pending", error: undefined, video: undefined }));
+            void pollGenerationLog(recoveryLog, buildVideoConfig(effectiveConfig, task.model || recoveryLog.model));
+            return;
+        }
         void generate();
     };
 
@@ -367,10 +375,10 @@ export default function VideoPage() {
         await refreshLogs();
     };
 
-    const refreshLogs = async () => {
+    const refreshLogs = async (options: { resumePending?: boolean } = {}) => {
         const nextLogs = await readStoredLogs();
         setLogs(nextLogs);
-        resumePendingLogs(nextLogs);
+        if (options.resumePending) resumePendingLogs(nextLogs);
         return nextLogs;
     };
 
@@ -633,7 +641,7 @@ export default function VideoPage() {
                                     result.status === "success" && result.video ? (
                                         <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                     ) : result.status === "failed" ? (
-                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={retryResult} onDelete={() => requestDeleteResults([result])} />
+                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} retryLabel={logs.some((log) => log.id === result.id && log.task) ? "恢复结果" : "重试"} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
                                     ) : (
                                         <PendingVideoCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
                                     ),
@@ -777,7 +785,7 @@ function PendingVideoCard({ selected, onSelectedChange }: { selected: boolean; o
     );
 }
 
-function FailedVideoCard({ error, selected, onSelectedChange, onRetry, onDelete }: { error: string; selected: boolean; onSelectedChange: (checked: boolean) => void; onRetry: () => void; onDelete: () => void }) {
+function FailedVideoCard({ error, selected, retryLabel = "重试", onSelectedChange, onRetry, onDelete }: { error: string; selected: boolean; retryLabel?: string; onSelectedChange: (checked: boolean) => void; onRetry: () => void; onDelete: () => void }) {
     return (
         <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
@@ -788,8 +796,8 @@ function FailedVideoCard({ error, selected, onSelectedChange, onRetry, onDelete 
                 </Typography.Paragraph>
             </div>
             <div className="flex justify-end gap-2 border-t border-red-200 p-3 dark:border-red-950">
-                <Button size="small" onClick={onRetry}>
-                    重试
+                <Button size="small" onClick={() => onRetry()}>
+                    {retryLabel}
                 </Button>
                 <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
                     删除
