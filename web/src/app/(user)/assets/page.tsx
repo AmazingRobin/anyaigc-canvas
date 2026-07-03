@@ -597,7 +597,7 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload, onVideoCoverReady }: 
 function VideoAssetPreview({ asset, cover, onCoverReady }: { asset: VideoAsset; cover: string; onCoverReady: (asset: VideoAsset, thumbnail: string) => void }) {
     const thumbnail = useVideoThumbnail(asset, cover, onCoverReady);
     return (
-        <VideoPosterFrame thumbnail={thumbnail} label="视频" />
+        <VideoPosterFrame thumbnail={thumbnail} videoUrl={asset.data.url} label="视频" />
     );
 }
 
@@ -619,20 +619,20 @@ function VideoAssetPlayer({ asset, cover, onCoverReady }: { asset: VideoAsset; c
 
     return (
         <button type="button" className="block w-full overflow-hidden rounded-xl border border-stone-200 bg-background text-left shadow-sm dark:border-stone-800" onClick={() => setPlaying(true)}>
-            <VideoPosterFrame thumbnail={thumbnail} label={`${asset.data.width}x${asset.data.height}`} />
+            <VideoPosterFrame thumbnail={thumbnail} videoUrl={asset.data.url} label={`${asset.data.width}x${asset.data.height}`} />
         </button>
     );
 }
 
-function VideoPosterFrame({ thumbnail, label }: { thumbnail: string; label: string }) {
+function VideoPosterFrame({ thumbnail, videoUrl, label }: { thumbnail: string; videoUrl?: string; label: string }) {
     return (
         <div className="relative aspect-[4/3] overflow-hidden bg-[linear-gradient(135deg,rgba(20,184,166,.18),rgba(99,102,241,.14))]">
-            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : null}
-            <div className={`absolute inset-0 ${thumbnail ? "bg-gradient-to-t from-black/35 via-transparent to-black/10" : ""}`} />
+            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : videoUrl ? <VideoInlinePreview url={videoUrl} /> : null}
+            <div className={`absolute inset-0 ${thumbnail || videoUrl ? "bg-gradient-to-t from-black/35 via-transparent to-black/10" : ""}`} />
             <span className="absolute left-3 top-3 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{label}</span>
             <span className="absolute inset-0 grid place-items-center">
                 <span className="grid size-11 place-items-center rounded-full bg-white/90 text-stone-950 shadow-lg">
-                    {thumbnail ? <Play className="ml-0.5 size-5 fill-current" /> : <VideoIcon className="size-5" />}
+                    {thumbnail || videoUrl ? <Play className="ml-0.5 size-5 fill-current" /> : <VideoIcon className="size-5" />}
                 </span>
             </span>
         </div>
@@ -641,6 +641,33 @@ function VideoPosterFrame({ thumbnail, label }: { thumbnail: string; label: stri
 
 function VideoCoverPlaceholder() {
     return <VideoPosterFrame thumbnail="" label="视频" />;
+}
+
+function VideoInlinePreview({ url }: { url: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        const node = videoRef.current;
+        if (!node) return;
+        const seekAndPlay = () => {
+            try {
+                if (Number.isFinite(node.duration) && node.duration > 0.8 && node.currentTime < 0.2) node.currentTime = Math.min(0.65, node.duration / 4);
+            } catch {}
+            void node.play().catch(() => {});
+        };
+        node.addEventListener("loadedmetadata", seekAndPlay);
+        node.addEventListener("loadeddata", seekAndPlay);
+        node.addEventListener("canplay", seekAndPlay);
+        void node.play().catch(() => {});
+        return () => {
+            node.removeEventListener("loadedmetadata", seekAndPlay);
+            node.removeEventListener("loadeddata", seekAndPlay);
+            node.removeEventListener("canplay", seekAndPlay);
+            node.pause();
+        };
+    }, [url]);
+
+    return <video ref={videoRef} src={url} className="size-full object-cover" muted autoPlay loop playsInline preload="auto" />;
 }
 
 function useVideoThumbnail(asset: VideoAsset, cover: string, onCoverReady: (asset: VideoAsset, thumbnail: string) => void) {
