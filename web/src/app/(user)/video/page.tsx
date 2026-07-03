@@ -330,18 +330,16 @@ export default function VideoPage() {
         return { text, config: buildVideoConfig(effectiveConfig, model), references: [...references], videoReferences: [...videoReferences], audioReferences: [...audioReferences] };
     };
 
+    const findRecoverableLogForResult = (items: GenerationLog[], resultId?: string) =>
+        resultId ? items.find((log) => log.id === resultId && log.task && (log.status === "生成中" || log.error === "请先配置 API Key")) || null : null;
+
     const retryResult = async (resultId?: string) => {
-        const findRecoverableLog = (items: GenerationLog[]) => items.find((log) => log.id === resultId && log.task) || null;
-        let recoverableLog = resultId ? findRecoverableLog(logs) : previewLog?.task ? previewLog : null;
-        if (resultId && !recoverableLog) recoverableLog = findRecoverableLog(await refreshLogs());
+        let recoverableLog = resultId ? findRecoverableLogForResult(logs, resultId) : previewLog?.task ? previewLog : null;
+        if (resultId && !recoverableLog) recoverableLog = findRecoverableLogForResult(await refreshLogs(), resultId);
         if (recoverableLog?.task) {
             const task = recoverableLog.task;
             const recoveryLog = { ...recoverableLog, status: "生成中" as const, error: undefined };
             void pollGenerationLog(recoveryLog, buildVideoConfig(effectiveConfig, task.model || recoveryLog.model), { notify: true });
-            return;
-        }
-        if (resultId) {
-            message.warning("找不到可恢复的视频任务记录");
             return;
         }
         void generate();
@@ -800,7 +798,7 @@ export default function VideoPage() {
                                     result.status === "success" && result.video ? (
                                         <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                     ) : result.status === "failed" ? (
-                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} retryLabel={logs.some((log) => log.id === result.id && log.task) ? "恢复结果" : "重试"} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
+                                        <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} retryLabel={findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试"} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
                                     ) : (
                                         <PendingVideoCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
                                     ),
