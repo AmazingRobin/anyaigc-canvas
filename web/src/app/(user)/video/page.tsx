@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, Check, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Input, Modal, Typography } from "antd";
 import localforage from "localforage";
@@ -89,6 +89,7 @@ export default function VideoPage() {
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const addAsset = useAssetStore((state) => state.addAsset);
+    const replaceAssets = useAssetStore((state) => state.replaceAssets);
     const assets = useAssetStore((state) => state.assets);
     const [prompt, setPrompt] = useState("");
     const [references, setReferences] = useState<ReferenceImage[]>([]);
@@ -265,8 +266,10 @@ export default function VideoPage() {
     };
 
     const saveResultToAssets = (video: GeneratedVideo) => {
-        if (isGeneratedVideoSaved(video, assets)) {
-            message.info("已在我的素材中");
+        const savedAsset = findGeneratedVideoAsset(video, assets);
+        if (savedAsset) {
+            replaceAssets(assets.filter((asset) => asset.id !== savedAsset.id));
+            message.success("已取消加入素材");
             return;
         }
         addAsset({
@@ -629,7 +632,7 @@ export default function VideoPage() {
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                 {results.map((result) =>
                                     result.status === "success" && result.video ? (
-                                        <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} savedToAsset={isGeneratedVideoSaved(result.video, assets)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                        <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                     ) : result.status === "failed" ? (
                                         <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={retryResult} onDelete={() => requestDeleteResults([result])} />
                                     ) : (
@@ -748,8 +751,8 @@ function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPl
                     <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)}>
                         编辑
                     </Button>
-                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={savedToAsset ? <Check className="size-3.5" /> : <FolderPlus className="size-3.5" />} disabled={savedToAsset} onClick={() => onSaveAsset(video)}>
-                        {savedToAsset ? "已加入" : "素材"}
+                    <Button className={`${RESULT_ACTION_BUTTON_CLASS} ${savedToAsset ? "!border-emerald-200 !bg-emerald-50 !text-emerald-700 hover:!border-emerald-300 hover:!bg-emerald-100 dark:!border-emerald-900 dark:!bg-emerald-950/35 dark:!text-emerald-300" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
+                        素材
                     </Button>
                     <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
                         下载
@@ -797,8 +800,8 @@ function FailedVideoCard({ error, selected, onSelectedChange, onRetry, onDelete 
     );
 }
 
-function isGeneratedVideoSaved(video: GeneratedVideo, assets: Asset[]) {
-    return assets.some((asset) => {
+function findGeneratedVideoAsset(video: GeneratedVideo, assets: Asset[]) {
+    return assets.find((asset) => {
         if (asset.kind !== "video") return false;
         if (assetMetadataString(asset, "sourceResultId") === video.id) return true;
         const sourceStorageKey = assetMetadataString(asset, "sourceStorageKey");

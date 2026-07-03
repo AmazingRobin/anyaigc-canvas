@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, Check, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
@@ -124,6 +124,7 @@ export default function ImagePage() {
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const addAsset = useAssetStore((state) => state.addAsset);
+    const replaceAssets = useAssetStore((state) => state.replaceAssets);
     const assets = useAssetStore((state) => state.assets);
     const [prompt, setPrompt] = useState("");
     const [references, setReferences] = useState<ReferenceImage[]>([]);
@@ -396,8 +397,11 @@ export default function ImagePage() {
     };
 
     const saveResultToAssets = async (image: GeneratedImage, index: number) => {
-        if (isGeneratedImageSaved(image, assets)) {
-            message.info("已在我的素材中");
+        const savedAsset = findGeneratedImageAsset(image, assets);
+        if (savedAsset) {
+            replaceAssets(assets.filter((asset) => asset.id !== savedAsset.id));
+            if (savedAsset.kind === "image" && savedAsset.data.storageKey && savedAsset.data.storageKey !== image.storageKey) await deleteStoredImages([savedAsset.data.storageKey]);
+            message.success("已取消加入素材");
             return;
         }
         const stored = await uploadImage(image.dataUrl);
@@ -716,7 +720,7 @@ export default function ImagePage() {
                                 <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                     {results.map((result, index) =>
                                         result.status === "success" && result.image ? (
-                                            <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={isGeneratedImageSaved(result.image, assets)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                            <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
                                             <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
@@ -878,9 +882,9 @@ function ResultImageCard({
                     <span>{formatDuration(image.durationMs)}</span>
                 </div>
                 <div className="grid min-w-0 grid-cols-3 gap-2">
-                    <Tooltip title={savedToAsset ? "已加入我的素材" : "添加到素材"}>
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={savedToAsset ? <Check className="size-3.5" /> : <FolderPlus className="size-3.5" />} disabled={!displayImage || savedToAsset} onClick={() => displayImage && void onSaveAsset(displayImage, index)}>
-                            {savedToAsset ? "已加入" : "素材"}
+                    <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
+                        <Button className={`${RESULT_ACTION_BUTTON_CLASS} ${savedToAsset ? "!border-emerald-200 !bg-emerald-50 !text-emerald-700 hover:!border-emerald-300 hover:!bg-emerald-100 dark:!border-emerald-900 dark:!bg-emerald-950/35 dark:!text-emerald-300" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onSaveAsset(displayImage, index)}>
+                            素材
                         </Button>
                     </Tooltip>
                     <Tooltip title="作为参考图继续编辑">
@@ -950,8 +954,8 @@ function FailedImageCard({ error, selected, onSelectedChange, onRetry, onDelete 
     );
 }
 
-function isGeneratedImageSaved(image: GeneratedImage, assets: Asset[]) {
-    return assets.some((asset) => {
+function findGeneratedImageAsset(image: GeneratedImage, assets: Asset[]) {
+    return assets.find((asset) => {
         if (asset.kind !== "image") return false;
         if (assetMetadataString(asset, "sourceResultId") === image.id) return true;
         const sourceStorageKey = assetMetadataString(asset, "sourceStorageKey");
