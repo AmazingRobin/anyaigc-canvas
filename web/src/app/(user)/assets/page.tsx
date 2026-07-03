@@ -429,10 +429,10 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
             styles={{ body: { padding: 0 } }}
             cover={
                 <button type="button" className="block w-full text-left" onClick={onOpen}>
-                    {cover ? (
+                    {asset.kind === "video" ? (
+                        <VideoAssetPreview asset={asset} cover={cover} />
+                    ) : cover ? (
                         <img src={cover} alt={asset.title} className="aspect-[4/3] w-full object-cover" />
-                    ) : asset.kind === "video" ? (
-                        <VideoCoverPlaceholder />
                     ) : (
                         <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm leading-6 text-stone-600 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : "暂无封面"}</div>
                     )}
@@ -492,14 +492,53 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
 
 function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | null; onClose: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void }) {
     const cover = asset ? assetCoverUrl(asset) : "";
+    if (asset?.kind === "video") {
+        return (
+            <Drawer title="素材详情" open size="large" onClose={onClose}>
+                <div className="space-y-5">
+                    <div>
+                        <Typography.Title level={4} className="!mb-2">
+                            {asset.title}
+                        </Typography.Title>
+                        <Space size={[4, 4]} wrap>
+                            <Tag>视频</Tag>
+                            {(asset.tags || []).map((tag) => (
+                                <Tag key={tag}>{tag}</Tag>
+                            ))}
+                        </Space>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-stone-200 bg-black shadow-sm dark:border-stone-800">
+                        {asset.data.url ? <video src={asset.data.url} poster={cover || undefined} controls playsInline preload="metadata" className="max-h-[64vh] w-full bg-black object-contain" /> : <VideoCoverPlaceholder />}
+                    </div>
+                    <div className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                        <Typography.Text type="secondary" className="block text-xs">
+                            内容
+                        </Typography.Text>
+                        <Typography.Text className="mt-2 block">
+                            {asset.data.width}x{asset.data.height} · {formatBytes(asset.data.bytes)} · {asset.data.mimeType}
+                        </Typography.Text>
+                    </div>
+                    {asset.note ? (
+                        <div>
+                            <Typography.Text type="secondary">备注</Typography.Text>
+                            <Typography.Paragraph className="mt-1">{asset.note}</Typography.Paragraph>
+                        </div>
+                    ) : null}
+                    <Space>
+                        <Button type="primary" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
+                            下载视频
+                        </Button>
+                    </Space>
+                </div>
+            </Drawer>
+        );
+    }
     return (
         <Drawer title="素材详情" open={Boolean(asset)} size="large" onClose={onClose}>
             {asset ? (
                 <div className="space-y-5">
                     {cover ? (
                         <Image src={cover} alt={asset.title} className="rounded-lg" />
-                    ) : asset.kind === "video" ? (
-                        <VideoCoverPlaceholder />
                     ) : (
                         <div className="rounded-lg border border-stone-200 bg-stone-50 p-5 text-sm leading-6 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : "暂无封面"}</div>
                     )}
@@ -508,7 +547,7 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
                             {asset.title}
                         </Typography.Title>
                         <Space size={[4, 4]} wrap>
-                            <Tag>{asset.kind === "image" ? "图片" : asset.kind === "video" ? "视频" : "文本"}</Tag>
+                            <Tag>{asset.kind === "image" ? "图片" : "文本"}</Tag>
                             {(asset.tags || []).map((tag) => (
                                 <Tag key={tag}>{tag}</Tag>
                             ))}
@@ -520,8 +559,6 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
                         </Typography.Text>
                         {asset.kind === "text" ? (
                             <Typography.Paragraph className="mt-2 whitespace-pre-wrap">{asset.data.content}</Typography.Paragraph>
-                        ) : asset.kind === "video" ? (
-                            <video src={asset.data.url} controls className="mt-2 aspect-video w-full rounded-lg bg-black" />
                         ) : (
                             <Typography.Text className="mt-2 block">
                                 {asset.data.width}x{asset.data.height} · {formatBytes(asset.data.bytes)} · {asset.data.mimeType}
@@ -540,9 +577,9 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
                                 复制文本
                             </Button>
                         ) : null}
-                        {asset.kind === "image" || asset.kind === "video" ? (
+                        {asset.kind === "image" ? (
                             <Button type="primary" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
-                                {asset.kind === "video" ? "下载视频" : "下载图片"}
+                                下载图片
                             </Button>
                         ) : null}
                     </Space>
@@ -552,9 +589,24 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
     );
 }
 
+function VideoAssetPreview({ asset, cover }: { asset: VideoAsset; cover: string }) {
+    return (
+        <div className="relative aspect-[4/3] overflow-hidden bg-black">
+            {asset.data.url ? <video src={asset.data.url} poster={cover || undefined} className="pointer-events-none size-full object-cover" muted playsInline preload="metadata" /> : <VideoCoverPlaceholder />}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
+            <span className="absolute left-3 top-3 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">视频</span>
+            <span className="absolute inset-0 grid place-items-center">
+                <span className="grid size-11 place-items-center rounded-full bg-white/90 text-stone-950 shadow-lg">
+                    <VideoIcon className="size-5" />
+                </span>
+            </span>
+        </div>
+    );
+}
+
 function VideoCoverPlaceholder() {
     return (
-        <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,rgba(20,184,166,.14),rgba(99,102,241,.10))] p-5 text-stone-400 dark:text-stone-500">
+        <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,rgba(20,184,166,.18),rgba(99,102,241,.14))] p-5 text-stone-400 dark:text-stone-500">
             <VideoIcon className="size-9" />
         </div>
     );

@@ -37,8 +37,14 @@ export async function createVideoThumbnail(url?: string) {
                     done("");
                     return;
                 }
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                done(canvas.toDataURL("image/webp", VIDEO_THUMBNAIL_QUALITY));
+                window.requestAnimationFrame(() => {
+                    try {
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        done(canvas.toDataURL("image/webp", VIDEO_THUMBNAIL_QUALITY));
+                    } catch {
+                        done("");
+                    }
+                });
             } catch {
                 done("");
             }
@@ -57,7 +63,7 @@ export async function createVideoThumbnail(url?: string) {
                 capture();
             }
         };
-        video.crossOrigin = "anonymous";
+        if (/^https?:/i.test(url)) video.crossOrigin = "anonymous";
         video.muted = true;
         video.playsInline = true;
         video.preload = "auto";
