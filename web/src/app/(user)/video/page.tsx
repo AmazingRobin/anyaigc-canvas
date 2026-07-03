@@ -1037,7 +1037,7 @@ function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { l
     const [thumbnail, setThumbnail] = useState(normalizeVideoThumbnail(video?.thumbnail));
     const [failed, setFailed] = useState(false);
     const coverRef = useRef<HTMLSpanElement>(null);
-    const hasVideo = Boolean(video?.url || video?.storageKey);
+    const canLoadPreview = Boolean(video?.url);
 
     useEffect(() => {
         setThumbnail(normalizeVideoThumbnail(video?.thumbnail));
@@ -1097,10 +1097,10 @@ function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { l
         >
             {thumbnail ? (
                 <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" />
-            ) : hasVideo && !failed ? (
-                <LoaderCircle className="size-7 animate-spin opacity-60" />
             ) : status === "生成中" ? (
                 <LoaderCircle className="size-7 animate-spin opacity-60" />
+            ) : canLoadPreview ? (
+                <LogVideoInlinePreview url={video?.url || ""} />
             ) : (
                 <VideoIcon className="size-7 opacity-75" />
             )}
@@ -1108,6 +1108,31 @@ function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { l
             <span className="absolute left-2 top-8 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{resolutionLabel}</span>
         </span>
     );
+}
+
+function LogVideoInlinePreview({ url }: { url: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        const node = videoRef.current;
+        if (!node) return;
+        const seekPreviewFrame = () => {
+            try {
+                if (Number.isFinite(node.duration) && node.duration > 0.8 && node.currentTime < 0.2) node.currentTime = Math.min(0.65, node.duration / 4);
+            } catch {}
+        };
+        node.addEventListener("loadedmetadata", seekPreviewFrame);
+        node.addEventListener("loadeddata", seekPreviewFrame);
+        node.addEventListener("canplay", seekPreviewFrame);
+        return () => {
+            node.removeEventListener("loadedmetadata", seekPreviewFrame);
+            node.removeEventListener("loadeddata", seekPreviewFrame);
+            node.removeEventListener("canplay", seekPreviewFrame);
+            node.pause();
+        };
+    }, [url]);
+
+    return <video ref={videoRef} src={url} className="size-full object-cover" muted playsInline preload="metadata" />;
 }
 
 async function readStoredLogs() {
