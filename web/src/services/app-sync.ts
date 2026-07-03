@@ -554,11 +554,6 @@ async function compactStoredLogForSync(value: unknown): Promise<boolean> {
     const record = value as Record<string, unknown>;
     let changed = false;
 
-    if (Array.isArray(record.thumbnails) && record.thumbnails.length) {
-        record.thumbnails = [];
-        changed = true;
-    }
-
     const dataUrl = getStringField(record, "dataUrl");
     const storageKey = getStringField(record, "storageKey");
     if (storageKey && dataUrl) {

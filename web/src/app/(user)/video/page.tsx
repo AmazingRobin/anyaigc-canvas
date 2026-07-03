@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { App, Button, Checkbox, Drawer, Empty, Input, Modal, Typography } from "antd";
+import { App, Button, Drawer, Empty, Input, Modal, Typography } from "antd";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
 import { saveAs } from "file-saver";
@@ -10,6 +10,7 @@ import { saveAs } from "file-saver";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
 import { ModelPicker } from "@/components/model-picker";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
+import { SelectionBubble } from "@/components/selection-bubble";
 import { VideoSettingsPanel, normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolutionLabel, videoSizeLabel } from "@/components/video-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
@@ -28,6 +29,7 @@ type GeneratedVideo = {
     id: string;
     url: string;
     storageKey: string;
+    thumbnail?: string;
     durationMs: number;
     width: number;
     height: number;
@@ -70,6 +72,9 @@ type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
+const VIDEO_THUMBNAIL_SIZE = 512;
+const VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
+const VIDEO_THUMBNAIL_QUALITY = 0.82;
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
@@ -364,10 +369,12 @@ export default function VideoPage() {
                 const state = await pollVideoGenerationTask(configOverride || taskConfig, log.task);
                 if (state.status === "completed") {
                     const stored = await storeGeneratedVideo(state.result, { apiKey: (configOverride || taskConfig).apiKey });
+                    const thumbnail = await createVideoThumbnail(stored.url);
                     const nextVideo: GeneratedVideo = {
                         id: nanoid(),
                         url: stored.url,
                         storageKey: stored.storageKey,
+                        thumbnail,
                         durationMs: Date.now() - log.createdAt,
                         width: stored.width || 1280,
                         height: stored.height || 720,
@@ -628,7 +635,7 @@ export default function VideoPage() {
                     event.target.value = "";
                 }}
             />
-            <Drawer title="生成记录" placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
+            <Drawer title="生成记录" placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)} extra={<Button size="small" onClick={() => setLogsOpen(false)}>关闭</Button>}>
                 <LogPanel
                     logs={logs}
                     selectedLogIds={selectedLogIds}
@@ -695,11 +702,9 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
 function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
-            <div className="absolute right-3 top-3 z-20 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
-                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
-            </div>
+            <SelectionBubble className="absolute right-3 top-3 z-20" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             <button type="button" className="group relative block aspect-video w-full overflow-hidden bg-black text-left" onClick={onPlay} aria-label="播放视频">
-                <video src={video.url} className="size-full object-cover" muted playsInline preload="metadata" />
+                <video src={video.url} poster={video.thumbnail || undefined} className="size-full object-cover" muted playsInline preload="metadata" />
                 <span className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
                 <span className="absolute left-3 top-3 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{videoRatioLabel(video)}</span>
                 <span className="absolute left-3 top-9 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">
@@ -739,9 +744,7 @@ function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onDownload
 function PendingVideoCard({ selected, onSelectedChange }: { selected: boolean; onSelectedChange: (checked: boolean) => void }) {
     return (
         <div className="relative aspect-video overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50 dark:border-stone-700 dark:bg-stone-900">
-            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
-                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
-            </div>
+            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-stone-500 dark:text-stone-400">
                 <LoaderCircle className="size-6 animate-spin" />
                 <span>生成中</span>
@@ -753,9 +756,7 @@ function PendingVideoCard({ selected, onSelectedChange }: { selected: boolean; o
 function FailedVideoCard({ error, selected, onSelectedChange, onRetry, onDelete }: { error: string; selected: boolean; onSelectedChange: (checked: boolean) => void; onRetry: () => void; onDelete: () => void }) {
     return (
         <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
-            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700">
-                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成结果" />
-            </div>
+            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             <div className="flex aspect-video flex-col items-center justify-center gap-3 p-5 text-center">
                 <div className="text-sm font-medium text-red-600 dark:text-red-300">生成失败</div>
                 <Typography.Paragraph ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
@@ -958,11 +959,9 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             }}
             title={promptPreview}
         >
-            <div className="absolute right-3 top-3 z-10 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-stone-200 dark:bg-stone-950/90 dark:ring-stone-700" onClick={(event) => event.stopPropagation()}>
-                <Checkbox checked={selected} onChange={(event) => onSelectedChange(event.target.checked)} aria-label="选择生成记录" />
-            </div>
+            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
             <div className="space-y-3">
-                <LogVideoCover video={log.video} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
+                <LogVideoCover logId={log.id} video={log.video} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
                 <div className="min-w-0 pr-9">
                     <div className="line-clamp-2 text-base font-medium leading-6">{displayTitle}</div>
                     <div className="mt-1 line-clamp-3 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
@@ -994,15 +993,72 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
     );
 }
 
-function LogVideoCover({ video, status, sizeLabel, resolutionLabel }: { video?: GeneratedVideo; status: GenerationLog["status"]; sizeLabel: string; resolutionLabel: string }) {
+function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { logId: string; video?: GeneratedVideo; status: GenerationLog["status"]; sizeLabel: string; resolutionLabel: string }) {
+    const [thumbnail, setThumbnail] = useState(normalizeVideoThumbnail(video?.thumbnail));
+    const [failed, setFailed] = useState(false);
+    const coverRef = useRef<HTMLSpanElement>(null);
     const hasVideo = Boolean(video?.url || video?.storageKey);
+
+    useEffect(() => {
+        setThumbnail(normalizeVideoThumbnail(video?.thumbnail));
+        setFailed(false);
+    }, [logId, video?.id, video?.thumbnail]);
+
+    useEffect(() => {
+        if (thumbnail || failed || !video?.url) return;
+        let cancelled = false;
+        let idleId = 0;
+        let timerId: ReturnType<typeof globalThis.setTimeout> | null = null;
+        let observer: IntersectionObserver | null = null;
+        const run = () => {
+            const load = async () => {
+                const nextThumbnail = await createVideoThumbnail(video.url);
+                if (cancelled) return;
+                if (!nextThumbnail) {
+                    setFailed(true);
+                    return;
+                }
+                setThumbnail(nextThumbnail);
+                void cacheVideoThumbnail(logId, nextThumbnail);
+            };
+            if ("requestIdleCallback" in window) {
+                idleId = window.requestIdleCallback(() => void load(), { timeout: 1600 });
+            } else {
+                timerId = globalThis.setTimeout(() => void load(), 120);
+            }
+        };
+        const node = coverRef.current;
+        if (node && "IntersectionObserver" in window) {
+            observer = new IntersectionObserver(
+                ([entry]) => {
+                    if (!entry?.isIntersecting) return;
+                    observer?.disconnect();
+                    run();
+                },
+                { rootMargin: "180px" },
+            );
+            observer.observe(node);
+        } else {
+            run();
+        }
+        return () => {
+            cancelled = true;
+            observer?.disconnect();
+            if (idleId) window.cancelIdleCallback(idleId);
+            if (timerId) globalThis.clearTimeout(timerId);
+        };
+    }, [failed, logId, thumbnail, video?.url]);
+
     return (
         <span
+            ref={coverRef}
             className="relative grid aspect-video w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
-            style={hasVideo ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(20,184,166,.14), rgba(99,102,241,.10))" }}
+            style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(20,184,166,.14), rgba(99,102,241,.10))" }}
         >
-            {hasVideo ? (
-                <video src={video?.url} className="size-full bg-black object-cover" muted playsInline preload="metadata" />
+            {thumbnail ? (
+                <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" />
+            ) : hasVideo && !failed ? (
+                <LoaderCircle className="size-7 animate-spin opacity-60" />
             ) : status === "生成中" ? (
                 <LoaderCircle className="size-7 animate-spin opacity-60" />
             ) : (
@@ -1028,7 +1084,7 @@ async function readStoredLogs() {
 }
 
 async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog> {
-    const video = log.video?.storageKey ? { ...log.video, url: await resolveMediaUrl(log.video.storageKey, log.video.url) } : log.video;
+    const video = log.video ? { ...log.video, url: log.video.storageKey ? await resolveMediaUrl(log.video.storageKey, log.video.url) : log.video.url, thumbnail: normalizeVideoThumbnail(log.video.thumbnail) } : log.video;
     const videoReferences = await Promise.all(
         (log.videoReferences || []).map(async (item) => ({
             ...item,
@@ -1230,6 +1286,65 @@ function videoRatioLabel(video: Pick<GeneratedVideo, "width" | "height">) {
     if (!width || !height) return "视频";
     const divisor = greatestCommonDivisor(width, height);
     return `${width / divisor}:${height / divisor}`;
+}
+
+function normalizeVideoThumbnail(thumbnail?: string) {
+    if (!thumbnail) return "";
+    if (thumbnail.startsWith("data:") && thumbnail.length > VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH) return "";
+    return thumbnail;
+}
+
+async function cacheVideoThumbnail(logId: string, thumbnail: string) {
+    const normalized = normalizeVideoThumbnail(thumbnail);
+    if (!normalized) return;
+    try {
+        const log = await logStore.getItem<GenerationLog>(logId);
+        if (!log?.video) return;
+        await logStore.setItem(logId, { ...log, video: { ...log.video, thumbnail: normalized } });
+    } catch {}
+}
+
+async function createVideoThumbnail(url?: string) {
+    if (!url || typeof document === "undefined") return "";
+    return new Promise<string>((resolve) => {
+        const video = document.createElement("video");
+        const timer = window.setTimeout(() => done(""), 4200);
+        let settled = false;
+        const done = (value: string) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timer);
+            video.removeAttribute("src");
+            video.load();
+            resolve(normalizeVideoThumbnail(value));
+        };
+        const capture = () => {
+            try {
+                const width = video.videoWidth || 1280;
+                const height = video.videoHeight || 720;
+                const scale = Math.min(1, VIDEO_THUMBNAIL_SIZE / Math.max(width, height));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(width * scale));
+                canvas.height = Math.max(1, Math.round(height * scale));
+                const context = canvas.getContext("2d");
+                if (!context) {
+                    done("");
+                    return;
+                }
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                done(canvas.toDataURL("image/webp", VIDEO_THUMBNAIL_QUALITY));
+            } catch {
+                done("");
+            }
+        };
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "auto";
+        video.onloadeddata = capture;
+        video.onerror = () => done("");
+        video.src = url;
+        video.load();
+    });
 }
 
 function greatestCommonDivisor(a: number, b: number): number {
