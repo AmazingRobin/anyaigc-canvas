@@ -72,6 +72,7 @@ type GenerationLog = {
 type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "videoCallMode" | "size" | "vquality" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark">;
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
+type PollGenerationOptions = { notify?: boolean };
 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
 const INITIAL_LOG_VISIBLE_COUNT = 60;
@@ -272,13 +273,18 @@ export default function VideoPage() {
         return { text, config: buildVideoConfig(effectiveConfig, model), references: [...references], videoReferences: [...videoReferences], audioReferences: [...audioReferences] };
     };
 
-    const retryResult = (resultId?: string) => {
-        const recoverableLog = resultId ? logs.find((log) => log.id === resultId && log.task) : previewLog?.task ? previewLog : null;
+    const retryResult = async (resultId?: string) => {
+        const findRecoverableLog = (items: GenerationLog[]) => items.find((log) => log.id === resultId && log.task) || null;
+        let recoverableLog = resultId ? findRecoverableLog(logs) : previewLog?.task ? previewLog : null;
+        if (resultId && !recoverableLog) recoverableLog = findRecoverableLog(await refreshLogs());
         if (recoverableLog?.task) {
             const task = recoverableLog.task;
             const recoveryLog = { ...recoverableLog, status: "生成中" as const, error: undefined };
-            setResults((value) => updateVideoResultById(value, recoveryLog.id, { status: "pending", error: undefined, video: undefined }));
-            void pollGenerationLog(recoveryLog, buildVideoConfig(effectiveConfig, task.model || recoveryLog.model));
+            void pollGenerationLog(recoveryLog, buildVideoConfig(effectiveConfig, task.model || recoveryLog.model), { notify: true });
+            return;
+        }
+        if (resultId) {
+            message.warning("找不到可恢复的视频任务记录");
             return;
         }
         void generate();
@@ -406,11 +412,24 @@ export default function VideoPage() {
         }
     };
 
-    const pollGenerationLog = async (log: GenerationLog, configOverride?: AiConfig) => {
-        if (!log.task || activeLogIdsRef.current.has(log.id)) return;
+    const pollGenerationLog = async (log: GenerationLog, configOverride?: AiConfig, options: PollGenerationOptions = {}) => {
+        if (!log.task) {
+            if (options.notify) message.warning("找不到可恢复的视频任务记录");
+            return;
+        }
+        if (activeLogIdsRef.current.has(log.id)) {
+            if (options.notify) message.info("该视频任务正在恢复中");
+            return;
+        }
         const taskConfig = buildVideoConfig({ ...effectiveConfig, ...log.config }, log.task.model || log.model);
         const requestConfig = configOverride || taskConfig;
-        if (!isAiConfigReady(requestConfig, log.task.model || log.model)) return;
+        if (!isAiConfigReady(requestConfig, log.task.model || log.model)) {
+            if (options.notify) {
+                message.warning("请先完成媒体 API Key 配置后再恢复结果");
+                openConfigDialog(true);
+            }
+            return;
+        }
         activeLogIdsRef.current.add(log.id);
         setRunning(true);
         setStartedAt((value) => value || performance.now());
