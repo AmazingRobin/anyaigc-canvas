@@ -739,10 +739,7 @@ function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onEdit, on
                     <span>{formatBytes(video.bytes)}</span>
                     <span>{formatDuration(video.durationMs)}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Play className="size-3.5" />} onClick={onPlay}>
-                        播放
-                    </Button>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)}>
                         编辑
                     </Button>
