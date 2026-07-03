@@ -1,7 +1,7 @@
 "use client";
 
-import { Copy, Download, PencilLine, Search, Trash2, Upload, VideoIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Copy, Download, PencilLine, Play, Search, Trash2, Upload, VideoIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Card, Drawer, Empty, Form, Image, Input, Modal, Pagination, Select, Space, Tag, Typography } from "antd";
 import { saveAs } from "file-saver";
 
@@ -78,19 +78,26 @@ export default function AssetsPage() {
         setPage((value) => Math.min(value, maxPage));
     }, [filteredAssets.length, pageSize]);
 
+    const updateVideoAssetCover = useCallback(
+        (asset: VideoAsset, thumbnail: string) => {
+            updateAsset(asset.id, { coverUrl: thumbnail, metadata: { ...(asset.metadata || {}), thumbnail } });
+        },
+        [updateAsset],
+    );
+
     useEffect(() => {
         let cancelled = false;
         const targets = visibleAssets.filter((asset): asset is VideoAsset => asset.kind === "video" && !assetCoverUrl(asset) && Boolean(asset.data.url));
         targets.forEach((asset) => {
             void createVideoThumbnail(asset.data.url).then((thumbnail) => {
                 if (cancelled || !thumbnail) return;
-                updateAsset(asset.id, { coverUrl: thumbnail, metadata: { ...(asset.metadata || {}), thumbnail } });
+                updateVideoAssetCover(asset, thumbnail);
             });
         });
         return () => {
             cancelled = true;
         };
-    }, [updateAsset, visibleAssets]);
+    }, [updateVideoAssetCover, visibleAssets]);
 
     const openCreate = () => {
         setEditingAsset(null);
@@ -280,7 +287,7 @@ export default function AssetsPage() {
                 <div className="mx-auto flex max-w-7xl flex-col gap-5">
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {visibleAssets.map((asset) => (
-                            <AssetCard key={asset.id} asset={asset} onOpen={() => setPreviewAsset(asset)} onEdit={() => openEdit(asset)} onCopy={copyAssetText} onDownload={downloadImage} onDelete={() => setDeletingAsset(asset)} />
+                            <AssetCard key={asset.id} asset={asset} onOpen={() => setPreviewAsset(asset)} onEdit={() => openEdit(asset)} onCopy={copyAssetText} onDownload={downloadImage} onDelete={() => setDeletingAsset(asset)} onVideoCoverReady={updateVideoAssetCover} />
                         ))}
                     </div>
 
@@ -408,7 +415,7 @@ export default function AssetsPage() {
                 />
             </Modal>
 
-            <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} onDownload={downloadImage} />
+            <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} onDownload={downloadImage} onVideoCoverReady={updateVideoAssetCover} />
 
             <input ref={assetInputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importAssetZip(event.target.files?.[0])} />
 
@@ -419,7 +426,7 @@ export default function AssetsPage() {
     );
 }
 
-function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { asset: Asset; onOpen: () => void; onEdit: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onDelete: () => void }) {
+function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete, onVideoCoverReady }: { asset: Asset; onOpen: () => void; onEdit: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onDelete: () => void; onVideoCoverReady: (asset: VideoAsset, thumbnail: string) => void }) {
     const cover = assetCoverUrl(asset);
     const summary = assetSummary(asset);
     return (
@@ -430,7 +437,7 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
             cover={
                 <button type="button" className="block w-full text-left" onClick={onOpen}>
                     {asset.kind === "video" ? (
-                        <VideoAssetPreview asset={asset} cover={cover} />
+                        <VideoAssetPreview asset={asset} cover={cover} onCoverReady={onVideoCoverReady} />
                     ) : cover ? (
                         <img src={cover} alt={asset.title} className="aspect-[4/3] w-full object-cover" />
                     ) : (
@@ -490,7 +497,7 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
     );
 }
 
-function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | null; onClose: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void }) {
+function AssetDrawer({ asset, onClose, onCopy, onDownload, onVideoCoverReady }: { asset: Asset | null; onClose: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onVideoCoverReady: (asset: VideoAsset, thumbnail: string) => void }) {
     const cover = asset ? assetCoverUrl(asset) : "";
     if (asset?.kind === "video") {
         return (
@@ -507,9 +514,7 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
                             ))}
                         </Space>
                     </div>
-                    <div className="overflow-hidden rounded-xl border border-stone-200 bg-black shadow-sm dark:border-stone-800">
-                        {asset.data.url ? <video src={asset.data.url} poster={cover || undefined} controls playsInline preload="metadata" className="max-h-[64vh] w-full bg-black object-contain" /> : <VideoCoverPlaceholder />}
-                    </div>
+                    <VideoAssetPlayer asset={asset} cover={cover} onCoverReady={onVideoCoverReady} />
                     <div className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
                         <Typography.Text type="secondary" className="block text-xs">
                             内容
@@ -589,15 +594,45 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
     );
 }
 
-function VideoAssetPreview({ asset, cover }: { asset: VideoAsset; cover: string }) {
+function VideoAssetPreview({ asset, cover, onCoverReady }: { asset: VideoAsset; cover: string; onCoverReady: (asset: VideoAsset, thumbnail: string) => void }) {
+    const thumbnail = useVideoThumbnail(asset, cover, onCoverReady);
     return (
-        <div className="relative aspect-[4/3] overflow-hidden bg-black">
-            {asset.data.url ? <video src={asset.data.url} poster={cover || undefined} className="pointer-events-none size-full object-cover" muted playsInline preload="metadata" /> : <VideoCoverPlaceholder />}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
-            <span className="absolute left-3 top-3 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">视频</span>
+        <VideoPosterFrame thumbnail={thumbnail} label="视频" />
+    );
+}
+
+function VideoAssetPlayer({ asset, cover, onCoverReady }: { asset: VideoAsset; cover: string; onCoverReady: (asset: VideoAsset, thumbnail: string) => void }) {
+    const thumbnail = useVideoThumbnail(asset, cover, onCoverReady);
+    const [playing, setPlaying] = useState(false);
+
+    useEffect(() => {
+        setPlaying(false);
+    }, [asset.id]);
+
+    if (playing && asset.data.url) {
+        return (
+            <div className="overflow-hidden rounded-xl border border-stone-200 bg-black shadow-sm dark:border-stone-800">
+                <video src={asset.data.url} poster={thumbnail || undefined} controls autoPlay playsInline preload="metadata" className="max-h-[64vh] w-full bg-black object-contain" />
+            </div>
+        );
+    }
+
+    return (
+        <button type="button" className="block w-full overflow-hidden rounded-xl border border-stone-200 bg-background text-left shadow-sm dark:border-stone-800" onClick={() => setPlaying(true)}>
+            <VideoPosterFrame thumbnail={thumbnail} label={`${asset.data.width}x${asset.data.height}`} />
+        </button>
+    );
+}
+
+function VideoPosterFrame({ thumbnail, label }: { thumbnail: string; label: string }) {
+    return (
+        <div className="relative aspect-[4/3] overflow-hidden bg-[linear-gradient(135deg,rgba(20,184,166,.18),rgba(99,102,241,.14))]">
+            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : null}
+            <div className={`absolute inset-0 ${thumbnail ? "bg-gradient-to-t from-black/35 via-transparent to-black/10" : ""}`} />
+            <span className="absolute left-3 top-3 rounded bg-black/65 px-2 text-xs font-semibold leading-5 text-white shadow-sm">{label}</span>
             <span className="absolute inset-0 grid place-items-center">
                 <span className="grid size-11 place-items-center rounded-full bg-white/90 text-stone-950 shadow-lg">
-                    <VideoIcon className="size-5" />
+                    {thumbnail ? <Play className="ml-0.5 size-5 fill-current" /> : <VideoIcon className="size-5" />}
                 </span>
             </span>
         </div>
@@ -605,11 +640,27 @@ function VideoAssetPreview({ asset, cover }: { asset: VideoAsset; cover: string 
 }
 
 function VideoCoverPlaceholder() {
-    return (
-        <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,rgba(20,184,166,.18),rgba(99,102,241,.14))] p-5 text-stone-400 dark:text-stone-500">
-            <VideoIcon className="size-9" />
-        </div>
-    );
+    return <VideoPosterFrame thumbnail="" label="视频" />;
+}
+
+function useVideoThumbnail(asset: VideoAsset, cover: string, onCoverReady: (asset: VideoAsset, thumbnail: string) => void) {
+    const [thumbnail, setThumbnail] = useState(cover);
+
+    useEffect(() => {
+        let cancelled = false;
+        setThumbnail(cover);
+        if (cover || !asset.data.url) return;
+        void createVideoThumbnail(asset.data.url).then((nextThumbnail) => {
+            if (cancelled || !nextThumbnail) return;
+            setThumbnail(nextThumbnail);
+            onCoverReady(asset, nextThumbnail);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [asset, asset.data.url, cover, onCoverReady]);
+
+    return thumbnail;
 }
 
 function assetCoverUrl(asset: Asset) {

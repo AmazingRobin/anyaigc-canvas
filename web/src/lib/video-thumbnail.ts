@@ -1,8 +1,8 @@
 "use client";
 
-const VIDEO_THUMBNAIL_SIZE = 512;
-const VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
-const VIDEO_THUMBNAIL_QUALITY = 0.82;
+const VIDEO_THUMBNAIL_SIZE = 420;
+const VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH = 900_000;
+const VIDEO_THUMBNAIL_QUALITY = 0.78;
 
 export function normalizeVideoThumbnail(thumbnail?: string) {
     if (!thumbnail) return "";
@@ -40,7 +40,8 @@ export async function createVideoThumbnail(url?: string) {
                 window.requestAnimationFrame(() => {
                     try {
                         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        done(canvas.toDataURL("image/webp", VIDEO_THUMBNAIL_QUALITY));
+                        const thumbnail = canvas.toDataURL("image/jpeg", VIDEO_THUMBNAIL_QUALITY);
+                        done(normalizeVideoThumbnail(thumbnail) || canvas.toDataURL("image/jpeg", 0.62));
                     } catch {
                         done("");
                     }
@@ -51,7 +52,7 @@ export async function createVideoThumbnail(url?: string) {
         };
         const seekOrCapture = () => {
             const duration = Number.isFinite(video.duration) ? video.duration : 0;
-            const targetTime = duration > 0.4 ? Math.min(0.25, duration / 3) : 0;
+            const targetTime = duration > 0.4 ? Math.min(0.65, Math.max(0.18, duration / 5)) : 0;
             if (!targetTime) {
                 capture();
                 return;
