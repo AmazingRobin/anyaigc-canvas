@@ -576,7 +576,7 @@ export default function VideoPage() {
                                             <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
                                             <button
                                                 type="button"
-                                                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded bg-black/65 text-white shadow-sm transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded bg-black/65 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                                                 onClick={(event) => {
                                                     event.stopPropagation();
                                                     setReferences((value) => value.filter((ref) => ref.id !== item.id));
@@ -623,7 +623,7 @@ export default function VideoPage() {
                                             <ReferenceOrderButtons index={index} total={videoReferences.length} onMove={(offset) => setVideoReferences((value) => moveListItem(value, index, offset))} />
                                             <button
                                                 type="button"
-                                                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded bg-black/65 text-white shadow-sm transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded bg-black/65 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                                                 onClick={(event) => {
                                                     event.stopPropagation();
                                                     setVideoReferences((value) => value.filter((ref) => ref.id !== item.id));
@@ -657,7 +657,7 @@ export default function VideoPage() {
                                             <ReferenceOrderButtons index={index} total={audioReferences.length} onMove={(offset) => setAudioReferences((value) => moveListItem(value, index, offset))} />
                                             <button
                                                 type="button"
-                                                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded bg-black/65 text-white shadow-sm transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded bg-black/65 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                                                 onClick={() => setAudioReferences((value) => value.filter((ref) => ref.id !== item.id))}
                                                 aria-label="移除参考音频"
                                             >
