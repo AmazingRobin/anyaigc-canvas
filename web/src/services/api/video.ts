@@ -314,9 +314,8 @@ function isOpenAIVideoTaskCompleted(video: VideoResponse) {
 
 function isOpenAIVideoTaskFailed(video: VideoResponse) {
     const statuses = videoTaskStatuses(video);
-    if (video.success === false) return true;
     if (statuses.some((status) => status.includes("fail") || status.includes("error") || status.includes("cancel") || status.includes("expire"))) return true;
-    return Boolean(video.final && !readRelayBasesResultUrl(video));
+    return Boolean(video.final && video.success === false);
 }
 
 function stringValue(value: unknown) {
