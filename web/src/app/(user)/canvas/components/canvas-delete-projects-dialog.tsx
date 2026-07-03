@@ -1,22 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import { Button, Modal } from "antd";
 
+import { recordDeletedSyncIds } from "@/services/app-sync";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useCanvasStore } from "../stores/use-canvas-store";
 import { useCanvasUiStore } from "../stores/use-canvas-ui-store";
 
 export function CanvasDeleteProjectsDialog() {
+    const [deleting, setDeleting] = useState(false);
     const ids = useCanvasUiStore((state) => state.deleteProjectIds);
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
     const removeSelectedIds = useCanvasUiStore((state) => state.removeSelectedProjectIds);
     const deleteProjects = useCanvasStore((state) => state.deleteProjects);
     const cleanupImages = useAssetStore((state) => state.cleanupImages);
-    const confirm = () => {
-        deleteProjects(ids);
-        cleanupImages();
-        removeSelectedIds(ids);
-        setDeleteIds([]);
+    const confirm = async () => {
+        if (!ids.length || deleting) return;
+        setDeleting(true);
+        try {
+            await recordDeletedSyncIds("canvas", ids);
+            deleteProjects(ids);
+            cleanupImages();
+            removeSelectedIds(ids);
+            setDeleteIds([]);
+        } finally {
+            setDeleting(false);
+        }
     };
 
     return (
@@ -24,11 +34,15 @@ export function CanvasDeleteProjectsDialog() {
             title="删除画布？"
             open={ids.length > 0}
             centered
-            onCancel={() => setDeleteIds([])}
+            onCancel={() => {
+                if (!deleting) setDeleteIds([]);
+            }}
             footer={
                 <>
-                    <Button onClick={() => setDeleteIds([])}>取消</Button>
-                    <Button danger type="primary" onClick={confirm}>
+                    <Button disabled={deleting} onClick={() => setDeleteIds([])}>
+                        取消
+                    </Button>
+                    <Button danger type="primary" loading={deleting} onClick={() => void confirm()}>
                         删除
                     </Button>
                 </>

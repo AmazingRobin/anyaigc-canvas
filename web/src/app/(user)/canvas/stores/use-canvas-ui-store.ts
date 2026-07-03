@@ -9,6 +9,8 @@ type CanvasUiStore = {
     setEditingProjectTitle: (title: string) => void;
     stopEditingProject: () => void;
     toggleSelectedProjectId: (id: string, selected: boolean) => void;
+    setSelectedProjectIds: (ids: string[]) => void;
+    invertSelectedProjectIds: (ids: string[]) => void;
     setDeleteProjectIds: (ids: string[]) => void;
     removeSelectedProjectIds: (ids: string[]) => void;
 };
@@ -22,6 +24,12 @@ export const useCanvasUiStore = create<CanvasUiStore>((set) => ({
     setEditingProjectTitle: (editingProjectTitle) => set({ editingProjectTitle }),
     stopEditingProject: () => set({ editingProjectId: null }),
     toggleSelectedProjectId: (id, selected) => set((state) => ({ selectedProjectIds: selected ? [...new Set([...state.selectedProjectIds, id])] : state.selectedProjectIds.filter((item) => item !== id) })),
+    setSelectedProjectIds: (selectedProjectIds) => set({ selectedProjectIds: [...new Set(selectedProjectIds)] }),
+    invertSelectedProjectIds: (ids) =>
+        set((state) => {
+            const selected = new Set(state.selectedProjectIds);
+            return { selectedProjectIds: ids.filter((id) => !selected.has(id)) };
+        }),
     setDeleteProjectIds: (deleteProjectIds) => set({ deleteProjectIds }),
     removeSelectedProjectIds: (ids) => set((state) => ({ selectedProjectIds: state.selectedProjectIds.filter((id) => !ids.includes(id)) })),
 }));

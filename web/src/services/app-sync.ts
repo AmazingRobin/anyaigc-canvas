@@ -16,7 +16,7 @@ import { useCanvasStore } from "@/app/(user)/canvas/stores/use-canvas-store";
 type StoredLog = Record<string, unknown> & { id?: string };
 export type AppSyncDomainKey = "canvas" | "assets" | "image-workbench" | "video-workbench";
 type DomainKey = AppSyncDomainKey;
-type CanvasDomainData = { projects: CanvasProject[] };
+type CanvasDomainData = { projects: CanvasProject[]; deletedProjectIds?: DeletedSyncIds };
 type AssetDomainData = { assets: Asset[] };
 type DeletedSyncIds = Record<string, number>;
 type LogDomainData = { logs: StoredLog[]; deletedLogIds?: DeletedSyncIds };
@@ -127,9 +127,12 @@ async function syncAppDataToRemote(storage: RemoteSyncStorage, onProgress?: AppS
             key: "canvas",
             label: "画布",
             emptyData: { projects: [] },
-            localData: async () => ({ projects: useCanvasStore.getState().projects }),
-            mergeData: (local, remote) => ({ projects: mergeById(local.projects, remote.projects, "updatedAt") }),
-            applyData: async (data) => useCanvasStore.getState().replaceProjects(data.projects),
+            localData: async () => ({ projects: useCanvasStore.getState().projects, deletedProjectIds: await readDeletedSyncIds("canvas") }),
+            mergeData: mergeCanvasDomainData,
+            applyData: async (data) => {
+                useCanvasStore.getState().replaceProjects(data.projects);
+                await writeDeletedSyncIds("canvas", data.deletedProjectIds || {});
+            },
         }),
         syncDomain<AssetDomainData>(storage, onProgress, {
             key: "assets",
@@ -468,15 +471,23 @@ async function replaceStoredLogs(store: LogStore, logs: StoredLog[]) {
 function mergeLogDomainData(local: LogDomainData, remote: LogDomainData): LogDomainData {
     const deletedLogIds = mergeDeletedSyncIds(local.deletedLogIds, remote.deletedLogIds);
     return {
-        logs: mergeById(filterDeletedLogs(local.logs, deletedLogIds), filterDeletedLogs(remote.logs, deletedLogIds), "createdAt"),
+        logs: mergeById(filterDeletedItems(local.logs, deletedLogIds), filterDeletedItems(remote.logs, deletedLogIds), "createdAt"),
         deletedLogIds,
     };
 }
 
-function filterDeletedLogs(logs: StoredLog[], deletedLogIds: DeletedSyncIds) {
-    return logs.filter((log) => {
-        const id = log.id || "";
-        return !id || !deletedLogIds[id];
+function mergeCanvasDomainData(local: CanvasDomainData, remote: CanvasDomainData): CanvasDomainData {
+    const deletedProjectIds = mergeDeletedSyncIds(local.deletedProjectIds, remote.deletedProjectIds);
+    return {
+        projects: mergeById(filterDeletedItems(local.projects, deletedProjectIds), filterDeletedItems(remote.projects, deletedProjectIds), "updatedAt"),
+        deletedProjectIds,
+    };
+}
+
+function filterDeletedItems<T extends { id?: string }>(items: T[], deletedIds: DeletedSyncIds) {
+    return items.filter((item) => {
+        const id = item.id || "";
+        return !id || !deletedIds[id];
     });
 }
 

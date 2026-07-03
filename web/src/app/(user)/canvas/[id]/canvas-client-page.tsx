@@ -9,6 +9,7 @@ import { saveAs } from "file-saver";
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
+import { recordDeletedSyncIds } from "@/services/app-sync";
 import { defaultConfig, normalizeVideoCallMode, type AiConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { resolveImageUrl, uploadImage, type UploadedImage } from "@/services/image-storage";
 import { resolveMediaUrl, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
@@ -1071,7 +1072,8 @@ function InfiniteCanvasPage() {
         router.push(`/canvas/${id}`);
     }, [createProject, router]);
 
-    const deleteCurrentProject = useCallback(() => {
+    const deleteCurrentProject = useCallback(async () => {
+        await recordDeletedSyncIds("canvas", [projectId]);
         deleteProjects([projectId]);
         cleanupAssetImages();
         router.push("/canvas");

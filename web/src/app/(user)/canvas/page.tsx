@@ -34,6 +34,8 @@ function CanvasPageContent() {
     const createProject = useCanvasStore((state) => state.createProject);
     const importProject = useCanvasStore((state) => state.importProject);
     const selectedIds = useCanvasUiStore((state) => state.selectedProjectIds);
+    const setSelectedIds = useCanvasUiStore((state) => state.setSelectedProjectIds);
+    const invertSelectedIds = useCanvasUiStore((state) => state.invertSelectedProjectIds);
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
 
     const mode = searchParams.get("mode");
@@ -75,6 +77,12 @@ function CanvasPageContent() {
         enterProject(mode === "new" ? createProject(`无限画布 ${projects.length + 1}`) : projects[0]?.id || createProject(`无限画布 ${projects.length + 1}`));
     }, [createProject, hydrated, mode, projects]);
 
+    useEffect(() => {
+        const projectIds = new Set(projects.map((project) => project.id));
+        const nextSelectedIds = selectedIds.filter((id) => projectIds.has(id));
+        if (nextSelectedIds.length !== selectedIds.length) setSelectedIds(nextSelectedIds);
+    }, [projects, selectedIds, setSelectedIds]);
+
     if (hydrated && (mode === "new" || mode === "recent")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">正在打开画布...</main>;
 
     return (
@@ -86,6 +94,16 @@ function CanvasPageContent() {
                         <h1 className="mt-3 text-3xl font-semibold">无限画布</h1>
                     </div>
                     <div className="flex items-center gap-2">
+                        {projects.length ? (
+                            <>
+                                <Button disabled={!hydrated} onClick={() => setSelectedIds(projects.map((project) => project.id))}>
+                                    全选
+                                </Button>
+                                <Button disabled={!hydrated} onClick={() => invertSelectedIds(projects.map((project) => project.id))}>
+                                    反选
+                                </Button>
+                            </>
+                        ) : null}
                         {selectedIds.length ? (
                             <>
                                 <Button
