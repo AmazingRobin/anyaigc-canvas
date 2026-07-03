@@ -1,15 +1,16 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
 
-import { ImageSettingsPanel } from "@/components/image-settings-panel";
+import { IMAGE_QUALITY_OPTIONS, ImageSettingsPanel, imageSizeLabel as imageSizeName } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
 import { SelectionBubble } from "@/components/selection-bubble";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -107,16 +108,18 @@ const LOG_THUMBNAIL_MIN_RENDER_EDGE = 320;
 const LOG_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
 const LOG_THUMBNAIL_QUALITY = 0.84;
 
-type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
-
 const LOG_STORE_KEY = "infinite-canvas:image_generation_logs";
-const RESULT_ACTION_BUTTON_CLASS = "!inline-flex !items-center !justify-center whitespace-nowrap px-2 [&_.ant-btn-icon]:shrink-0";
+const RESULT_OVERLAY_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-transparent !p-0 !text-white !shadow-none hover:!bg-white/16 hover:!text-white disabled:!bg-transparent disabled:!text-white/45 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
+const RESULT_OVERLAY_DANGER_BUTTON_CLASS = `${RESULT_OVERLAY_ICON_BUTTON_CLASS} hover:!bg-rose-500/45`;
+const RESULT_FAILED_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-red-100/70 !p-0 !text-red-600 !shadow-none hover:!bg-red-200/80 dark:!bg-red-950/60 dark:!text-red-200 dark:hover:!bg-red-900/80 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
+const COMPOSER_CONTROL_CLASS = "h-8 rounded-full border border-input bg-transparent px-3 text-sm font-normal shadow-sm transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-900/70";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
 
 export default function ImagePage() {
     const { message } = App.useApp();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const sizePopoverRef = useRef<HTMLDivElement>(null);
     const previewRequestIdRef = useRef(0);
     const deletedResultIdsRef = useRef<Set<string>>(new Set());
     const config = useConfigStore((state) => state.config);
@@ -124,6 +127,7 @@ export default function ImagePage() {
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
+    const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const addAsset = useAssetStore((state) => state.addAsset);
     const replaceAssets = useAssetStore((state) => state.replaceAssets);
     const assets = useAssetStore((state) => state.assets);
@@ -135,7 +139,7 @@ export default function ImagePage() {
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [runningBySession, setRunningBySession] = useState<Record<string, RunningSession>>({});
     const [logsOpen, setLogsOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [sizePopoverOpen, setSizePopoverOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
     const [promptOptimizing, setPromptOptimizing] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
@@ -172,7 +176,7 @@ export default function ImagePage() {
                 firstImage: successImages[0],
             };
         })
-        .filter((session) => session.running || session.requestCount || session.id === activeSessionId)
+        .filter((session) => !logIdFromSession(session.id) && (session.running || session.requestCount || session.id === activeSessionId))
         .sort((a, b) => b.createdAt - a.createdAt);
 
     useEffect(() => {
@@ -183,6 +187,16 @@ export default function ImagePage() {
         const timer = window.setInterval(() => setElapsedMs(performance.now() - activeRunning.startedAt), 1000);
         return () => window.clearInterval(timer);
     }, [activeRunning?.startedAt]);
+
+    useEffect(() => {
+        if (!sizePopoverOpen) return;
+        const closeOnOutsideClick = (event: MouseEvent) => {
+            if (sizePopoverRef.current?.contains(event.target as Node)) return;
+            setSizePopoverOpen(false);
+        };
+        document.addEventListener("mousedown", closeOnOutsideClick);
+        return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+    }, [sizePopoverOpen]);
 
     useEffect(() => {
         void refreshLogs();
@@ -322,12 +336,14 @@ export default function ImagePage() {
         if (!snapshot) return;
 
         const sessionId = activeSessionId;
-        rememberWorkbenchSession(sessionId, {
-            prompt: text,
-            model,
-            config: { ...snapshot.config, count: String(generationCount) },
-            references: snapshot.references,
-        }, generationCount);
+        if (!logIdFromSession(sessionId)) {
+            rememberWorkbenchSession(sessionId, {
+                prompt: text,
+                model,
+                config: { ...snapshot.config, count: String(generationCount) },
+                references: snapshot.references,
+            }, generationCount);
+        }
         if (!runningBySession[sessionId]) setElapsedMs(0);
         if (!logIdFromSession(sessionId)) setPreviewLog(null);
         setSelectedResultIds([]);
@@ -335,6 +351,10 @@ export default function ImagePage() {
         updateSessionResults(sessionId, (value) => [...value, ...pendingResults]);
         const batchStartedAt = performance.now();
         startSessionRun(sessionId, batchStartedAt);
+        if (effectiveConfig.clearImageInputsAfterSubmit === "true") {
+            setPrompt("");
+            setReferences([]);
+        }
 
         const tasks = pendingResults.map((item) =>
             runGenerationSlot(sessionId, item.id, snapshot).then(
@@ -627,7 +647,7 @@ export default function ImagePage() {
     };
 
     return (
-        <div className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+        <div className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-background text-stone-900 dark:text-stone-100">
             <main className="grid h-full min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[460px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[520px_minmax(0,1fr)]">
                 <aside className="hidden h-full min-h-0 overflow-hidden rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
                     <LogPanel
@@ -644,60 +664,92 @@ export default function ImagePage() {
                     />
                 </aside>
 
-                <section className="grid h-full min-h-0 gap-3 lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
-                    <div className="flex h-full min-h-0 flex-col rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800">
-                        <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
-                            <div>
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <h1 className="text-2xl font-semibold text-stone-950 dark:text-stone-100">生图工作台</h1>
+                <section className="flex h-full min-h-0 flex-col overflow-hidden">
+                    <div className="flex shrink-0 items-center justify-end gap-3 px-1 pb-2 lg:px-0">
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                            <Button className="max-lg:!inline-flex lg:!hidden" icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
+                                记录
+                            </Button>
+                            {results.length ? (
+                                <>
+                                    <Button size="small" icon={<CheckSquare className="size-3.5" />} onClick={toggleAllResults}>
+                                        {allResultsSelected ? "取消" : "全选"}
+                                    </Button>
+                                    <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedResults.length} onClick={() => requestDeleteResults(selectedResults)}>
+                                        删除选中
+                                    </Button>
+                                </>
+                            ) : null}
+                            {running ? (
+                                <HistoryPill tone="pending" label="生成中">
+                                    {formatDuration(elapsedMs)}
+                                    {runningCount > 1 ? ` · ${runningCount} 批` : ""}
+                                </HistoryPill>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <div
+                        className="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:px-6 lg:py-5"
+                        style={{
+                            backgroundImage: "radial-gradient(circle, rgba(120,113,108,0.16) 1px, transparent 1px)",
+                            backgroundSize: "22px 22px",
+                        }}
+                    >
+                        <div className="mx-auto max-w-6xl">
+                            {results.length ? (
+                                <Image.PreviewGroup>
+                                    <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(176px, 232px))" }}>
+                                        {results.map((result, index) =>
+                                            result.status === "success" && result.image ? (
+                                                <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                            ) : result.status === "failed" ? (
+                                                <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
+                                            ) : (
+                                                <PendingImageCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
+                                            ),
+                                        )}
                                     </div>
-                                    <div className="flex shrink-0 gap-2 lg:hidden">
-                                        <Button icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
-                                            记录
+                                </Image.PreviewGroup>
+                            ) : (
+                                <ImageWorkbenchEmptyState />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="shrink-0 bg-card/95 p-3 backdrop-blur lg:p-4">
+                        <div className="mx-auto max-w-6xl overflow-visible rounded-2xl bg-background shadow-[0_16px_44px_rgba(15,23,42,0.10)] ring-1 ring-stone-200/70 dark:bg-stone-950 dark:shadow-[0_16px_44px_rgba(0,0,0,0.28)] dark:ring-stone-800/70">
+                            <div className="space-y-3 p-3 lg:p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">提示词</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Tooltip title="使用文本模型优化和丰富提示词">
+                                            <Button size="small" icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} disabled={!prompt.trim() || promptOptimizing} onClick={() => void optimizePrompt()}>
+                                                AI 优化
+                                            </Button>
+                                        </Tooltip>
+                                        <Button size="small" icon={<BookOpen className="size-3.5" />} onClick={() => setPromptDialogOpen(true)}>
+                                            提示词库
                                         </Button>
-                                        <Button icon={<SlidersHorizontal className="size-4" />} onClick={() => setSettingsOpen(true)}>
-                                            参数
+                                        <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
+                                            我的素材
                                         </Button>
                                     </div>
                                 </div>
-                            </div>
+                                <Input.TextArea
+                                    value={prompt}
+                                    onChange={(event) => setPrompt(event.target.value)}
+                                    rows={2}
+                                    autoSize={{ minRows: 2, maxRows: 5 }}
+                                    placeholder="描述画面主体、风格、构图、光线和用途"
+                                    className="!resize-none !rounded-none !border-0 !bg-transparent !px-0 !py-0 !text-base !shadow-none focus:!shadow-none"
+                                />
 
-                            <div className="mt-6 space-y-5">
-                                <div>
-                                    <div className="mb-2 flex items-center justify-between gap-3">
-                                        <span className="text-base font-semibold">提示词</span>
-                                        <div className="flex gap-2">
-                                            <Tooltip title="使用文本模型优化和丰富提示词">
-                                                <Button size="small" icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} disabled={!prompt.trim() || promptOptimizing} onClick={() => void optimizePrompt()}>
-                                                    AI 优化
-                                                </Button>
-                                            </Tooltip>
-                                            <Button size="small" icon={<BookOpen className="size-3.5" />} onClick={() => setPromptDialogOpen(true)}>
-                                                查看提示词库
-                                            </Button>
-                                            <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
-                                                查看我的素材
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <Input.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={7} placeholder="描述画面主体、风格、构图、光线和用途" />
-                                </div>
-
-                                <div className="min-w-0">
-                                    <div className="mb-2 flex items-center justify-between gap-3">
-                                        <span className="text-base font-semibold">参考图</span>
-                                        <div className="flex gap-2">
-                                            <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={() => void addReferencesFromClipboard()}>
-                                                剪切板
-                                            </Button>
-                                            <Button size="small" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()}>
-                                                上传
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="hover-scrollbar hover-scrollbar-hint flex min-h-24 w-full min-w-0 max-w-full gap-2 overflow-x-scroll overflow-y-hidden rounded-lg border border-dashed border-stone-300 p-2 pb-3 overscroll-x-contain dark:border-stone-700"
+                                <div className="flex min-w-0 items-center gap-2 pt-1">
+                                    <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">参考图</span>
+                                    <Image.PreviewGroup>
+                                        <div
+                                        className="hide-scrollbar flex min-w-0 flex-1 gap-3 overflow-x-auto overscroll-x-contain"
                                         onWheel={(event) => {
                                             if (event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return;
                                             event.preventDefault();
@@ -705,90 +757,75 @@ export default function ImagePage() {
                                         }}
                                     >
                                         {references.map((item, index) => (
-                                            <div key={item.id} className="group relative size-20 shrink-0 overflow-hidden rounded-md border border-stone-200 dark:border-stone-800">
-                                                <img src={item.dataUrl} alt={item.name} className="size-full object-cover" />
-                                                <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">{imageReferenceLabel(index)}</span>
+                                            <div key={item.id} className="group relative size-[72px] shrink-0 overflow-hidden rounded-xl bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
+                                                <Image src={item.dataUrl} alt={item.name} className="!size-[72px] object-cover" preview={{ mask: null }} />
+                                                <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{imageReferenceLabel(index)}</span>
                                                 <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
                                                 <button
                                                     type="button"
-                                                    className="absolute right-1 top-1 flex size-6 items-center justify-center rounded bg-black/65 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                                                    onClick={() => setReferences((value) => value.filter((ref) => ref.id !== item.id))}
+                                                    className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        setReferences((value) => value.filter((ref) => ref.id !== item.id));
+                                                    }}
                                                     aria-label="移除参考图"
                                                 >
-                                                    <Trash2 className="size-3.5" />
+                                                    <Trash2 className="size-3" />
                                                 </button>
                                             </div>
                                         ))}
-                                        {!references.length ? <div className="flex min-w-full items-center justify-center text-sm text-stone-500">暂无参考图，最多 5 张，PNG/JPG，单张 50MB 内</div> : null}
+                                        {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">可选，最多 5 张，支持 PNG/JPG，单张 50MB 内</span> : null}
+                                        </div>
+                                    </Image.PreviewGroup>
+                                    <div className="flex shrink-0 gap-2">
+                                        <Tooltip title="从剪切板读取参考图">
+                                            <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={() => void addReferencesFromClipboard()} />
+                                        </Tooltip>
+                                        <Tooltip title="上传参考图">
+                                            <Button size="small" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} />
+                                        </Tooltip>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900 sm:hidden">
-                                    <span className="truncate text-stone-500 dark:text-stone-400">
-                                        {modelOptionLabel(effectiveConfig, model)} · {effectiveConfig.size} · {effectiveConfig.quality}
-                                    </span>
-                                    <Button size="small" type="text" icon={<SlidersHorizontal className="size-4" />} onClick={() => setSettingsOpen(true)}>
-                                        调整
+                                <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
+                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                        <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("imageModel", value)} capability="image" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
+                                        <div ref={sizePopoverRef} className="relative">
+                                            <ComposerMetric label="尺寸" value={imageSizeName(effectiveConfig.size || "auto")} onClick={() => setSizePopoverOpen((open) => !open)} />
+                                            {sizePopoverOpen ? (
+                                                <div className="absolute bottom-full left-0 z-50 mb-3 max-h-[min(68vh,560px)] w-[384px] max-w-[calc(100vw-40px)] overflow-y-auto rounded-[18px] bg-background p-3 shadow-[0_18px_44px_rgba(15,23,42,0.16)] ring-1 ring-stone-200/80 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.36)] dark:ring-stone-800/80">
+                                                    <ImageSettingsPanel
+                                                        config={effectiveConfig}
+                                                        onConfigChange={(key, value) => updateConfig(key, value)}
+                                                        theme={theme}
+                                                        showTitle={false}
+                                                        showQuality={false}
+                                                        showCount={false}
+                                                        className="space-y-4"
+                                                        quickCount={0}
+                                                    />
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        <ComposerQualitySelect value={effectiveConfig.quality || "auto"} onChange={(value) => updateConfig("quality", value)} />
+                                        <label className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS}`}>
+                                            <span className="px-3 text-xs text-stone-500 dark:text-stone-400">张数</span>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={15}
+                                                value={generationCount}
+                                                onChange={(event) => updateConfig("count", String(Math.max(1, Math.min(15, Math.floor(Number(event.target.value) || 1)))))}
+                                                className="h-full w-14 bg-transparent px-2 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                            />
+                                        </label>
+                                    </div>
+                                    <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={generate} className="xl:min-w-36">
+                                        生成 {generationCount} 张
                                     </Button>
                                 </div>
-
-                                <div className="hidden gap-4 sm:grid sm:grid-cols-2">
-                                    <GenerationSettings config={effectiveConfig} model={model} updateConfig={updateConfig} openConfigDialog={openConfigDialog} />
-                                </div>
                             </div>
                         </div>
-
-                        <div className="shrink-0 border-t border-stone-200 pt-3 dark:border-stone-800">
-                            <Button type="primary" size="large" block icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={generate}>
-                                开始生成
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="thin-scrollbar h-full min-h-0 rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:overflow-y-auto lg:p-5">
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                            <div>
-                                <h2 className="text-xl font-semibold">生成结果</h2>
-                            </div>
-                            <div className="flex flex-wrap items-center justify-end gap-2">
-                                {results.length ? (
-                                    <>
-                                        <Button size="small" icon={<CheckSquare className="size-3.5" />} onClick={toggleAllResults}>
-                                            {allResultsSelected ? "取消" : "全选"}
-                                        </Button>
-                                        <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedResults.length} onClick={() => requestDeleteResults(selectedResults)}>
-                                            删除选中
-                                        </Button>
-                                    </>
-                                ) : null}
-                                {running ? (
-                                    <HistoryPill tone="pending" label="生成中">
-                                        {formatDuration(elapsedMs)}
-                                        {runningCount > 1 ? ` · ${runningCount} 批` : ""}
-                                    </HistoryPill>
-                                ) : null}
-                            </div>
-                        </div>
-                        {results.length ? (
-                            <Image.PreviewGroup>
-                                <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-                                    {results.map((result, index) =>
-                                        result.status === "success" && result.image ? (
-                                            <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
-                                        ) : result.status === "failed" ? (
-                                            <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
-                                        ) : (
-                                            <PendingImageCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
-                                        ),
-                                    )}
-                                </div>
-                            </Image.PreviewGroup>
-                        ) : (
-                            <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 text-center dark:border-stone-700 lg:min-h-[560px]">
-                                <ImagePlus className="mb-4 size-11 text-stone-400" />
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有生成图片" />
-                            </div>
-                        )}
                     </div>
                 </section>
             </main>
@@ -817,11 +854,6 @@ export default function ImagePage() {
                     onPreviewLog={(log) => void previewGenerationLog(log)}
                 />
             </Drawer>
-            <Drawer title="参数" placement="bottom" size="82vh" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
-                <div className="grid grid-cols-2 gap-3 pb-4">
-                    <GenerationSettings config={effectiveConfig} model={model} updateConfig={updateConfig} openConfigDialog={openConfigDialog} />
-                </div>
-            </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
             <Modal title="删除生成结果" open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
@@ -834,19 +866,68 @@ export default function ImagePage() {
     );
 }
 
-function GenerationSettings({ config, model, updateConfig, openConfigDialog }: { config: AiConfig; model: string; updateConfig: UpdateAiConfig; openConfigDialog: (shouldPromptContinue?: boolean) => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
-
+function ImageWorkbenchEmptyState() {
     return (
+        <div className="grid min-h-[min(54dvh,560px)] place-items-center rounded-2xl bg-background/70 text-center dark:bg-background/70">
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-sm text-stone-400">还没有生成图片</span>} />
+        </div>
+    );
+}
+
+function HistoryEmptyState() {
+    return (
+        <div className="grid min-h-48 place-items-center rounded-xl bg-stone-50/50 dark:bg-stone-900/25">
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-sm text-stone-400">暂无生成记录</span>} />
+        </div>
+    );
+}
+
+function ComposerMetric({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
+    const content = (
         <>
-            <label className="col-span-2 block min-w-0 sm:col-span-1">
-                <span className="mb-1.5 block text-sm font-semibold sm:mb-2 sm:text-base">模型</span>
-                <ModelPicker config={config} value={model} onChange={(value) => updateConfig("imageModel", value)} capability="image" fullWidth onMissingConfig={() => openConfigDialog(false)} />
-            </label>
-            <div className="col-span-2">
-                <ImageSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4" />
-            </div>
+            <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">{label}</span>
+            <span className="min-w-0 truncate text-stone-700 dark:text-stone-200">{value}</span>
         </>
+    );
+    if (onClick) {
+        return (
+            <button
+                type="button"
+                className={`inline-flex max-w-[180px] cursor-pointer items-center gap-1 overflow-hidden ${COMPOSER_CONTROL_CLASS}`}
+                onClick={onClick}
+            >
+                {content}
+            </button>
+        );
+    }
+    return (
+        <span className={`inline-flex max-w-[180px] items-center gap-1 overflow-hidden ${COMPOSER_CONTROL_CLASS}`}>
+            {content}
+        </span>
+    );
+}
+
+function ComposerQualitySelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+    const selected = IMAGE_QUALITY_OPTIONS.find((item) => item.value === (value || "auto")) || IMAGE_QUALITY_OPTIONS[0];
+    return (
+        <Select value={value || "auto"} onValueChange={onChange}>
+            <SelectTrigger
+                className={`min-w-[8rem] justify-start gap-1 ${COMPOSER_CONTROL_CLASS}`}
+                aria-label="选择生成质量"
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+            >
+                <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">质量</span>
+                <span className="min-w-0 flex-1 truncate text-left text-stone-700 dark:text-stone-200">{selected.label}</span>
+            </SelectTrigger>
+            <SelectContent className="z-[1200] min-w-[8rem] rounded-xl border border-border/70 bg-popover p-1 shadow-xl" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+                {IMAGE_QUALITY_OPTIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
     );
 }
 
@@ -917,52 +998,47 @@ function ResultImageCard({
     const displayImage = resolvedUrl && !loadFailed ? { ...image, dataUrl: resolvedUrl } : null;
 
     return (
-        <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
-            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
+        <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-stone-100 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+            <SelectionBubble className="absolute right-3 top-3 z-20" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             {displayImage ? (
-                <Image src={displayImage.dataUrl} alt={`生成结果 ${index + 1}`} className="aspect-square object-cover" onError={() => setLoadFailed(true)} />
+                <>
+                    <Image src={displayImage.dataUrl} alt={`生成结果 ${index + 1}`} className="aspect-square object-cover" onError={() => setLoadFailed(true)} />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/75 via-black/45 to-transparent px-2.5 pb-2 pt-9 text-white">
+                        <div className="mb-1 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-[11px] leading-none text-white/78">
+                            <span>
+                                {image.width}x{image.height}
+                            </span>
+                            <span>{formatBytes(image.bytes)}</span>
+                            <span>{formatDuration(image.durationMs)}</span>
+                        </div>
+                        <div className="pointer-events-auto flex items-center justify-end gap-1">
+                            <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
+                                <Button type="text" aria-label={savedToAsset ? "取消加入素材" : "添加到素材"} className={`${RESULT_OVERLAY_ICON_BUTTON_CLASS} ${savedToAsset ? "!bg-emerald-500/40 !text-white hover:!bg-emerald-500/55" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(displayImage, index)} />
+                            </Tooltip>
+                            <Tooltip title="作为参考图继续编辑">
+                                <Button type="text" aria-label="作为参考图继续编辑" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => void onEdit(displayImage, index)} />
+                            </Tooltip>
+                            <Tooltip title="用这张图生成视频">
+                                <Button type="text" aria-label="用这张图生成视频" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<VideoIcon className="size-3.5" />} onClick={() => void onGenerateVideo(displayImage, index)} />
+                            </Tooltip>
+                            <Tooltip title="下载">
+                                <Button type="text" aria-label="下载图片" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(displayImage, index)} />
+                            </Tooltip>
+                            <Tooltip title="删除结果">
+                                <Button type="text" aria-label="删除结果" className={RESULT_OVERLAY_DANGER_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
+                            </Tooltip>
+                        </div>
+                    </div>
+                </>
             ) : (
                 <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-stone-50 p-5 text-center text-sm text-stone-500 dark:bg-stone-900 dark:text-stone-400">
                     {loadFailed ? <ImagePlus className="size-8 opacity-70" /> : <LoaderCircle className="size-6 animate-spin opacity-60" />}
                     <span>{loadFailed ? "图片文件缺失" : "正在读取图片"}</span>
+                    <Tooltip title="删除结果">
+                        <Button type="text" aria-label="删除结果" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
+                    </Tooltip>
                 </div>
             )}
-            <div className="space-y-2 border-t border-stone-200 px-3 py-2.5 dark:border-stone-800">
-                <div className="flex min-w-0 gap-x-2 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
-                    <span>
-                        {image.width}x{image.height}
-                    </span>
-                    <span>{formatBytes(image.bytes)}</span>
-                    <span>{formatDuration(image.durationMs)}</span>
-                </div>
-                <div className="grid min-w-0 grid-cols-3 gap-2">
-                    <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
-                        <Button className={`${RESULT_ACTION_BUTTON_CLASS} ${savedToAsset ? "!border-emerald-200 !bg-emerald-50 !text-emerald-700 hover:!border-emerald-300 hover:!bg-emerald-100 dark:!border-emerald-900 dark:!bg-emerald-950/35 dark:!text-emerald-300" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onSaveAsset(displayImage, index)}>
-                            素材
-                        </Button>
-                    </Tooltip>
-                    <Tooltip title="作为参考图继续编辑">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onEdit(displayImage, index)}>
-                            编辑
-                        </Button>
-                    </Tooltip>
-                    <Tooltip title="用这张图生成视频">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<VideoIcon className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onGenerateVideo(displayImage, index)}>
-                            视频
-                        </Button>
-                    </Tooltip>
-                    <Tooltip title="下载">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && onDownload(displayImage, index)}>
-                            下载
-                        </Button>
-                    </Tooltip>
-                    <Tooltip title="删除结果">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
-                            删除
-                        </Button>
-                    </Tooltip>
-                </div>
-            </div>
         </div>
     );
 }
@@ -996,13 +1072,13 @@ function FailedImageCard({ error, selected, onSelectedChange, onRetry, onDelete 
                     {error}
                 </Typography.Paragraph>
             </div>
-            <div className="flex justify-end gap-2 border-t border-red-200 p-3 dark:border-red-950">
-                <Button size="small" onClick={onRetry}>
-                    重试
-                </Button>
-                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
-                    删除
-                </Button>
+            <div className="flex justify-end gap-1.5 px-2 pb-2">
+                <Tooltip title="重新生成">
+                    <Button type="text" aria-label="重新生成" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<RefreshCw className="size-3.5" />} onClick={onRetry} />
+                </Tooltip>
+                <Tooltip title="删除结果">
+                    <Button type="text" aria-label="删除结果" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
+                </Tooltip>
             </div>
         </div>
     );
@@ -1111,7 +1187,7 @@ function LogPanel({
                             加载更多 {hiddenCount}
                         </Button>
                     ) : null}
-                    {!logs.length && !sessions.length ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-stone-300 text-center text-sm text-stone-500 dark:border-stone-700">暂无生成记录</div> : null}
+                    {!logs.length && !sessions.length ? <HistoryEmptyState /> : null}
                 </div>
             </div>
         </div>
@@ -1119,7 +1195,6 @@ function LogPanel({
 }
 
 function SessionCard({ session, active, onClick }: { session: WorkbenchSessionView; active: boolean; onClick: () => void }) {
-    const displayTitle = compactLogTitle(session.prompt || session.model || "");
     const promptPreview = session.prompt || session.model || "";
     const ratioLabel = imageRatioLabel(session.config.size);
     const sizeLabel = imageSizeLabel(session.config.size);
@@ -1127,15 +1202,14 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
     return (
         <button
             type="button"
-            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+            className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-200 bg-stone-100/80 dark:border-stone-800 dark:bg-stone-900/80" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
             title={promptPreview}
         >
-            <div className="grid min-h-[184px] grid-cols-[176px_minmax(0,1fr)] gap-3 xl:min-h-[204px] xl:grid-cols-[200px_minmax(0,1fr)]">
+            <div className="grid min-h-[160px] grid-cols-[160px_minmax(0,1fr)] gap-3">
                 <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.successCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
                 <div className="flex min-w-0 flex-col py-1">
-                    <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
-                    <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+                    <div className="line-clamp-5 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
                             {session.model || "默认"}
@@ -1189,7 +1263,6 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
     const actualFailureCount = actualLogFailureCount(log);
     const requestCount = requestedLogImageCount(log);
     const coverImage = log.images.find((image) => image.dataUrl || image.storageKey);
-    const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
     const promptPreview = log.prompt || log.title || "";
     const ratioLabel = imageRatioLabel(log.config.size || log.size);
     const sizeLabel = imageSizeLabel(log.config.size || log.size);
@@ -1198,7 +1271,7 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
         <div
             role="button"
             tabIndex={0}
-            className={`relative block w-full cursor-pointer rounded-lg border p-2 text-left transition ${active ? "border-stone-900 bg-blue-50 dark:border-stone-100 dark:bg-blue-950/20" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
+            className={`relative block w-full cursor-pointer rounded-lg border p-2 text-left transition ${active ? "border-stone-200 bg-stone-100/80 dark:border-stone-800 dark:bg-stone-900/80" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
             onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
@@ -1208,13 +1281,12 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             title={promptPreview}
         >
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
-            <div className="grid min-h-[184px] grid-cols-[176px_minmax(0,1fr)] gap-3 xl:min-h-[204px] xl:grid-cols-[200px_minmax(0,1fr)]">
+            <div className="grid min-h-[160px] grid-cols-[160px_minmax(0,1fr)] gap-3">
                 <div className="relative">
                     <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
                 </div>
                 <div className="flex min-w-0 flex-col py-1 pr-9">
-                    <div className="line-clamp-3 text-base font-medium leading-6">{displayTitle}</div>
-                    <div className="mt-1 line-clamp-4 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+                    <div className="line-clamp-5 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
                             {log.model || "默认"}

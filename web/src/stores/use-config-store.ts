@@ -48,6 +48,7 @@ export type AiConfig = {
     size: string;
     count: string;
     canvasImageCount: string;
+    clearImageInputsAfterSubmit: string;
 };
 
 export type WebdavSyncConfig = {
@@ -139,6 +140,7 @@ export const defaultConfig: AiConfig = {
     size: "auto",
     count: "3",
     canvasImageCount: "3",
+    clearImageInputsAfterSubmit: "false",
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -226,6 +228,38 @@ export function selectableModelsByCapability(config: AiConfig, capability?: Mode
     return config[modelListKey(capability)];
 }
 
+function applyRelayBasesConfigPatch(config: AiConfig, values: Partial<AiConfig>): AiConfig {
+    const next: AiConfig = { ...config, ...values };
+    let channels = next.channels;
+
+    if (Object.prototype.hasOwnProperty.call(values, "mediaApiKey")) {
+        const mediaApiKey = typeof values.mediaApiKey === "string" ? values.mediaApiKey : "";
+        next.mediaApiKey = mediaApiKey;
+        next.apiKey = mediaApiKey;
+        channels = updateChannelApiKey(channels, RELAYBASES_CHANNEL_ID, mediaApiKey);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(values, "textApiKey")) {
+        const textApiKey = typeof values.textApiKey === "string" ? values.textApiKey : "";
+        next.textApiKey = textApiKey;
+        channels = updateChannelApiKey(channels, RELAYBASES_TEXT_CHANNEL_ID, textApiKey);
+    }
+
+    next.channels = channels;
+    return next;
+}
+
+function updateChannelApiKey(channels: ModelChannel[], channelId: string, apiKey: string) {
+    let matched = false;
+    const nextChannels = (Array.isArray(channels) ? channels : []).map((channel) => {
+        if (channel.id !== channelId) return channel;
+        matched = true;
+        return { ...channel, apiKey };
+    });
+    if (matched) return nextChannels;
+    return [...nextChannels, channelId === RELAYBASES_TEXT_CHANNEL_ID ? createRelayBasesTextChannel(apiKey) : createRelayBasesMediaChannel(apiKey)];
+}
+
 function modelListKey(capability: ModelCapability) {
     return `${capability}Models` as "imageModels" | "videoModels" | "textModels" | "audioModels";
 }
@@ -245,8 +279,8 @@ export const useConfigStore = create<ConfigStore>()(
             configActiveTab: "channels",
             cloudSyncActivity: "idle",
             shouldPromptContinue: false,
-            updateConfig: (key, value) => set((state) => ({ config: normalizeRelayBasesConfig({ ...state.config, [key]: value }) })),
-            updateConfigValues: (values) => set((state) => ({ config: normalizeRelayBasesConfig({ ...state.config, ...values }) })),
+            updateConfig: (key, value) => set((state) => ({ config: normalizeRelayBasesConfig(applyRelayBasesConfigPatch(state.config, { [key]: value } as Partial<AiConfig>)) })),
+            updateConfigValues: (values) => set((state) => ({ config: normalizeRelayBasesConfig(applyRelayBasesConfigPatch(state.config, values)) })),
             updateCloudSyncConfig: (key, value) =>
                 set((state) => ({
                     cloudSync: {
@@ -480,6 +514,7 @@ function normalizeRelayBasesConfig(config: AiConfig): AiConfig {
         videoGenerateAudio: config.videoGenerateAudio || defaultConfig.videoGenerateAudio,
         videoWatermark: config.videoWatermark || defaultConfig.videoWatermark,
         canvasImageCount: config.canvasImageCount || defaultConfig.canvasImageCount,
+        clearImageInputsAfterSubmit: config.clearImageInputsAfterSubmit === "true" ? "true" : "false",
     };
 }
 

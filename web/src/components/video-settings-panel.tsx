@@ -89,12 +89,12 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             <button
                                 key={item.value}
                                 type="button"
-                                className="flex h-[78px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
-                                style={{ borderColor: aspectRatio === item.value ? theme.node.text : theme.node.stroke, color: theme.node.text }}
+                                className="flex h-[78px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border text-sm transition hover:opacity-85"
+                                style={{ background: aspectRatio === item.value ? theme.node.fill : "transparent", borderColor: theme.node.stroke, boxShadow: aspectRatio === item.value ? `inset 0 0 0 1px ${theme.node.stroke}` : undefined, color: theme.node.text }}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onClick={() => onConfigChange("size", item.value)}
                             >
-                                <SizePreview width={item.width} height={item.height} color={theme.node.text} />
+                                <SizePreview width={item.width} height={item.height} color={theme.node.muted} />
                                 <span>{item.label}</span>
                                 <span className="text-[11px] leading-none opacity-55">{item.value}</span>
                             </button>
@@ -149,12 +149,12 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
                             <button
                                 key={item.value}
                                 type="button"
-                                className="flex h-[68px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border bg-transparent px-1 text-sm transition hover:opacity-80"
-                                style={{ borderColor: ratio === item.value ? theme.node.text : theme.node.stroke, color: theme.node.text }}
+                                className="flex h-[68px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-1 text-sm transition hover:opacity-85"
+                                style={{ background: ratio === item.value ? theme.node.fill : "transparent", borderColor: theme.node.stroke, boxShadow: ratio === item.value ? `inset 0 0 0 1px ${theme.node.stroke}` : undefined, color: theme.node.text }}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onClick={() => onConfigChange("size", item.value)}
                             >
-                                <SizePreview width={ratioPreview(item.value).width} height={ratioPreview(item.value).height} color={theme.node.text} />
+                                <SizePreview width={ratioPreview(item.value).width} height={ratioPreview(item.value).height} color={theme.node.muted} />
                                 <span>{item.label}</span>
                                 <span className="text-[10px] leading-none opacity-55">{item.value === "adaptive" ? "adaptive" : seedancePixelLabel(resolution, item.value)}</span>
                             </button>
@@ -240,7 +240,7 @@ function OptionPill({ selected, disabled = false, theme, onClick, children }: { 
             type="button"
             disabled={disabled}
             className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-35"
-            style={{ background: "transparent", borderColor: selected ? theme.node.text : theme.node.stroke, color: theme.node.text }}
+            style={{ background: selected ? theme.node.fill : "transparent", borderColor: theme.node.stroke, color: theme.node.text }}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={onClick}
         >
@@ -315,7 +315,7 @@ function NumberInput({
             max={max}
             disabled={disabled}
             className="h-9 rounded-full border bg-transparent px-3 text-center text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            style={{ borderColor: selected ? theme.node.text : theme.node.stroke, background: selected ? theme.node.fill : "transparent", color: theme.node.text, WebkitTextFillColor: theme.node.text, opacity: disabled ? 0.55 : 1 }}
+            style={{ borderColor: theme.node.stroke, background: selected ? theme.node.fill : "transparent", color: theme.node.text, WebkitTextFillColor: theme.node.text, opacity: disabled ? 0.55 : 1 }}
             value={draft}
             onFocus={() => onEditingChange?.(true)}
             onChange={(event) => {
@@ -339,7 +339,7 @@ function SizePreview({ width, height, color }: { width: number; height: number; 
     const longSide = Math.max(width, height);
     const previewWidth = Math.max(10, Math.round((width / longSide) * 26));
     const previewHeight = Math.max(10, Math.round((height / longSide) * 26));
-    return <span className="rounded-[3px] border-2" style={{ width: previewWidth, height: previewHeight, borderColor: color }} />;
+    return <span className="rounded-[3px] border" style={{ width: previewWidth, height: previewHeight, borderColor: color }} />;
 }
 
 function ratioPreview(ratio: string) {

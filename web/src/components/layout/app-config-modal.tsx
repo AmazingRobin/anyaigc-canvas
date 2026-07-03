@@ -273,11 +273,11 @@ export function AppConfigModal() {
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="grid content-start gap-3">
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
-                                            <Form.Item label="媒体 API Key" extra={`用于图片和视频生成。建议在主站用 ${RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP} 分组创建媒体 Key；异步图片和异步视频任务按 4 倍扣费。`} className="mb-3">
-                                                <Input.Password value={config.mediaApiKey} onChange={(event) => updateConfig("mediaApiKey", event.target.value)} placeholder="sk-..." />
+                                            <Form.Item label="媒体 API Key" extra={`用于图片和视频生成。请在主站选择 ${RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP} 分组创建媒体 Key；异步图片和异步视频任务按 4 倍扣费。`} className="mb-3">
+                                                <Input.Password value={config.mediaApiKey} allowClear autoComplete="new-password" onChange={(event) => updateConfig("mediaApiKey", event.target.value)} placeholder="sk-..." />
                                             </Form.Item>
                                             <div className="flex flex-wrap gap-2 text-xs">
-                                                <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-100">生图推荐 media 分组</span>
+                                                <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-100">生图使用 media 分组</span>
                                                 <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">同步图默认 gpt-image-2</span>
                                                 <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">异步任务·4倍扣费</span>
                                             </div>
@@ -316,7 +316,7 @@ export function AppConfigModal() {
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
                                             <Form.Item label="文本 API Key" extra={`用于 Agent、图片反推提示词和文本生成。建议用 ${RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP} 分组创建文本 Key，其它文本分组也可用。`} className="mb-3">
                                                 <div className="flex gap-2">
-                                                    <Input.Password className="min-w-0 flex-1" value={config.textApiKey} onChange={(event) => updateConfigValues({ textApiKey: event.target.value, textModels: [], textModel: "" })} placeholder="sk-..." />
+                                                    <Input.Password className="min-w-0 flex-1" value={config.textApiKey} allowClear autoComplete="new-password" onChange={(event) => updateConfigValues({ textApiKey: event.target.value, textModels: [], textModel: "" })} placeholder="sk-..." />
                                                     <Button icon={<RefreshCw className="size-4" />} disabled={!config.textApiKey.trim()} loading={loadingTextModels} onClick={() => void refreshTextModels()}>
                                                         获取模型
                                                     </Button>
@@ -415,6 +415,9 @@ export function AppConfigModal() {
                                             onChange={(event) => updateConfig("audioSpeed", event.target.value)}
                                             onBlur={(event) => updateConfig("audioSpeed", normalizeAudioSpeedValue(event.target.value))}
                                         />
+                                    </Form.Item>
+                                    <Form.Item label="提交任务后清空输入框" extra="开启后，生图工作台在任务成功创建后清空提示词和参考图；配置缺失或提交失败时不会清空。" className="mb-4">
+                                        <Switch checked={config.clearImageInputsAfterSubmit === "true"} checkedChildren="开启" unCheckedChildren="关闭" onChange={(checked) => updateConfig("clearImageInputsAfterSubmit", checked ? "true" : "false")} />
                                     </Form.Item>
                                 </div>
                                 <Form.Item label="默认音频指令" className="mb-4">
