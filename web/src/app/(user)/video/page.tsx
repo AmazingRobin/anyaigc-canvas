@@ -46,6 +46,8 @@ type GenerationResult = {
     error?: string;
 };
 
+type ReferencePreview = { kind: "image"; label: string; item: ReferenceImage } | { kind: "video"; label: string; item: ReferenceVideo };
+
 type GenerationLog = {
     id: string;
     createdAt: number;
@@ -106,6 +108,7 @@ export default function VideoPage() {
     const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
     const [playerVideo, setPlayerVideo] = useState<GeneratedVideo | null>(null);
+    const [referencePreview, setReferencePreview] = useState<ReferencePreview | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
 
@@ -514,14 +517,34 @@ export default function VideoPage() {
                                 </div>
                                 <div className="hover-scrollbar hover-scrollbar-hint flex min-h-24 w-full min-w-0 max-w-full gap-2 overflow-x-scroll overflow-y-hidden rounded-lg border border-dashed border-stone-300 p-2 pb-3 overscroll-x-contain dark:border-stone-700">
                                     {references.map((item, index) => (
-                                        <div key={item.id} className="group relative size-20 shrink-0 overflow-hidden rounded-md border border-stone-200 dark:border-stone-800">
+                                        <div
+                                            key={item.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            className="group relative size-20 shrink-0 cursor-zoom-in overflow-hidden rounded-md border border-stone-200 outline-none transition focus-visible:ring-2 focus-visible:ring-primary dark:border-stone-800"
+                                            aria-label={`查看${seedanceReferenceLabel("image", index)}`}
+                                            onClick={() => setReferencePreview({ kind: "image", label: seedanceReferenceLabel("image", index), item })}
+                                            onKeyDown={(event) => {
+                                                if (event.key !== "Enter" && event.key !== " ") return;
+                                                event.preventDefault();
+                                                setReferencePreview({ kind: "image", label: seedanceReferenceLabel("image", index), item });
+                                            }}
+                                        >
                                             <img src={item.dataUrl} alt={item.name} className="size-full object-cover" />
+                                            <span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/15 group-hover:opacity-100 group-focus-visible:bg-black/15 group-focus-visible:opacity-100">
+                                                <span className="grid size-8 place-items-center rounded-full bg-white/90 text-stone-950 shadow-sm">
+                                                    <Maximize2 className="size-4" />
+                                                </span>
+                                            </span>
                                             <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("image", index)}</span>
                                             <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
                                             <button
                                                 type="button"
                                                 className="absolute right-1 top-1 hidden size-6 items-center justify-center rounded bg-black/60 text-white group-hover:flex"
-                                                onClick={() => setReferences((value) => value.filter((ref) => ref.id !== item.id))}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setReferences((value) => value.filter((ref) => ref.id !== item.id));
+                                                }}
                                                 aria-label="移除参考图"
                                             >
                                                 <Trash2 className="size-3.5" />
@@ -541,14 +564,34 @@ export default function VideoPage() {
                                 </div>
                                 <div className="hover-scrollbar hover-scrollbar-hint flex min-h-24 w-full min-w-0 max-w-full gap-2 overflow-x-scroll overflow-y-hidden rounded-lg border border-dashed border-stone-300 p-2 pb-3 overscroll-x-contain dark:border-stone-700">
                                     {videoReferences.map((item, index) => (
-                                        <div key={item.id} className="group relative h-20 w-32 shrink-0 overflow-hidden rounded-md border border-stone-200 bg-black dark:border-stone-800">
+                                        <div
+                                            key={item.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            className="group relative h-20 w-32 shrink-0 cursor-zoom-in overflow-hidden rounded-md border border-stone-200 bg-black outline-none transition focus-visible:ring-2 focus-visible:ring-primary dark:border-stone-800"
+                                            aria-label={`查看${seedanceReferenceLabel("video", index)}`}
+                                            onClick={() => setReferencePreview({ kind: "video", label: seedanceReferenceLabel("video", index), item })}
+                                            onKeyDown={(event) => {
+                                                if (event.key !== "Enter" && event.key !== " ") return;
+                                                event.preventDefault();
+                                                setReferencePreview({ kind: "video", label: seedanceReferenceLabel("video", index), item });
+                                            }}
+                                        >
                                             <video src={item.url} className="size-full object-cover" muted preload="metadata" />
+                                            <span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/20 group-hover:opacity-100 group-focus-visible:bg-black/20 group-focus-visible:opacity-100">
+                                                <span className="grid size-8 place-items-center rounded-full bg-white/90 text-stone-950 shadow-sm">
+                                                    <Play className="ml-0.5 size-4 fill-current" />
+                                                </span>
+                                            </span>
                                             <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("video", index)}</span>
                                             <ReferenceOrderButtons index={index} total={videoReferences.length} onMove={(offset) => setVideoReferences((value) => moveListItem(value, index, offset))} />
                                             <button
                                                 type="button"
                                                 className="absolute right-1 top-1 hidden size-6 items-center justify-center rounded bg-black/60 text-white group-hover:flex"
-                                                onClick={() => setVideoReferences((value) => value.filter((ref) => ref.id !== item.id))}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setVideoReferences((value) => value.filter((ref) => ref.id !== item.id));
+                                                }}
                                                 aria-label="移除参考视频"
                                             >
                                                 <Trash2 className="size-3.5" />
@@ -686,6 +729,7 @@ export default function VideoPage() {
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
             <VideoPlayerModal video={playerVideo} onClose={() => setPlayerVideo(null)} onDownload={downloadVideo} />
+            <ReferencePreviewModal preview={referencePreview} onClose={() => setReferencePreview(null)} />
             <Modal title="删除生成结果" open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
                 确定删除选中的 {resultDeleteTargets.length} 个生成结果吗？成功视频会同步删除本地媒体文件。
             </Modal>
@@ -909,6 +953,22 @@ function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVide
                             </Button>
                         </div>
                     </div>
+                </div>
+            ) : null}
+        </Modal>
+    );
+}
+
+function ReferencePreviewModal({ preview, onClose }: { preview: ReferencePreview | null; onClose: () => void }) {
+    return (
+        <Modal title={preview ? preview.label : "参考素材"} open={Boolean(preview)} width={preview?.kind === "image" ? 860 : 960} centered onCancel={onClose} footer={null} destroyOnHidden>
+            {preview?.kind === "image" ? (
+                <div className="overflow-hidden rounded-lg bg-black">
+                    <img src={preview.item.dataUrl} alt={preview.item.name} className="max-h-[76vh] w-full object-contain" />
+                </div>
+            ) : preview?.kind === "video" ? (
+                <div className="overflow-hidden rounded-lg bg-black">
+                    <video src={preview.item.url} className="max-h-[76vh] w-full bg-black object-contain" controls autoPlay playsInline />
                 </div>
             ) : null}
         </Modal>
@@ -1255,8 +1315,26 @@ function ReferenceOrderButtons({ index, total, onMove }: { index: number; total:
     if (total <= 1) return null;
     return (
         <div className="absolute inset-x-1 bottom-1 flex justify-between">
-            <Button size="small" className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm" icon={<ArrowLeft className="size-3" />} disabled={index <= 0} onClick={() => onMove(-1)} />
-            <Button size="small" className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm" icon={<ArrowRight className="size-3" />} disabled={index >= total - 1} onClick={() => onMove(1)} />
+            <Button
+                size="small"
+                className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm"
+                icon={<ArrowLeft className="size-3" />}
+                disabled={index <= 0}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    onMove(-1);
+                }}
+            />
+            <Button
+                size="small"
+                className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm"
+                icon={<ArrowRight className="size-3" />}
+                disabled={index >= total - 1}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    onMove(1);
+                }}
+            />
         </div>
     );
 }
