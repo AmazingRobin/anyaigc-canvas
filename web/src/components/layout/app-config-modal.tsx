@@ -277,7 +277,7 @@ export function AppConfigModal() {
                                                 <Input.Password value={config.mediaApiKey} onChange={(event) => updateConfig("mediaApiKey", event.target.value)} placeholder="sk-..." />
                                             </Form.Item>
                                             <div className="flex flex-wrap gap-2 text-xs">
-                                                <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-100">生图推荐 gpt-image-2 分组</span>
+                                                <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-100">生图推荐 media 分组</span>
                                                 <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">同步图默认 gpt-image-2</span>
                                                 <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">异步任务·4倍扣费</span>
                                             </div>

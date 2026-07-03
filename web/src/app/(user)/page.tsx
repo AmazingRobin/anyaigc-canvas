@@ -161,7 +161,7 @@ export default function IndexPage() {
                                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-50/55 px-3 py-2.5 dark:border-emerald-300/15 dark:bg-emerald-300/10">
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="text-xs font-medium text-emerald-700 dark:text-emerald-200">媒体 Key</span>
-                                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-300/15 dark:text-emerald-100">gpt-image-2 分组</span>
+                                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-300/15 dark:text-emerald-100">media 分组</span>
                                     </div>
                                     <p className="mt-1 text-xs leading-5 text-stone-600 dark:text-stone-300">图片和视频生成</p>
                                 </div>
