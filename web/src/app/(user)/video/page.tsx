@@ -103,6 +103,7 @@ export default function VideoPage() {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
+    const [configHydrated, setConfigHydrated] = useState(() => (typeof window === "undefined" ? false : (useConfigStore.persist?.hasHydrated?.() ?? true)));
     const [startedAt, setStartedAt] = useState(0);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
@@ -125,8 +126,20 @@ export default function VideoPage() {
     }, [running, startedAt]);
 
     useEffect(() => {
-        void refreshLogs({ resumePending: true });
+        const persistApi = useConfigStore.persist;
+        if (!persistApi) {
+            setConfigHydrated(true);
+            return;
+        }
+        const unsubscribe = persistApi.onFinishHydration(() => setConfigHydrated(true));
+        setConfigHydrated(persistApi.hasHydrated());
+        return unsubscribe;
     }, []);
+
+    useEffect(() => {
+        if (!configHydrated) return;
+        void refreshLogs({ resumePending: true });
+    }, [configHydrated]);
 
     useEffect(() => {
         const handoff = consumeImageToVideoReferences();
@@ -388,23 +401,26 @@ export default function VideoPage() {
 
     const resumePendingLogs = (items: GenerationLog[]) => {
         for (const log of items) {
-            if (log.status === "生成中" && log.task) void pollGenerationLog(log);
+            if (!log.task) continue;
+            if (log.status === "生成中" || (log.status === "失败" && log.error === "请先配置 API Key")) void pollGenerationLog(log);
         }
     };
 
     const pollGenerationLog = async (log: GenerationLog, configOverride?: AiConfig) => {
         if (!log.task || activeLogIdsRef.current.has(log.id)) return;
+        const taskConfig = buildVideoConfig({ ...effectiveConfig, ...log.config }, log.task.model || log.model);
+        const requestConfig = configOverride || taskConfig;
+        if (!isAiConfigReady(requestConfig, log.task.model || log.model)) return;
         activeLogIdsRef.current.add(log.id);
         setRunning(true);
         setStartedAt((value) => value || performance.now());
         setResults((value) => (value.some((item) => item.id === log.id) ? value : [...value, { id: log.id, status: "pending" }]));
-        const taskConfig = buildVideoConfig({ ...effectiveConfig, ...log.config }, log.task.model || log.model);
         try {
             const pollConfig = videoGenerationPollConfig(log.task);
             for (let attempt = 0; attempt < pollConfig.attempts; attempt += 1) {
-                const state = await pollVideoGenerationTask(configOverride || taskConfig, log.task);
+                const state = await pollVideoGenerationTask(requestConfig, log.task);
                 if (state.status === "completed") {
-                    const stored = await storeGeneratedVideo(state.result, { apiKey: (configOverride || taskConfig).apiKey });
+                    const stored = await storeGeneratedVideo(state.result, { apiKey: requestConfig.apiKey });
                     const thumbnail = await createVideoThumbnail(stored.url);
                     const nextVideo: GeneratedVideo = {
                         id: nanoid(),
