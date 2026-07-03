@@ -20,6 +20,13 @@ type VideoResponse = {
     video_url?: string | null;
     url?: string | null;
     result_urls?: string[];
+    metadata?: {
+        url?: string | null;
+        video_url?: string | null;
+        image_url?: string | null;
+        result_urls?: string[] | null;
+        [key: string]: unknown;
+    } | null;
     error?: { message?: string };
 };
 type ApiVideoResponse = VideoResponse | { code?: number; data?: VideoResponse | null; msg?: string };
@@ -35,6 +42,7 @@ const RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES = 500 * 1024;
 const RELAYBASES_IMAGE_DATA_URL_TARGET_BYTES = 480 * 1024;
 const RELAYBASES_IMAGE_MAX_EDGE = 1536;
 const RELAYBASES_IMAGE_MIN_EDGE = 256;
+const GENERATED_VIDEO_ARCHIVE_TIMEOUT_MS = 12000;
 const relayBasesPublicMediaUploads = new Map<string, Promise<string>>();
 
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
@@ -101,10 +109,27 @@ export async function pollVideoGenerationTask(config: AiConfig, task: VideoGener
 export async function storeGeneratedVideo(result: VideoGenerationResult, options: { apiKey?: string; signal?: AbortSignal } = {}): Promise<UploadedFile> {
     if (result.blob) return uploadMediaFile(result.blob, "video");
     if (result.url) {
-        const url = options.apiKey ? await copyRelayBasesPublicMedia(options.apiKey, result.url, { fileName: mediaFileNameFromUrl(result.url, "generated-video.mp4"), contentType: result.mimeType || "video/mp4", signal: options.signal }) : result.url;
-        return { url, storageKey: "", bytes: 0, mimeType: result.mimeType || "video/mp4" };
+        const mimeType = result.mimeType || "video/mp4";
+        const url = options.apiKey ? await copyGeneratedVideoWithFallback(options.apiKey, result.url, mimeType, options.signal) : result.url;
+        return { url, storageKey: "", bytes: 0, mimeType };
     }
     throw new Error("视频接口没有返回可播放的视频");
+}
+
+async function copyGeneratedVideoWithFallback(apiKey: string, sourceUrl: string, mimeType: string, signal?: AbortSignal) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), GENERATED_VIDEO_ARCHIVE_TIMEOUT_MS);
+    const abort = () => controller.abort();
+    signal?.addEventListener("abort", abort, { once: true });
+    try {
+        return await copyRelayBasesPublicMedia(apiKey, sourceUrl, { fileName: mediaFileNameFromUrl(sourceUrl, "generated-video.mp4"), contentType: mimeType, signal: controller.signal });
+    } catch (error) {
+        if (signal?.aborted) throw error;
+        return sourceUrl;
+    } finally {
+        window.clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
+    }
 }
 
 async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions): Promise<VideoGenerationTask> {
@@ -265,7 +290,8 @@ function normalizeRelayBasesAspectRatio(value: string) {
 }
 
 function readRelayBasesResultUrl(video: VideoResponse) {
-    return video.video_url || video.url || video.result_urls?.find(Boolean) || video.image_url || "";
+    const metadata = video.metadata || {};
+    return video.video_url || video.url || video.result_urls?.find(Boolean) || metadata.video_url || metadata.url || metadata.result_urls?.find(Boolean) || video.image_url || metadata.image_url || "";
 }
 
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
@@ -395,6 +421,7 @@ async function resolveSeedanceAudioUrl(audio: ReferenceAudio) {
 }
 
 async function videoResultFromUrl(url: string, options?: RequestOptions): Promise<VideoGenerationResult> {
+    if (/^https?:\/\//i.test(url)) return { url, mimeType: "video/mp4" };
     try {
         const response = await axios.get<Blob>(url, { responseType: "blob", signal: options?.signal });
         await assertVideoBlob(response.data);
