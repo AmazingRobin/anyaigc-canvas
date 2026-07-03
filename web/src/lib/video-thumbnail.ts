@@ -1,9 +1,9 @@
 "use client";
 
-const VIDEO_THUMBNAIL_SIZE = 420;
-const VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH = 900_000;
-const VIDEO_THUMBNAIL_QUALITY = 0.78;
-export const VIDEO_THUMBNAIL_VERSION = "frame-jpeg-v2";
+const VIDEO_THUMBNAIL_SIZE = 960;
+const VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH = 1_200_000;
+const VIDEO_THUMBNAIL_QUALITY = 0.86;
+export const VIDEO_THUMBNAIL_VERSION = "frame-jpeg-v3";
 
 export function normalizeVideoThumbnail(thumbnail?: string) {
     if (!thumbnail) return "";
@@ -76,6 +76,8 @@ function drawVideoFrame(video: HTMLVideoElement) {
         canvas.height = Math.max(1, Math.round(height * scale));
         const context = canvas.getContext("2d");
         if (!context) return { dataUrl: "", tooDark: true };
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "high";
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const tooDark = isCanvasMostlyDark(context, canvas.width, canvas.height);
         const thumbnail = canvas.toDataURL("image/jpeg", VIDEO_THUMBNAIL_QUALITY);

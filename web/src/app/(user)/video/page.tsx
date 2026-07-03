@@ -76,6 +76,7 @@ type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
+const VIDEO_LOG_THUMBNAIL_MIN_RENDER_EDGE = 720;
 const RESULT_ACTION_BUTTON_CLASS = "!inline-flex !items-center !justify-center whitespace-nowrap px-2 [&_.ant-btn-icon]:shrink-0";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
@@ -1105,11 +1106,13 @@ function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { l
     const [thumbnail, setThumbnail] = useState(normalizeVideoThumbnail(video?.thumbnail));
     const [failed, setFailed] = useState(false);
     const coverRef = useRef<HTMLSpanElement>(null);
+    const refreshedLowQualityThumbnailRef = useRef(false);
     const canLoadPreview = Boolean(video?.url);
 
     useEffect(() => {
         setThumbnail(normalizeVideoThumbnail(video?.thumbnail));
         setFailed(false);
+        refreshedLowQualityThumbnailRef.current = false;
     }, [logId, video?.id, video?.thumbnail]);
 
     useEffect(() => {
@@ -1164,7 +1167,25 @@ function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { l
             style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(20,184,166,.14), rgba(99,102,241,.10))" }}
         >
             {thumbnail ? (
-                <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" />
+                <img
+                    src={thumbnail}
+                    alt=""
+                    className="size-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    onLoad={(event) => {
+                        const image = event.currentTarget;
+                        if (!video?.url || refreshedLowQualityThumbnailRef.current) return;
+                        if (Math.max(image.naturalWidth, image.naturalHeight) >= VIDEO_LOG_THUMBNAIL_MIN_RENDER_EDGE) return;
+                        refreshedLowQualityThumbnailRef.current = true;
+                        setThumbnail("");
+                        setFailed(false);
+                    }}
+                    onError={() => {
+                        setThumbnail("");
+                        setFailed(true);
+                    }}
+                />
             ) : status === "生成中" ? (
                 <LoaderCircle className="size-7 animate-spin opacity-60" />
             ) : canLoadPreview ? (
