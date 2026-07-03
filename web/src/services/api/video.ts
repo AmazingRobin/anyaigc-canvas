@@ -301,19 +301,21 @@ function readRelayBasesResultUrl(video: VideoResponse) {
     return video.video_url || video.url || video.result_urls?.find(Boolean) || metadata.video_url || metadata.url || metadata.result_urls?.find(Boolean) || video.image_url || metadata.image_url || "";
 }
 
-function normalizeVideoTaskStatus(video: VideoResponse) {
-    return `${video.task_status || ""} ${video.status || ""} ${video.state || ""}`.trim().toLowerCase();
+function videoTaskStatuses(video: VideoResponse) {
+    return [video.task_status, video.status, video.state]
+        .map((value) => (typeof value === "string" ? value.trim().toLowerCase() : ""))
+        .filter(Boolean);
 }
 
 function isOpenAIVideoTaskCompleted(video: VideoResponse) {
-    const status = normalizeVideoTaskStatus(video);
-    return status === "completed" || status === "succeeded" || status === "success" || (video.success === true && Boolean(readRelayBasesResultUrl(video)));
+    const statuses = videoTaskStatuses(video);
+    return statuses.some((status) => status === "completed" || status === "succeeded" || status === "success") || (video.success === true && Boolean(readRelayBasesResultUrl(video)));
 }
 
 function isOpenAIVideoTaskFailed(video: VideoResponse) {
-    const status = normalizeVideoTaskStatus(video);
+    const statuses = videoTaskStatuses(video);
     if (video.success === false) return true;
-    if (status.includes("fail") || status.includes("error") || status.includes("cancel") || status.includes("expire")) return true;
+    if (statuses.some((status) => status.includes("fail") || status.includes("error") || status.includes("cancel") || status.includes("expire"))) return true;
     return Boolean(video.final && !readRelayBasesResultUrl(video));
 }
 
