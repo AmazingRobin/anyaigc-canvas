@@ -76,6 +76,7 @@ const LOG_VISIBLE_BATCH_SIZE = 60;
 const VIDEO_THUMBNAIL_SIZE = 512;
 const VIDEO_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
 const VIDEO_THUMBNAIL_QUALITY = 0.82;
+const RESULT_ACTION_BUTTON_CLASS = "!inline-flex !items-center !justify-center whitespace-nowrap px-2 [&_.ant-btn-icon]:shrink-0";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
@@ -738,20 +739,20 @@ function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onEdit, on
                     <span>{formatBytes(video.bytes)}</span>
                     <span>{formatDuration(video.durationMs)}</span>
                 </div>
-                <div className="grid grid-cols-5 gap-1.5">
-                    <Button size="small" icon={<Play className="size-3.5" />} onClick={onPlay}>
+                <div className="grid grid-cols-3 gap-2">
+                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Play className="size-3.5" />} onClick={onPlay}>
                         播放
                     </Button>
-                    <Button size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)}>
+                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)}>
                         编辑
                     </Button>
-                    <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
+                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
                         素材
                     </Button>
-                    <Button size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
+                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
                         下载
                     </Button>
-                    <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
+                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" danger icon={<Trash2 className="size-3.5" />} onClick={onDelete}>
                         删除
                     </Button>
                 </div>
