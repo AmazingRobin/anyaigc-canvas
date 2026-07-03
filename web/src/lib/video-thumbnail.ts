@@ -94,11 +94,19 @@ function thumbnailCandidateTimes(duration: number) {
 
 function waitForVideoFrame(video: HTMLVideoElement) {
     return new Promise<void>((resolve) => {
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            window.clearTimeout(timer);
+            resolve();
+        };
+        const timer = window.setTimeout(finish, 900);
         if ("requestVideoFrameCallback" in video) {
-            (video as HTMLVideoElement & { requestVideoFrameCallback: (callback: () => void) => void }).requestVideoFrameCallback(() => resolve());
+            (video as HTMLVideoElement & { requestVideoFrameCallback: (callback: () => void) => void }).requestVideoFrameCallback(finish);
             return;
         }
-        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+        window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
     });
 }
 

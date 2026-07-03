@@ -440,12 +440,11 @@ export default function VideoPage() {
                 const state = await pollVideoGenerationTask(requestConfig, log.task);
                 if (state.status === "completed") {
                     const stored = await storeGeneratedVideo(state.result, { apiKey: requestConfig.apiKey });
-                    const thumbnail = await createVideoThumbnail(stored.url);
                     const nextVideo: GeneratedVideo = {
                         id: nanoid(),
                         url: stored.url,
                         storageKey: stored.storageKey,
-                        thumbnail,
+                        thumbnail: "",
                         durationMs: Date.now() - log.createdAt,
                         width: stored.width || 1280,
                         height: stored.height || 720,
@@ -455,6 +454,13 @@ export default function VideoPage() {
                     setResults((value) => updateVideoResultById(value, log.id, { status: "success", video: nextVideo, error: undefined }));
                     await saveLog({ ...log, status: "成功", durationMs: nextVideo.durationMs, video: nextVideo, error: undefined });
                     message.success("视频已生成");
+                    void createVideoThumbnail(stored.url).then(async (thumbnail) => {
+                        const normalized = normalizeVideoThumbnail(thumbnail);
+                        if (!normalized) return;
+                        const videoWithThumbnail = { ...nextVideo, thumbnail: normalized };
+                        setResults((value) => updateVideoResultById(value, log.id, { status: "success", video: videoWithThumbnail, error: undefined }));
+                        await cacheVideoThumbnail(log.id, normalized);
+                    });
                     return;
                 }
                 if (state.status === "failed") throw new Error(state.error);
