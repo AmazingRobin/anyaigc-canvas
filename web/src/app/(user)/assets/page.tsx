@@ -649,25 +649,23 @@ function VideoInlinePreview({ url }: { url: string }) {
     useEffect(() => {
         const node = videoRef.current;
         if (!node) return;
-        const seekAndPlay = () => {
+        const seekPreviewFrame = () => {
             try {
                 if (Number.isFinite(node.duration) && node.duration > 0.8 && node.currentTime < 0.2) node.currentTime = Math.min(0.65, node.duration / 4);
             } catch {}
-            void node.play().catch(() => {});
         };
-        node.addEventListener("loadedmetadata", seekAndPlay);
-        node.addEventListener("loadeddata", seekAndPlay);
-        node.addEventListener("canplay", seekAndPlay);
-        void node.play().catch(() => {});
+        node.addEventListener("loadedmetadata", seekPreviewFrame);
+        node.addEventListener("loadeddata", seekPreviewFrame);
+        node.addEventListener("canplay", seekPreviewFrame);
         return () => {
-            node.removeEventListener("loadedmetadata", seekAndPlay);
-            node.removeEventListener("loadeddata", seekAndPlay);
-            node.removeEventListener("canplay", seekAndPlay);
+            node.removeEventListener("loadedmetadata", seekPreviewFrame);
+            node.removeEventListener("loadeddata", seekPreviewFrame);
+            node.removeEventListener("canplay", seekPreviewFrame);
             node.pause();
         };
     }, [url]);
 
-    return <video ref={videoRef} src={url} className="size-full object-cover" muted autoPlay loop playsInline preload="auto" />;
+    return <video ref={videoRef} src={url} className="size-full object-cover" muted playsInline preload="metadata" />;
 }
 
 function useVideoThumbnail(asset: VideoAsset, cover: string, onCoverReady: (asset: VideoAsset, thumbnail: string) => void) {
