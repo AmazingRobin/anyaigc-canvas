@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Input, Modal, Typography } from "antd";
 import localforage from "localforage";
@@ -20,7 +20,7 @@ import { deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, videoGenerationPollConfig, type VideoGenerationTask } from "@/services/api/video";
 import { consumeImageToVideoReferences } from "@/services/workbench-handoff";
-import { useAssetStore } from "@/stores/use-asset-store";
+import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { modelOptionLabel, normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { ReferenceImage } from "@/types/image";
@@ -89,6 +89,7 @@ export default function VideoPage() {
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const addAsset = useAssetStore((state) => state.addAsset);
+    const assets = useAssetStore((state) => state.assets);
     const [prompt, setPrompt] = useState("");
     const [references, setReferences] = useState<ReferenceImage[]>([]);
     const [videoReferences, setVideoReferences] = useState<ReferenceVideo[]>([]);
@@ -264,6 +265,10 @@ export default function VideoPage() {
     };
 
     const saveResultToAssets = (video: GeneratedVideo) => {
+        if (isGeneratedVideoSaved(video, assets)) {
+            message.info("已在我的素材中");
+            return;
+        }
         addAsset({
             kind: "video",
             title: "生成视频",
@@ -271,7 +276,7 @@ export default function VideoPage() {
             tags: [],
             source: "视频创作台",
             data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType },
-            metadata: { source: "video-page", prompt },
+            metadata: { source: "video-page", prompt, sourceResultId: video.id, sourceStorageKey: video.storageKey || "", sourceUrl: video.url || "" },
         });
         message.success("已加入我的素材");
     };
@@ -624,7 +629,7 @@ export default function VideoPage() {
                             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                 {results.map((result) =>
                                     result.status === "success" && result.video ? (
-                                        <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                        <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} savedToAsset={isGeneratedVideoSaved(result.video, assets)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                     ) : result.status === "failed" ? (
                                         <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={retryResult} onDelete={() => requestDeleteResults([result])} />
                                     ) : (
@@ -716,7 +721,7 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
+function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; savedToAsset: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void; onDelete: () => void }) {
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
             <SelectionBubble className="absolute right-3 top-3 z-20" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
@@ -743,8 +748,8 @@ function ResultVideoCard({ video, selected, onSelectedChange, onPlay, onEdit, on
                     <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)}>
                         编辑
                     </Button>
-                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => onSaveAsset(video)}>
-                        素材
+                    <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={savedToAsset ? <Check className="size-3.5" /> : <FolderPlus className="size-3.5" />} disabled={savedToAsset} onClick={() => onSaveAsset(video)}>
+                        {savedToAsset ? "已加入" : "素材"}
                     </Button>
                     <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
                         下载
@@ -790,6 +795,22 @@ function FailedVideoCard({ error, selected, onSelectedChange, onRetry, onDelete 
             </div>
         </div>
     );
+}
+
+function isGeneratedVideoSaved(video: GeneratedVideo, assets: Asset[]) {
+    return assets.some((asset) => {
+        if (asset.kind !== "video") return false;
+        if (assetMetadataString(asset, "sourceResultId") === video.id) return true;
+        const sourceStorageKey = assetMetadataString(asset, "sourceStorageKey");
+        const sourceUrl = assetMetadataString(asset, "sourceUrl");
+        if (video.storageKey && (asset.data.storageKey === video.storageKey || sourceStorageKey === video.storageKey)) return true;
+        return Boolean(video.url && (asset.data.url === video.url || sourceUrl === video.url));
+    });
+}
+
+function assetMetadataString(asset: Asset, key: string) {
+    const value = asset.metadata?.[key];
+    return typeof value === "string" ? value : "";
 }
 
 function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVideo | null; onClose: () => void; onDownload: (video: GeneratedVideo) => void }) {

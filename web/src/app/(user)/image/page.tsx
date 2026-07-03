@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
@@ -22,7 +22,7 @@ import { requestEdit, requestGeneration } from "@/services/api/image";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { queueImageToVideoReferences } from "@/services/workbench-handoff";
-import { useAssetStore } from "@/stores/use-asset-store";
+import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
 
 type GeneratedImage = {
@@ -124,6 +124,7 @@ export default function ImagePage() {
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const addAsset = useAssetStore((state) => state.addAsset);
+    const assets = useAssetStore((state) => state.assets);
     const [prompt, setPrompt] = useState("");
     const [references, setReferences] = useState<ReferenceImage[]>([]);
     const [activeSessionId, setActiveSessionId] = useState(() => nanoid());
@@ -395,6 +396,10 @@ export default function ImagePage() {
     };
 
     const saveResultToAssets = async (image: GeneratedImage, index: number) => {
+        if (isGeneratedImageSaved(image, assets)) {
+            message.info("已在我的素材中");
+            return;
+        }
         const stored = await uploadImage(image.dataUrl);
         addAsset({
             kind: "image",
@@ -403,7 +408,7 @@ export default function ImagePage() {
             tags: [],
             source: "生图工作台",
             data: { dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType },
-            metadata: { source: "image-page", prompt },
+            metadata: { source: "image-page", prompt, sourceResultId: image.id, sourceStorageKey: image.storageKey || "" },
         });
         message.success("已加入我的素材");
     };
@@ -711,7 +716,7 @@ export default function ImagePage() {
                                 <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                                     {results.map((result, index) =>
                                         result.status === "success" && result.image ? (
-                                            <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                            <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={isGeneratedImageSaved(result.image, assets)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
                                             <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
@@ -810,6 +815,7 @@ function ResultImageCard({
     image,
     index,
     selected,
+    savedToAsset,
     onSelectedChange,
     onEdit,
     onGenerateVideo,
@@ -820,6 +826,7 @@ function ResultImageCard({
     image: GeneratedImage;
     index: number;
     selected: boolean;
+    savedToAsset: boolean;
     onSelectedChange: (checked: boolean) => void;
     onEdit: (image: GeneratedImage, index: number) => void;
     onGenerateVideo: (image: GeneratedImage, index: number) => void;
@@ -871,9 +878,9 @@ function ResultImageCard({
                     <span>{formatDuration(image.durationMs)}</span>
                 </div>
                 <div className="grid min-w-0 grid-cols-3 gap-2">
-                    <Tooltip title="添加到素材">
-                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={<FolderPlus className="size-3.5" />} disabled={!displayImage} onClick={() => displayImage && void onSaveAsset(displayImage, index)}>
-                            素材
+                    <Tooltip title={savedToAsset ? "已加入我的素材" : "添加到素材"}>
+                        <Button className={RESULT_ACTION_BUTTON_CLASS} size="small" icon={savedToAsset ? <Check className="size-3.5" /> : <FolderPlus className="size-3.5" />} disabled={!displayImage || savedToAsset} onClick={() => displayImage && void onSaveAsset(displayImage, index)}>
+                            {savedToAsset ? "已加入" : "素材"}
                         </Button>
                     </Tooltip>
                     <Tooltip title="作为参考图继续编辑">
@@ -941,6 +948,20 @@ function FailedImageCard({ error, selected, onSelectedChange, onRetry, onDelete 
             </div>
         </div>
     );
+}
+
+function isGeneratedImageSaved(image: GeneratedImage, assets: Asset[]) {
+    return assets.some((asset) => {
+        if (asset.kind !== "image") return false;
+        if (assetMetadataString(asset, "sourceResultId") === image.id) return true;
+        const sourceStorageKey = assetMetadataString(asset, "sourceStorageKey");
+        return Boolean(image.storageKey && sourceStorageKey === image.storageKey);
+    });
+}
+
+function assetMetadataString(asset: Asset, key: string) {
+    const value = asset.metadata?.[key];
+    return typeof value === "string" ? value : "";
 }
 
 function updateResultById(results: GenerationResult[], id: string, next: Partial<GenerationResult>) {
