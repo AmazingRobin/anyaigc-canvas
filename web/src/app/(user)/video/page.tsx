@@ -1832,9 +1832,9 @@ async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog>
         videoDurationMs: trustedVideoDurationMs(item) || inferredVideoDurationMs,
     });
     const video = log.video ? await normalizeStoredVideo(log.video) : log.video;
-    const videos = await Promise.all(
+    const videos = dedupeVideos(await Promise.all(
         (Array.isArray(log.videos) && log.videos.length ? log.videos : video ? [video] : []).map(normalizeStoredVideo),
-    );
+    ));
     const failures = normalizeVideoFailures(log.failures, !videos.length && log.error ? [{ id: log.id, error: log.error, durationMs: log.durationMs || 0 }] : []);
     const videoReferences = await Promise.all(
         (log.videoReferences || []).map(async (item) => ({
@@ -1879,13 +1879,14 @@ async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog>
 }
 
 function serializeLog(log: GenerationLog): GenerationLog {
+    const videos = dedupeVideos(log.videos);
     return {
         ...log,
         references: log.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
         videoReferences: log.videoReferences.map((item) => (item.storageKey ? { ...item, url: "" } : item)),
         audioReferences: log.audioReferences.map((item) => (item.storageKey ? { ...item, url: "" } : item)),
         video: log.video?.storageKey ? { ...log.video, url: "" } : log.video,
-        videos: log.videos.map((video) => (video.storageKey ? { ...video, url: "" } : video)),
+        videos: videos.map((video) => (video.storageKey ? { ...video, url: "" } : video)),
         failures: normalizeVideoFailures(log.failures),
     };
 }
@@ -1904,8 +1905,9 @@ async function deleteVideoResultFromLog(logId: string, result: GenerationResult)
     if (!stored) return null;
     const log = await normalizeLog(stored);
     const resultIds = new Set([result.id, result.video?.id].filter((id): id is string => Boolean(id)));
-    const removedVideos = logVideos(log).filter((video) => resultIds.has(video.id));
-    const nextVideos = logVideos(log).filter((video) => !resultIds.has(video.id));
+    const resultKeys = new Set([result.video ? videoIdentityKey(result.video) : "", ...Array.from(resultIds)].filter(Boolean));
+    const removedVideos = logVideos(log).filter((video) => resultIds.has(video.id) || resultKeys.has(videoIdentityKey(video)));
+    const nextVideos = logVideos(log).filter((video) => !resultIds.has(video.id) && !resultKeys.has(videoIdentityKey(video)));
     const nextFailures = log.failures.filter((failure) => !resultIds.has(failure.id));
     const removedKeys = removedVideos.map((video) => video.storageKey).filter((key): key is string => Boolean(key));
     if (removedKeys.length) await deleteStoredMedia(removedKeys);
@@ -1969,7 +1971,7 @@ function mergeReferenceImages(primary: ReferenceImage[], secondary: ReferenceIma
 
 function logVideos(log?: Partial<GenerationLog> | null) {
     if (!log) return [];
-    return Array.isArray(log.videos) && log.videos.length ? log.videos : log.video ? [log.video] : [];
+    return dedupeVideos(Array.isArray(log.videos) && log.videos.length ? log.videos : log.video ? [log.video] : []);
 }
 
 function resultsFromVideoLog(log: GenerationLog, current: GenerationResult[] = []) {
@@ -1993,7 +1995,8 @@ function normalizeVideoFailures(failures?: Partial<GeneratedFailure>[], fallback
 }
 
 function appendVideoToLog(log: GenerationLog, video: GeneratedVideo): GenerationLog {
-    const videos = [...logVideos(log).filter((item) => item.id !== video.id), video];
+    const videoKey = videoIdentityKey(video);
+    const videos = dedupeVideos([...logVideos(log).filter((item) => item.id !== video.id && videoIdentityKey(item) !== videoKey), video]);
     return {
         ...log,
         status: "成功",
@@ -2104,6 +2107,7 @@ function buildLog({
         videoGenerateAudio: config.videoGenerateAudio,
         videoWatermark: config.videoWatermark,
     };
+    const nextVideos = dedupeVideos(video ? [...videos, video] : videos);
     return {
         id: id || nanoid(),
         createdAt: createdAt || Date.now(),
@@ -2121,11 +2125,26 @@ function buildLog({
         seconds: logConfig.videoSeconds,
         status,
         task,
-        video: video || videos[videos.length - 1],
-        videos: video ? [...videos, video] : videos,
+        video: video || nextVideos[nextVideos.length - 1],
+        videos: nextVideos,
         failures: normalizeVideoFailures(failures),
         error,
     };
+}
+
+function videoIdentityKey(video: Pick<GeneratedVideo, "id" | "storageKey" | "url">) {
+    return video.storageKey || video.url || video.id || "";
+}
+
+function dedupeVideos(videos: GeneratedVideo[]) {
+    const seen = new Set<string>();
+    return videos.filter((video) => {
+        const key = videoIdentityKey(video);
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 function buildVideoConfig(config: AiConfig, model: string): AiConfig {
