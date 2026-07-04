@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, Sparkles, Trash2, Upload, VideoIcon, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -121,7 +121,8 @@ export default function ImagePage() {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sizePopoverRef = useRef<HTMLDivElement>(null);
-    const sizePopoverPanelRef = useRef<HTMLDivElement>(null);
+    const sizePopoverDesktopPanelRef = useRef<HTMLDivElement>(null);
+    const sizePopoverMobilePanelRef = useRef<HTMLDivElement>(null);
     const previewRequestIdRef = useRef(0);
     const deletedResultIdsRef = useRef<Set<string>>(new Set());
     const config = useConfigStore((state) => state.config);
@@ -195,7 +196,8 @@ export default function ImagePage() {
         if (!sizePopoverOpen) return;
         const closeOnOutsideClick = (event: MouseEvent) => {
             if (sizePopoverRef.current?.contains(event.target as Node)) return;
-            if (sizePopoverPanelRef.current?.contains(event.target as Node)) return;
+            if (sizePopoverDesktopPanelRef.current?.contains(event.target as Node)) return;
+            if (sizePopoverMobilePanelRef.current?.contains(event.target as Node)) return;
             setSizePopoverOpen(false);
         };
         document.addEventListener("mousedown", closeOnOutsideClick);
@@ -761,7 +763,7 @@ export default function ImagePage() {
                                     <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">参考图</span>
                                     <Image.PreviewGroup>
                                         <div
-                                        className="hide-scrollbar flex min-w-0 flex-1 gap-2.5 overflow-x-auto overscroll-x-contain"
+                                        className="hide-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
                                         onWheel={(event) => {
                                             if (event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return;
                                             event.preventDefault();
@@ -769,20 +771,20 @@ export default function ImagePage() {
                                         }}
                                     >
                                         {references.map((item, index) => (
-                                            <div key={item.id} className="group relative size-24 shrink-0 overflow-hidden rounded-xl bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
-                                                <Image src={item.dataUrl} alt={item.name} className="!size-24 object-cover" preview={{ mask: null }} />
+                                            <div key={item.id} className="group relative size-16 shrink-0 overflow-hidden rounded-lg bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
+                                                <Image src={item.dataUrl} alt={item.name} className="!size-16 object-cover" preview={{ mask: null }} />
                                                 <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{imageReferenceLabel(index)}</span>
                                                 <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
                                                 <button
                                                     type="button"
-                                                    className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                                    className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/58 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                                                     onClick={(event) => {
                                                         event.stopPropagation();
                                                         setReferences((value) => value.filter((ref) => ref.id !== item.id));
                                                     }}
                                                     aria-label="移除参考图"
                                                 >
-                                                    <Trash2 className="size-3" />
+                                                    <X className="size-3.5" />
                                                 </button>
                                             </div>
                                         ))}
@@ -805,7 +807,7 @@ export default function ImagePage() {
                                         <div ref={sizePopoverRef} className="relative">
                                             <ComposerMetric label="尺寸" value={imageSizeName(effectiveConfig.size || "auto")} onClick={() => setSizePopoverOpen((open) => !open)} />
                                             {sizePopoverOpen ? (
-                                                <div className="absolute bottom-full left-0 z-[3000] mb-3 hidden max-h-[min(68vh,560px)] w-[384px] max-w-[calc(100vw-40px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.42)] dark:ring-stone-800/90 sm:block">
+                                                <div ref={sizePopoverDesktopPanelRef} className="absolute bottom-full left-0 z-[3000] mb-3 hidden max-h-[min(68vh,560px)] w-[384px] max-w-[calc(100vw-40px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.42)] dark:ring-stone-800/90 sm:block">
                                                     <ImageSettingsPanel
                                                         config={effectiveConfig}
                                                         onConfigChange={(key, value) => updateConfig(key, value)}
@@ -844,7 +846,7 @@ export default function ImagePage() {
             {sizePopoverOpen && typeof document !== "undefined"
                 ? createPortal(
                       <div
-                          ref={sizePopoverPanelRef}
+                          ref={sizePopoverMobilePanelRef}
                           className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] z-[3000] max-h-[min(54dvh,500px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.22)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_24px_70px_rgba(0,0,0,0.48)] dark:ring-stone-800/90 sm:hidden"
                           onMouseDown={(event) => event.stopPropagation()}
                       >

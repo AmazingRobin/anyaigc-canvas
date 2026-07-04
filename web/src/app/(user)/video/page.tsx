@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX, X } from "lucide-react";
+import { Children, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { App, Button, Drawer, Empty, Input, Modal, Tooltip, Typography } from "antd";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
@@ -104,6 +105,9 @@ const logStore = localforage.createInstance({ name: "infinite-canvas", storeName
 export default function VideoPage() {
     const { message } = App.useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const referencePopoverRef = useRef<HTMLDivElement>(null);
+    const referencePopoverDesktopPanelRef = useRef<HTMLDivElement>(null);
+    const referencePopoverMobilePanelRef = useRef<HTMLDivElement>(null);
     const activeLogIdsRef = useRef<Set<string>>(new Set());
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
@@ -124,6 +128,7 @@ export default function VideoPage() {
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
     const [promptOptimizing, setPromptOptimizing] = useState(false);
     const [promptCollapsed, setPromptCollapsed] = useState(false);
+    const [referencePopoverOpen, setReferencePopoverOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
     const [configHydrated, setConfigHydrated] = useState(() => (typeof window === "undefined" ? false : (useConfigStore.persist?.hasHydrated?.() ?? true)));
     const [startedAt, setStartedAt] = useState(0);
@@ -139,6 +144,7 @@ export default function VideoPage() {
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const modelName = modelOptionName(model);
     const seedanceVideo = isSeedanceVideoConfig({ ...effectiveConfig, model });
+    const referenceLimits = videoReferenceLimits(seedanceVideo, modelName);
     const relayBasesVideo = isRelayBasesVideoModel(model);
     const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
     const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : "fixed";
@@ -176,10 +182,11 @@ export default function VideoPage() {
     useEffect(() => {
         const handoff = consumeImageToVideoReferences();
         if (!handoff?.references.length) return;
-        setReferences((value) => mergeReferenceImages(handoff.references, value).slice(0, SEEDANCE_REFERENCE_LIMITS.images));
+        const handoffLimits = videoReferenceLimits(seedanceVideo, modelName);
+        setReferences((value) => mergeReferenceImages(handoff.references, value).slice(0, handoffLimits.images));
         if (handoff.prompt) setPrompt((value) => (value.trim() ? value : handoff.prompt || value));
-        message.success(`已带入 ${Math.min(handoff.references.length, SEEDANCE_REFERENCE_LIMITS.images)} 张参考图`);
-    }, [message]);
+        message.success(`已带入 ${Math.min(handoff.references.length, handoffLimits.images)} 张参考图`);
+    }, [message, modelName, seedanceVideo]);
 
     useEffect(() => {
         setSelectedResultIds((ids) => {
@@ -190,16 +197,36 @@ export default function VideoPage() {
         });
     }, [results]);
 
+    useEffect(() => {
+        if (!referencePopoverOpen) return;
+        const closeOnOutsideClick = (event: MouseEvent) => {
+            if (referencePopoverRef.current?.contains(event.target as Node)) return;
+            if (referencePopoverDesktopPanelRef.current?.contains(event.target as Node)) return;
+            if (referencePopoverMobilePanelRef.current?.contains(event.target as Node)) return;
+            setReferencePopoverOpen(false);
+        };
+        document.addEventListener("mousedown", closeOnOutsideClick);
+        return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+    }, [referencePopoverOpen]);
+
     const addReferences = async (files?: FileList | null) => {
         const selectedFiles = Array.from(files || []);
+        const remainingImages = Math.max(0, referenceLimits.images - references.length);
+        const remainingVideos = Math.max(0, referenceLimits.videos - videoReferences.length);
+        const remainingAudios = Math.max(0, referenceLimits.audios - audioReferences.length);
         const unsupported = selectedFiles.filter((file) => !file.type.startsWith("image/") && !file.type.startsWith("video/") && !isSupportedAudioFile(file));
+        const unsupportedByModel = selectedFiles.filter((file) => (file.type.startsWith("image/") && referenceLimits.images <= 0) || (file.type.startsWith("video/") && referenceLimits.videos <= 0) || (isSupportedAudioFile(file) && referenceLimits.audios <= 0));
         if (unsupported.length) message.warning("已忽略不支持的参考素材，请使用图片、mp4/mov 视频或 mp3/wav 音频");
-        const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/") && file.size <= SEEDANCE_REFERENCE_LIMITS.imageMaxBytes).slice(0, SEEDANCE_REFERENCE_LIMITS.images - references.length);
-        const videoFiles = selectedFiles.filter((file) => file.type.startsWith("video/") && file.size <= SEEDANCE_REFERENCE_LIMITS.videoMaxBytes).slice(0, SEEDANCE_REFERENCE_LIMITS.videos - videoReferences.length);
-        const audioFiles = selectedFiles.filter((file) => isSupportedAudioFile(file) && file.size <= SEEDANCE_REFERENCE_LIMITS.audioMaxBytes).slice(0, SEEDANCE_REFERENCE_LIMITS.audios - audioReferences.length);
-        if (selectedFiles.some((file) => file.type.startsWith("image/") && file.size > SEEDANCE_REFERENCE_LIMITS.imageMaxBytes)) message.warning("已忽略超过 30MB 的参考图");
-        if (selectedFiles.some((file) => file.type.startsWith("video/") && file.size > SEEDANCE_REFERENCE_LIMITS.videoMaxBytes)) message.warning("已忽略超过 50MB 的参考视频");
-        if (selectedFiles.some((file) => isSupportedAudioFile(file) && file.size > SEEDANCE_REFERENCE_LIMITS.audioMaxBytes)) message.warning("已忽略超过 15MB 的参考音频");
+        if (unsupportedByModel.length) message.warning("已忽略当前模型不使用的参考素材");
+        if (referenceLimits.images > 0 && !remainingImages && selectedFiles.some((file) => file.type.startsWith("image/"))) message.warning("参考图数量已达到当前模型上限");
+        if (referenceLimits.videos > 0 && !remainingVideos && selectedFiles.some((file) => file.type.startsWith("video/"))) message.warning("参考视频数量已达到当前模型上限");
+        if (referenceLimits.audios > 0 && !remainingAudios && selectedFiles.some((file) => isSupportedAudioFile(file))) message.warning("参考音频数量已达到当前模型上限");
+        const imageFiles = selectedFiles.filter((file) => referenceLimits.images > 0 && file.type.startsWith("image/") && file.size <= referenceLimits.imageMaxBytes).slice(0, remainingImages);
+        const videoFiles = selectedFiles.filter((file) => referenceLimits.videos > 0 && file.type.startsWith("video/") && file.size <= referenceLimits.videoMaxBytes).slice(0, remainingVideos);
+        const audioFiles = selectedFiles.filter((file) => referenceLimits.audios > 0 && isSupportedAudioFile(file) && file.size <= referenceLimits.audioMaxBytes).slice(0, remainingAudios);
+        if (selectedFiles.some((file) => file.type.startsWith("image/") && file.size > referenceLimits.imageMaxBytes)) message.warning(`已忽略超过 ${formatReferenceLimit(referenceLimits.imageMaxBytes)} 的参考图`);
+        if (selectedFiles.some((file) => file.type.startsWith("video/") && file.size > referenceLimits.videoMaxBytes)) message.warning(`已忽略超过 ${formatReferenceLimit(referenceLimits.videoMaxBytes)} 的参考视频`);
+        if (selectedFiles.some((file) => isSupportedAudioFile(file) && file.size > referenceLimits.audioMaxBytes)) message.warning(`已忽略超过 ${formatReferenceLimit(referenceLimits.audioMaxBytes)} 的参考音频`);
         const nextReferences = await Promise.all(
             imageFiles.map(async (file) => {
                 const image = await uploadImage(file);
@@ -222,9 +249,9 @@ export default function VideoPage() {
             ),
             message.warning,
         );
-        setReferences((value) => [...value, ...nextReferences].slice(0, SEEDANCE_REFERENCE_LIMITS.images));
-        setVideoReferences((value) => [...value, ...nextVideoReferences].slice(0, SEEDANCE_REFERENCE_LIMITS.videos));
-        setAudioReferences((value) => [...value, ...nextAudioReferences].slice(0, SEEDANCE_REFERENCE_LIMITS.audios));
+        setReferences((value) => [...value, ...nextReferences].slice(0, referenceLimits.images));
+        setVideoReferences((value) => [...value, ...nextVideoReferences].slice(0, referenceLimits.videos));
+        setAudioReferences((value) => [...value, ...nextAudioReferences].slice(0, referenceLimits.audios));
     };
 
     const addReferencesFromClipboard = async () => {
@@ -235,13 +262,18 @@ export default function VideoPage() {
                 message.error("剪切板里没有可读取的图片");
                 return;
             }
+            const remainingImages = Math.max(0, referenceLimits.images - references.length);
+            if (!remainingImages) {
+                message.warning("参考图数量已达到当前模型上限");
+                return;
+            }
             const nextReferences = await Promise.all(
-                blobs.slice(0, SEEDANCE_REFERENCE_LIMITS.images - references.length).map(async (blob, index) => {
+                blobs.slice(0, remainingImages).map(async (blob, index) => {
                     const image = await uploadImage(blob);
                     return { id: nanoid(), name: `clipboard-${index + 1}.png`, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey };
                 }),
             );
-            setReferences((value) => [...value, ...nextReferences].slice(0, SEEDANCE_REFERENCE_LIMITS.images));
+            setReferences((value) => [...value, ...nextReferences].slice(0, referenceLimits.images));
             message.success(`已读取 ${nextReferences.length} 张参考图`);
         } catch {
             message.error("剪切板里没有可读取的图片");
@@ -342,12 +374,24 @@ export default function VideoPage() {
             openConfigDialog(true);
             return null;
         }
-        const videoReferenceError = seedanceVideoReferenceError(videoReferences);
-        if (videoReferenceError) {
-            message.error(`${videoReferenceError}。${seedanceVideoReferenceHint}`);
+        if (modelName.toLowerCase() === "veo-omni-flash-video-edit" && !videoReferences.length) {
+            message.error("当前模型需要 1 个参考视频");
             return null;
         }
-        return { text, config: buildVideoConfig(effectiveConfig, model), references: [...references], videoReferences: [...videoReferences], audioReferences: [...audioReferences] };
+        if (seedanceVideo) {
+            const videoReferenceError = seedanceVideoReferenceError(videoReferences);
+            if (videoReferenceError) {
+                message.error(`${videoReferenceError}。${seedanceVideoReferenceHint}`);
+                return null;
+            }
+        }
+        return {
+            text,
+            config: buildVideoConfig(effectiveConfig, model),
+            references: references.slice(0, referenceLimits.images),
+            videoReferences: videoReferences.slice(0, referenceLimits.videos),
+            audioReferences: audioReferences.slice(0, referenceLimits.audios),
+        };
     };
 
     const findRecoverableLogForResult = (items: GenerationLog[], resultId?: string) =>
@@ -433,10 +477,25 @@ export default function VideoPage() {
         if (payload.kind === "text") {
             setPrompt(payload.content);
         } else if (payload.kind === "image") {
+            if (references.length >= referenceLimits.images) {
+                message.warning("参考图数量已达到当前模型上限");
+                setAssetPickerOpen(false);
+                return;
+            }
             const stored = await uploadImage(payload.dataUrl);
-            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, SEEDANCE_REFERENCE_LIMITS.images));
+            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, referenceLimits.images));
         } else if (payload.kind === "video") {
-            setVideoReferences((value) => [...value, { id: nanoid(), name: payload.title, type: "video/mp4", url: payload.url, storageKey: payload.storageKey, width: payload.width, height: payload.height }].slice(0, SEEDANCE_REFERENCE_LIMITS.videos));
+            if (referenceLimits.videos <= 0) {
+                message.warning("当前模型不使用参考视频");
+                setAssetPickerOpen(false);
+                return;
+            }
+            if (videoReferences.length >= referenceLimits.videos) {
+                message.warning("参考视频数量已达到当前模型上限");
+                setAssetPickerOpen(false);
+                return;
+            }
+            setVideoReferences((value) => [...value, { id: nanoid(), name: payload.title, type: "video/mp4", url: payload.url, storageKey: payload.storageKey, width: payload.width, height: payload.height }].slice(0, referenceLimits.videos));
         }
         setAssetPickerOpen(false);
     };
@@ -588,6 +647,26 @@ export default function VideoPage() {
         if (log.status === "生成中" && log.task) void pollGenerationLog(log);
     };
 
+    const renderReferencePanel = () => (
+        <VideoReferencePanel
+            seedance={seedanceVideo}
+            modelName={modelName}
+            limits={referenceLimits}
+            references={references}
+            videoReferences={videoReferences}
+            audioReferences={audioReferences}
+            onPasteImage={() => void addReferencesFromClipboard()}
+            onUpload={() => fileInputRef.current?.click()}
+            onPreview={setReferencePreview}
+            onMoveImage={(index, offset) => setReferences((value) => moveListItem(value, index, offset))}
+            onMoveVideo={(index, offset) => setVideoReferences((value) => moveListItem(value, index, offset))}
+            onMoveAudio={(index, offset) => setAudioReferences((value) => moveListItem(value, index, offset))}
+            onRemoveImage={(id) => setReferences((value) => value.filter((ref) => ref.id !== id))}
+            onRemoveVideo={(id) => setVideoReferences((value) => value.filter((ref) => ref.id !== id))}
+            onRemoveAudio={(id) => setAudioReferences((value) => value.filter((ref) => ref.id !== id))}
+        />
+    );
+
     return (
         <div className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-background text-stone-900 dark:text-stone-100">
             <main className="grid h-full min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[460px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[520px_minmax(0,1fr)]">
@@ -690,109 +769,28 @@ export default function VideoPage() {
                                     className="!resize-none !rounded-none !border-0 !bg-transparent !px-0 !py-0 !text-base !shadow-none focus:!shadow-none"
                                 />
 
-                                <div className="min-w-0">
-                                    <div className="min-w-0">
-                                        <div className="mb-2 flex items-center justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <div className="text-xs font-semibold text-stone-500 dark:text-stone-400">参考素材</div>
-                                                <div className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">图片 5 张内 · 视频 3 个 · 音频 3 个</div>
-                                            </div>
-                                            <div className="flex shrink-0 gap-1.5">
-                                                <Tooltip title="从剪贴板读取参考图">
-                                                    <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={() => void addReferencesFromClipboard()} />
-                                                </Tooltip>
-                                                <Tooltip title="上传参考素材">
-                                                    <Button size="small" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} />
-                                                </Tooltip>
-                                            </div>
+                                <div ref={referencePopoverRef} className="relative min-w-0 pt-1">
+                                    <button
+                                        type="button"
+                                        className={`inline-flex max-w-full items-center gap-2 ${COMPOSER_CONTROL_CLASS}`}
+                                        onMouseDown={(event) => {
+                                            event.stopPropagation();
+                                        }}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            setReferencePopoverOpen((open) => !open);
+                                        }}
+                                        aria-expanded={referencePopoverOpen}
+                                    >
+                                        <FolderPlus className="size-3.5 shrink-0 text-stone-500 dark:text-stone-400" />
+                                        <span className="shrink-0 text-stone-700 dark:text-stone-200">参考素材</span>
+                                        <span className="min-w-0 truncate text-xs text-stone-500 dark:text-stone-400">{videoReferenceSummary(references, videoReferences, audioReferences)}</span>
+                                    </button>
+                                    {referencePopoverOpen ? (
+                                        <div ref={referencePopoverDesktopPanelRef} className="absolute bottom-full left-0 z-[3000] mb-3 hidden max-h-[min(72vh,620px)] w-[520px] max-w-[calc(100vw-40px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.42)] dark:ring-stone-800/90 sm:block" onMouseDown={(event) => event.stopPropagation()}>
+                                            {renderReferencePanel()}
                                         </div>
-                                        <div className="hide-scrollbar flex min-h-[110px] min-w-0 gap-2.5 overflow-x-auto overscroll-x-contain rounded-xl bg-stone-50/70 px-2 py-2 ring-1 ring-stone-200/70 dark:bg-stone-900/35 dark:ring-stone-800/70">
-                                            {references.map((item, index) => (
-                                                <div
-                                                    key={item.id}
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    className="group relative size-24 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-stone-100 outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
-                                                    aria-label={`查看${seedanceReferenceLabel("image", index)}`}
-                                                    onClick={() => setReferencePreview({ kind: "image", label: seedanceReferenceLabel("image", index), item })}
-                                                    onKeyDown={(event) => {
-                                                        if (event.key !== "Enter" && event.key !== " ") return;
-                                                        event.preventDefault();
-                                                        setReferencePreview({ kind: "image", label: seedanceReferenceLabel("image", index), item });
-                                                    }}
-                                                >
-                                                    <img src={item.dataUrl} alt={item.name} className="size-full object-cover" />
-                                                    <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10 group-focus-visible:bg-black/10" />
-                                                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("image", index)}</span>
-                                                    <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
-                                                    <button
-                                                        type="button"
-                                                        className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            setReferences((value) => value.filter((ref) => ref.id !== item.id));
-                                                        }}
-                                                        aria-label="移除参考图"
-                                                    >
-                                                        <Trash2 className="size-3" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {videoReferences.map((item, index) => (
-                                                <div
-                                                    key={item.id}
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    className="group relative h-24 w-36 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-black outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
-                                                    aria-label={`查看${seedanceReferenceLabel("video", index)}`}
-                                                    onClick={() => setReferencePreview({ kind: "video", label: seedanceReferenceLabel("video", index), item })}
-                                                    onKeyDown={(event) => {
-                                                        if (event.key !== "Enter" && event.key !== " ") return;
-                                                        event.preventDefault();
-                                                        setReferencePreview({ kind: "video", label: seedanceReferenceLabel("video", index), item });
-                                                    }}
-                                                >
-                                                    <video src={item.url} className="size-full object-cover" muted preload="metadata" />
-                                                    <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/15 group-focus-visible:bg-black/15" />
-                                                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("video", index)}</span>
-                                                    <ReferenceOrderButtons index={index} total={videoReferences.length} onMove={(offset) => setVideoReferences((value) => moveListItem(value, index, offset))} />
-                                                    <button
-                                                        type="button"
-                                                        className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            setVideoReferences((value) => value.filter((ref) => ref.id !== item.id));
-                                                        }}
-                                                        aria-label="移除参考视频"
-                                                    >
-                                                        <Trash2 className="size-3" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {audioReferences.map((item, index) => (
-                                                <div key={item.id} className="group relative flex h-24 w-56 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-background px-2 ring-1 ring-stone-200/70 dark:bg-stone-950/70 dark:ring-stone-800/70">
-                                                    <div className="flex min-w-0 items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                                                        <Music2 className="size-4 shrink-0" />
-                                                        <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{seedanceReferenceLabel("audio", index)}</span>
-                                                        <span className="truncate">{item.name}</span>
-                                                    </div>
-                                                    <audio src={item.url} controls className="h-8 w-full" preload="metadata" />
-                                                    <ReferenceOrderButtons index={index} total={audioReferences.length} onMove={(offset) => setAudioReferences((value) => moveListItem(value, index, offset))} />
-                                                    <button
-                                                        type="button"
-                                                        className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                                                        onClick={() => setAudioReferences((value) => value.filter((ref) => ref.id !== item.id))}
-                                                        aria-label="移除参考音频"
-                                                    >
-                                                        <Trash2 className="size-3" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {!references.length && !videoReferences.length && !audioReferences.length ? (
-                                                <span className="flex h-24 items-center text-sm text-stone-400">支持 PNG/JPG、MP4/MOV、mp3/wav；图片单张 30MB 内，视频 50MB 内，音频 15MB 内</span>
-                                            ) : null}
-                                        </div>
-                                    </div>
+                                    ) : null}
                                 </div>
 
                                 <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
@@ -818,6 +816,18 @@ export default function VideoPage() {
                     </div>
                 </section>
             </main>
+            {referencePopoverOpen && typeof document !== "undefined"
+                ? createPortal(
+                      <div
+                          ref={referencePopoverMobilePanelRef}
+                          className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] z-[3000] max-h-[min(62dvh,560px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.22)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_24px_70px_rgba(0,0,0,0.48)] dark:ring-stone-800/90 sm:hidden"
+                          onMouseDown={(event) => event.stopPropagation()}
+                      >
+                          {renderReferencePanel()}
+                      </div>,
+                      document.body,
+                  )
+                : null}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -918,6 +928,235 @@ function VideoToggleControl({ label, checked, onChange }: { label: string; check
             <span className="shrink-0 text-xs opacity-70">{label}</span>
             <span className="min-w-0 truncate">{checked ? "开" : "关"}</span>
         </button>
+    );
+}
+
+type VideoReferenceLimits = {
+    images: number;
+    videos: number;
+    audios: number;
+    imageMaxBytes: number;
+    videoMaxBytes: number;
+    audioMaxBytes: number;
+};
+
+const RELAYBASES_MULTI_REFERENCE_MODELS = new Set(["video-fast-480p", "video-fast-720p", "video-pro-480p", "video-pro-720p", "video-pro-1080p", "video-standard-720p"]);
+
+function videoReferenceLimits(seedance: boolean, model: string): VideoReferenceLimits {
+    const value = model.toLowerCase();
+    const base = {
+        imageMaxBytes: SEEDANCE_REFERENCE_LIMITS.imageMaxBytes,
+        videoMaxBytes: SEEDANCE_REFERENCE_LIMITS.videoMaxBytes,
+        audioMaxBytes: SEEDANCE_REFERENCE_LIMITS.audioMaxBytes,
+    };
+    if (seedance) return { ...SEEDANCE_REFERENCE_LIMITS };
+    if (value === "veo-omni-flash-video-edit") return { ...base, images: 5, videos: 1, audios: 0 };
+    if (value === "veo-omni-flash") return { ...base, images: 5, videos: 0, audios: 0 };
+    if (RELAYBASES_MULTI_REFERENCE_MODELS.has(value)) return { ...base, images: 5, videos: 3, audios: 3 };
+    return { ...base, images: 5, videos: 0, audios: 0 };
+}
+
+function formatReferenceLimit(bytes: number) {
+    return `${Math.round(bytes / 1024 / 1024)}MB`;
+}
+
+function videoReferenceSummary(images: ReferenceImage[], videos: ReferenceVideo[], audios: ReferenceAudio[]) {
+    const total = images.length + videos.length + audios.length;
+    if (!total) return "未添加";
+    return [
+        images.length ? `图 ${images.length}` : "",
+        videos.length ? `视频 ${videos.length}` : "",
+        audios.length ? `音频 ${audios.length}` : "",
+    ]
+        .filter(Boolean)
+        .join(" · ");
+}
+
+function videoReferenceRequirementLines(seedance: boolean, model: string, limits: VideoReferenceLimits) {
+    const value = model.toLowerCase();
+    if (seedance) {
+        return [
+            `参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`,
+            `参考视频：最多 ${limits.videos} 个，支持 MP4/MOV，H.264/H.265，24-60 FPS；单个 ${formatReferenceLimit(limits.videoMaxBytes)} 内、2-15 秒，总时长不超过 15 秒。`,
+            `参考音频：最多 ${limits.audios} 个，支持 MP3/WAV，单个 ${formatReferenceLimit(limits.audioMaxBytes)} 内、2-15 秒。`,
+        ];
+    }
+    if (value === "veo-omni-flash-video-edit") {
+        return [`参考视频：需要 1 个，支持 MP4/MOV，单个 ${formatReferenceLimit(limits.videoMaxBytes)} 内。`, `参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`, "当前模型不使用参考音频。"];
+    }
+    if (limits.videos || limits.audios) {
+        return [
+            `参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`,
+            `参考视频：最多 ${limits.videos} 个，支持 MP4/MOV，单个 ${formatReferenceLimit(limits.videoMaxBytes)} 内。`,
+            `参考音频：最多 ${limits.audios} 个，支持 MP3/WAV，单个 ${formatReferenceLimit(limits.audioMaxBytes)} 内。`,
+        ];
+    }
+    return [`参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`, "当前模型不使用参考视频和参考音频。"];
+}
+
+function VideoReferencePanel({
+    seedance,
+    modelName,
+    limits,
+    references,
+    videoReferences,
+    audioReferences,
+    onPasteImage,
+    onUpload,
+    onPreview,
+    onMoveImage,
+    onMoveVideo,
+    onMoveAudio,
+    onRemoveImage,
+    onRemoveVideo,
+    onRemoveAudio,
+}: {
+    seedance: boolean;
+    modelName: string;
+    limits: VideoReferenceLimits;
+    references: ReferenceImage[];
+    videoReferences: ReferenceVideo[];
+    audioReferences: ReferenceAudio[];
+    onPasteImage: () => void;
+    onUpload: () => void;
+    onPreview: (preview: ReferencePreview) => void;
+    onMoveImage: (index: number, offset: number) => void;
+    onMoveVideo: (index: number, offset: number) => void;
+    onMoveAudio: (index: number, offset: number) => void;
+    onRemoveImage: (id: string) => void;
+    onRemoveVideo: (id: string) => void;
+    onRemoveAudio: (id: string) => void;
+}) {
+    return (
+        <div className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <div className="text-sm font-semibold text-stone-800 dark:text-stone-100">参考素材</div>
+                    <div className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">{videoReferenceSummary(references, videoReferences, audioReferences)}</div>
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                    <Tooltip title="从剪贴板读取参考图">
+                        <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onPasteImage} />
+                    </Tooltip>
+                    <Tooltip title="上传参考素材">
+                        <Button size="small" icon={<Upload className="size-3.5" />} onClick={onUpload} />
+                    </Tooltip>
+                </div>
+            </div>
+
+            <div className="space-y-1 rounded-xl bg-stone-50/85 px-3 py-2 text-xs leading-relaxed text-stone-500 ring-1 ring-stone-200/60 dark:bg-stone-900/45 dark:text-stone-400 dark:ring-stone-800/70">
+                {videoReferenceRequirementLines(seedance, modelName, limits).map((line) => (
+                    <div key={line}>{line}</div>
+                ))}
+            </div>
+
+            <VideoReferenceStrip title={`参考图 ${references.length}/${limits.images}`} empty="尚未添加参考图">
+                {references.map((item, index) => (
+                    <div
+                        key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        className="group relative size-16 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-stone-100 outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
+                        aria-label={`查看${seedanceReferenceLabel("image", index)}`}
+                        onClick={() => onPreview({ kind: "image", label: seedanceReferenceLabel("image", index), item })}
+                        onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== " ") return;
+                            event.preventDefault();
+                            onPreview({ kind: "image", label: seedanceReferenceLabel("image", index), item });
+                        }}
+                    >
+                        <img src={item.dataUrl} alt={item.name} className="size-full object-cover" />
+                        <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10 group-focus-visible:bg-black/10" />
+                        <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("image", index)}</span>
+                        <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => onMoveImage(index, offset)} />
+                        <button
+                            type="button"
+                            className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/58 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onRemoveImage(item.id);
+                            }}
+                            aria-label="移除参考图"
+                        >
+                            <X className="size-3.5" />
+                        </button>
+                    </div>
+                ))}
+            </VideoReferenceStrip>
+
+            {limits.videos > 0 || videoReferences.length ? (
+                <VideoReferenceStrip title={limits.videos > 0 ? `参考视频 ${videoReferences.length}/${limits.videos}` : "参考视频"} note={limits.videos > 0 ? undefined : "当前模型不使用"} empty={limits.videos > 0 ? "尚未添加参考视频" : "当前模型不使用参考视频"}>
+                    {videoReferences.map((item, index) => (
+                        <div
+                            key={item.id}
+                            role="button"
+                            tabIndex={0}
+                            className="group relative h-16 w-24 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-black outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
+                            aria-label={`查看${seedanceReferenceLabel("video", index)}`}
+                            onClick={() => onPreview({ kind: "video", label: seedanceReferenceLabel("video", index), item })}
+                            onKeyDown={(event) => {
+                                if (event.key !== "Enter" && event.key !== " ") return;
+                                event.preventDefault();
+                                onPreview({ kind: "video", label: seedanceReferenceLabel("video", index), item });
+                            }}
+                        >
+                            <video src={item.url} className="size-full object-cover" muted preload="metadata" />
+                            <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/15 group-focus-visible:bg-black/15" />
+                            <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("video", index)}</span>
+                            <ReferenceOrderButtons index={index} total={videoReferences.length} onMove={(offset) => onMoveVideo(index, offset)} />
+                            <button
+                                type="button"
+                                className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/58 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onRemoveVideo(item.id);
+                                }}
+                                aria-label="移除参考视频"
+                            >
+                                <X className="size-3.5" />
+                            </button>
+                        </div>
+                    ))}
+                </VideoReferenceStrip>
+            ) : null}
+
+            {limits.audios > 0 || audioReferences.length ? (
+                <VideoReferenceStrip title={limits.audios > 0 ? `参考音频 ${audioReferences.length}/${limits.audios}` : "参考音频"} note={limits.audios > 0 ? undefined : "当前模型不使用"} empty={limits.audios > 0 ? "尚未添加参考音频" : "当前模型不使用参考音频"}>
+                    {audioReferences.map((item, index) => (
+                        <div key={item.id} className="group relative flex h-16 w-44 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-stone-50 px-2 ring-1 ring-stone-200/70 dark:bg-stone-900/55 dark:ring-stone-800/70">
+                            <div className="flex min-w-0 items-center gap-2 pr-5 text-xs text-stone-500 dark:text-stone-400">
+                                <Music2 className="size-3.5 shrink-0" />
+                                <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{seedanceReferenceLabel("audio", index)}</span>
+                                <span className="truncate">{item.name}</span>
+                            </div>
+                            <audio src={item.url} controls className="h-7 w-full" preload="metadata" />
+                            <ReferenceOrderButtons index={index} total={audioReferences.length} onMove={(offset) => onMoveAudio(index, offset)} />
+                            <button
+                                type="button"
+                                className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/58 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                onClick={() => onRemoveAudio(item.id)}
+                                aria-label="移除参考音频"
+                            >
+                                <X className="size-3.5" />
+                            </button>
+                        </div>
+                    ))}
+                </VideoReferenceStrip>
+            ) : null}
+        </div>
+    );
+}
+
+function VideoReferenceStrip({ title, note, empty, children }: { title: string; note?: string; empty: string; children: ReactNode }) {
+    const hasChildren = Children.count(children) > 0;
+    return (
+        <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-stone-600 dark:text-stone-300">{title}</span>
+                {note ? <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700 ring-1 ring-amber-200/70 dark:bg-amber-950/25 dark:text-amber-200 dark:ring-amber-900/60">{note}</span> : null}
+            </div>
+            {hasChildren ? <div className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">{children}</div> : <div className="rounded-xl bg-stone-50/70 px-3 py-2 text-xs text-stone-400 ring-1 ring-stone-200/60 dark:bg-stone-900/35 dark:ring-stone-800/70">{empty}</div>}
+        </div>
     );
 }
 
