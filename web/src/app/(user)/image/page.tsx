@@ -3,6 +3,7 @@
 import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { App, Button, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
@@ -120,6 +121,7 @@ export default function ImagePage() {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sizePopoverRef = useRef<HTMLDivElement>(null);
+    const sizePopoverPanelRef = useRef<HTMLDivElement>(null);
     const previewRequestIdRef = useRef(0);
     const deletedResultIdsRef = useRef<Set<string>>(new Set());
     const config = useConfigStore((state) => state.config);
@@ -193,6 +195,7 @@ export default function ImagePage() {
         if (!sizePopoverOpen) return;
         const closeOnOutsideClick = (event: MouseEvent) => {
             if (sizePopoverRef.current?.contains(event.target as Node)) return;
+            if (sizePopoverPanelRef.current?.contains(event.target as Node)) return;
             setSizePopoverOpen(false);
         };
         document.addEventListener("mousedown", closeOnOutsideClick);
@@ -802,7 +805,7 @@ export default function ImagePage() {
                                         <div ref={sizePopoverRef} className="relative">
                                             <ComposerMetric label="尺寸" value={imageSizeName(effectiveConfig.size || "auto")} onClick={() => setSizePopoverOpen((open) => !open)} />
                                             {sizePopoverOpen ? (
-                                                <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-50 max-h-[min(58dvh,520px)] overflow-y-auto rounded-[18px] bg-background p-3 shadow-[0_18px_44px_rgba(15,23,42,0.16)] ring-1 ring-stone-200/80 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.36)] dark:ring-stone-800/80 sm:absolute sm:inset-x-auto sm:bottom-full sm:left-0 sm:mb-3 sm:max-h-[min(68vh,560px)] sm:w-[384px] sm:max-w-[calc(100vw-40px)]">
+                                                <div className="absolute bottom-full left-0 z-[3000] mb-3 hidden max-h-[min(68vh,560px)] w-[384px] max-w-[calc(100vw-40px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.42)] dark:ring-stone-800/90 sm:block">
                                                     <ImageSettingsPanel
                                                         config={effectiveConfig}
                                                         onConfigChange={(key, value) => updateConfig(key, value)}
@@ -838,6 +841,27 @@ export default function ImagePage() {
                     </div>
                 </section>
             </main>
+            {sizePopoverOpen && typeof document !== "undefined"
+                ? createPortal(
+                      <div
+                          ref={sizePopoverPanelRef}
+                          className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] z-[3000] max-h-[min(54dvh,500px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.22)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_24px_70px_rgba(0,0,0,0.48)] dark:ring-stone-800/90 sm:hidden"
+                          onMouseDown={(event) => event.stopPropagation()}
+                      >
+                          <ImageSettingsPanel
+                              config={effectiveConfig}
+                              onConfigChange={(key, value) => updateConfig(key, value)}
+                              theme={theme}
+                              showTitle={false}
+                              showQuality={false}
+                              showCount={false}
+                              className="space-y-4"
+                              quickCount={0}
+                          />
+                      </div>,
+                      document.body,
+                  )
+                : null}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -944,7 +968,7 @@ function ComposerQualitySelect({ value, onChange }: { value: string; onChange: (
                 <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">质量</span>
                 <span className="min-w-0 flex-1 truncate text-left text-stone-700 dark:text-stone-200">{selected.label}</span>
             </SelectTrigger>
-            <SelectContent className="z-[1200] min-w-[8rem] rounded-xl border border-border/70 bg-popover p-1 shadow-xl" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+            <SelectContent className="z-[3000] min-w-[8rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
                 {IMAGE_QUALITY_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                         {item.label}

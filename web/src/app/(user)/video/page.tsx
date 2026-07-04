@@ -896,7 +896,7 @@ function VideoComposerSelect({ label, value, options, onChange }: { label: strin
                 <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">{label}</span>
                 <span className="min-w-0 flex-1 truncate text-left text-stone-700 dark:text-stone-200">{selected?.label || value}</span>
             </SelectTrigger>
-            <SelectContent className="z-[1200] min-w-[9rem] rounded-xl border border-border/70 bg-popover p-1 shadow-xl" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+            <SelectContent className="z-[3000] min-w-[9rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
                 {options.map((item) => (
                     <SelectItem key={item.value} value={item.value} disabled={item.disabled}>
                         {item.label}
