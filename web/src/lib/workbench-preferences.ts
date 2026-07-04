@@ -58,15 +58,6 @@ export function notifyWorkbenchTask(enabled: boolean, title: string, body: strin
     }
 }
 
-export async function requestAndTestWorkbenchNotification() {
-    const permission = await requestWorkbenchNotificationPermission();
-    if (permission !== "granted") return { permission, status: permission as WorkbenchNotificationStatus };
-    return {
-        permission,
-        status: notifyWorkbenchTask(true, "RelayBases 通知已开启", "生成任务完成或失败时，将发送系统通知。", { tag: "relaybases-workbench-notification-test" }),
-    };
-}
-
 export function fileExtensionFromMime(mimeType?: string, fallback = "bin") {
     if (!mimeType) return fallback;
     if (mimeType.includes("png")) return "png";

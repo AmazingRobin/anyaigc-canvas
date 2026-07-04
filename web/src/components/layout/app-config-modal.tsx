@@ -11,7 +11,7 @@ import { syncAppDataToCloud, syncAppDataToWebdav, type AppSyncDomainKey, type Ap
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { useI18n } from "@/lib/i18n";
-import { requestAndTestWorkbenchNotification } from "@/lib/workbench-preferences";
+import { requestWorkbenchNotificationPermission } from "@/lib/workbench-preferences";
 import {
     encodeChannelModel,
     filterModelsByCapability,
@@ -441,9 +441,8 @@ export function AppConfigModal() {
                                             onChange={(checked) => {
                                                 updateConfig("notifyOnGenerationComplete", checked ? "true" : "false");
                                                 if (!checked) return;
-                                                void requestAndTestWorkbenchNotification().then(({ permission, status }) => {
-                                                    if (permission === "granted" && status === "sent") message.success("通知已开启，并已发送测试通知");
-                                                    if (status === "failed") message.warning("通知权限已开启，但浏览器发送测试通知失败");
+                                                void requestWorkbenchNotificationPermission().then((permission) => {
+                                                    if (permission === "granted") message.success("通知已开启");
                                                     if (permission === "denied") message.warning("浏览器通知权限已被拒绝，可在浏览器站点权限中重新开启");
                                                     if (permission === "unsupported") message.warning("当前浏览器不支持系统通知");
                                                 });
