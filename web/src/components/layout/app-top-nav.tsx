@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
 import { RELAYBASES_HOME_URL, relayBasesLinks } from "@/constant/relaybases-links";
-import { RelayBasesCanvasIcon } from "@/components/brand/relaybases-canvas-icon";
 import { AppConfigModal } from "@/components/layout/app-config-modal";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
@@ -42,9 +41,8 @@ export function AppTopNav() {
                                 <span className="text-base font-semibold">RelayBases</span>
                             </a>
                             <span className="mx-3 hidden h-5 w-px shrink-0 bg-stone-200 sm:block dark:bg-stone-800" />
-                            <Link href="/" className="group hidden h-full shrink-0 items-center gap-2 rounded-full px-1.5 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:bg-stone-950/[0.04] hover:text-stone-700 sm:flex sm:gap-2.5 sm:px-2.5 dark:text-stone-100 dark:hover:bg-white/[0.07] dark:hover:text-white">
-                                <RelayBasesCanvasIcon className="size-8 transition duration-300 group-hover:scale-105" />
-                                <span className="text-base font-semibold">无限画布</span>
+                            <Link href="/" className="hidden h-full shrink-0 items-center px-1 text-[13px] font-medium leading-none tracking-tight text-stone-500 transition hover:text-stone-950 sm:flex dark:text-stone-400 dark:hover:text-stone-100">
+                                <span>无限画布</span>
                             </Link>
 
                             <nav className="hide-scrollbar ml-6 hidden h-16 min-w-0 items-center gap-5 overflow-x-auto lg:gap-6 md:flex xl:ml-8 xl:gap-7">
