@@ -157,7 +157,7 @@ export default function VideoPage() {
     const canGenerate = Boolean(prompt.trim());
     const activeLogId = previewLog?.id || activeResultLogId;
     const activeRunning = activeLogId ? runningByLog[activeLogId] : undefined;
-    const results = activeLogId ? resultsByLog[activeLogId] || [] : [];
+    const results = activeLogId ? dedupeGenerationResults(resultsByLog[activeLogId] || []) : [];
     const running = Boolean(activeRunning);
     const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
     const allResultsSelected = Boolean(results.length) && selectedResultIds.length === results.length;
@@ -208,7 +208,7 @@ export default function VideoPage() {
 
     const updateLogResults = (logId: string, updater: (value: GenerationResult[]) => GenerationResult[]) => {
         if (!logId) return;
-        setResultsByLog((value) => ({ ...value, [logId]: updater(value[logId] || []) }));
+        setResultsByLog((value) => ({ ...value, [logId]: dedupeGenerationResults(updater(value[logId] || [])) }));
     };
 
     const startLogRun = (logId: string, startedAtValue = performance.now()) => {
@@ -2134,6 +2134,23 @@ function buildLog({
 
 function videoIdentityKey(video: Pick<GeneratedVideo, "id" | "storageKey" | "url">) {
     return video.storageKey || video.url || video.id || "";
+}
+
+function resultIdentityKey(result: GenerationResult) {
+    if (result.video) return `video:${videoIdentityKey(result.video)}`;
+    if (result.status === "failed") return `failed:${result.id}:${result.error || ""}`;
+    return `pending:${result.id}`;
+}
+
+function dedupeGenerationResults(results: GenerationResult[]) {
+    const seen = new Set<string>();
+    return results.filter((result) => {
+        const key = resultIdentityKey(result);
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 function dedupeVideos(videos: GeneratedVideo[]) {
