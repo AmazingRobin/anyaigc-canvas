@@ -19,7 +19,7 @@ import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedan
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { recordDeletedSyncIds } from "@/services/app-sync";
-import { deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
+import { deleteStoredMedia, getMediaBlob, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api/prompt";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, videoGenerationPollConfig, type VideoGenerationTask } from "@/services/api/video";
@@ -720,7 +720,7 @@ export default function VideoPage() {
                                 <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                     {results.map((result) =>
                                         result.status === "success" && result.video ? (
-                                            <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                            <ResultVideoCard key={result.id} video={result.video} previewSuspended={playerVideo?.id === result.video.id} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
                                             <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} retryLabel={findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试"} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
@@ -1281,12 +1281,20 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; selected: boolean; savedToAsset: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void | Promise<void>; onDelete: () => void }) {
+function ResultVideoCard({ video, previewSuspended = false, selected, savedToAsset, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; previewSuspended?: boolean; selected: boolean; savedToAsset: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void | Promise<void>; onDelete: () => void }) {
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-black shadow-sm dark:border-stone-800">
             <SelectionBubble className="absolute right-3 top-3 z-30" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             <div className="group relative aspect-square w-full overflow-hidden bg-black text-left">
-                <video src={video.url} poster={video.thumbnail || undefined} className="size-full object-cover" muted playsInline preload="metadata" />
+                {previewSuspended ? (
+                    video.thumbnail ? (
+                        <img src={video.thumbnail} alt="" className="size-full object-cover" />
+                    ) : (
+                        <div className="size-full bg-black" />
+                    )
+                ) : (
+                    <video src={video.url} poster={video.thumbnail || undefined} className="size-full object-cover" muted playsInline preload="metadata" />
+                )}
                 <button type="button" className="absolute inset-0 z-10 grid place-items-center bg-black/0 transition hover:bg-black/18" onClick={onPlay} aria-label="播放视频">
                     <span className="grid size-12 place-items-center rounded-full bg-white/90 text-stone-950 shadow-lg transition hover:scale-105">
                         <Play className="ml-0.5 size-5 fill-current" />
@@ -1375,11 +1383,29 @@ function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVide
     const videoRef = useRef<HTMLVideoElement>(null);
     const [playing, setPlaying] = useState(false);
     const [muted, setMuted] = useState(false);
+    const [playbackUrl, setPlaybackUrl] = useState("");
 
     useEffect(() => {
+        let objectUrl = "";
+        let cancelled = false;
         setPlaying(false);
         setMuted(false);
-    }, [video?.id]);
+        setPlaybackUrl(video?.url || "");
+        if (!video?.storageKey) {
+            return () => {
+                cancelled = true;
+            };
+        }
+        void getMediaBlob(video.storageKey).then((blob) => {
+            if (cancelled || !blob) return;
+            objectUrl = URL.createObjectURL(blob);
+            setPlaybackUrl(objectUrl);
+        });
+        return () => {
+            cancelled = true;
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [video?.id, video?.storageKey, video?.url]);
 
     const togglePlay = async () => {
         const node = videoRef.current;
@@ -1419,12 +1445,14 @@ function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVide
                 <div className="space-y-3">
                     <div className="overflow-hidden rounded-lg bg-black">
                         <video
+                            key={`${video.id}:${playbackUrl || video.url}`}
                             ref={videoRef}
-                            src={video.url}
+                            src={playbackUrl || video.url}
                             className="max-h-[72vh] w-full bg-black object-contain"
                             controls
                             autoPlay
                             playsInline
+                            preload="auto"
                             onPlay={() => setPlaying(true)}
                             onPause={() => setPlaying(false)}
                             onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
