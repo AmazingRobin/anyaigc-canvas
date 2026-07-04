@@ -18,6 +18,8 @@ import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
+import { createZip } from "@/lib/zip";
+import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredMedia, getMediaBlob, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
@@ -85,6 +87,7 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "videoCallMod
 type PollGenerationOptions = { notify?: boolean; resultId?: string; startedAtMs?: number; runStarted?: boolean };
 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
+const VIDEO_WORKBENCH_DRAFT_KEY = "relaybases-canvas:video-workbench-draft";
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
 const VIDEO_LOG_THUMBNAIL_MIN_RENDER_EDGE = 720;
@@ -104,7 +107,7 @@ const RELAYBASES_VIDEO_RATIO_OPTIONS = [
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const referencePopoverRef = useRef<HTMLDivElement>(null);
     const referencePopoverDesktopPanelRef = useRef<HTMLDivElement>(null);
@@ -141,6 +144,7 @@ export default function VideoPage() {
     const [referencePreview, setReferencePreview] = useState<ReferencePreview | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
+    const draftRestoredRef = useRef(false);
 
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const modelName = modelOptionName(model);
@@ -161,6 +165,7 @@ export default function VideoPage() {
     const resultKeys = results.map(resultIdentityKey);
     const running = Boolean(activeRunning);
     const selectedResults = results.filter((result) => selectedResultIds.includes(resultIdentityKey(result)));
+    const selectedSuccessResults = selectedResults.filter((result) => result.status === "success" && result.video);
     const allResultsSelected = Boolean(results.length) && resultKeys.every((key) => selectedResultIds.includes(key));
 
     useEffect(() => {
@@ -190,6 +195,24 @@ export default function VideoPage() {
     }, [configHydrated, effectiveConfig.apiKey, effectiveConfig.mediaApiKey, effectiveConfig.baseUrl]);
 
     useEffect(() => {
+        if (!configHydrated || draftRestoredRef.current || typeof window === "undefined") return;
+        draftRestoredRef.current = true;
+        if (effectiveConfig.restoreWorkbenchDraftOnStart !== "true") return;
+        try {
+            const draft = JSON.parse(window.localStorage.getItem(VIDEO_WORKBENCH_DRAFT_KEY) || "{}") as Partial<{
+                prompt: string;
+                references: ReferenceImage[];
+                videoReferences: ReferenceVideo[];
+                audioReferences: ReferenceAudio[];
+            }>;
+            if (typeof draft.prompt === "string") setPrompt(draft.prompt);
+            if (Array.isArray(draft.references)) setReferences(draft.references.slice(0, referenceLimits.images));
+            if (Array.isArray(draft.videoReferences)) setVideoReferences(draft.videoReferences.slice(0, referenceLimits.videos));
+            if (Array.isArray(draft.audioReferences)) setAudioReferences(draft.audioReferences.slice(0, referenceLimits.audios));
+        } catch {}
+    }, [configHydrated, effectiveConfig.restoreWorkbenchDraftOnStart, referenceLimits.audios, referenceLimits.images, referenceLimits.videos]);
+
+    useEffect(() => {
         const handoff = consumeImageToVideoReferences();
         if (!handoff?.references.length) return;
         const handoffLimits = videoReferenceLimits(seedanceVideo, modelName);
@@ -197,6 +220,23 @@ export default function VideoPage() {
         if (handoff.prompt) setPrompt((value) => (value.trim() ? value : handoff.prompt || value));
         message.success(`已带入 ${Math.min(handoff.references.length, handoffLimits.images)} 张参考图`);
     }, [message, modelName, seedanceVideo]);
+
+    useEffect(() => {
+        if (!configHydrated || typeof window === "undefined") return;
+        if (effectiveConfig.restoreWorkbenchDraftOnStart !== "true") return;
+        const timer = window.setTimeout(() => {
+            window.localStorage.setItem(
+                VIDEO_WORKBENCH_DRAFT_KEY,
+                JSON.stringify({
+                    prompt,
+                    references: references.slice(0, referenceLimits.images),
+                    videoReferences: videoReferences.slice(0, referenceLimits.videos),
+                    audioReferences: audioReferences.slice(0, referenceLimits.audios),
+                }),
+            );
+        }, 150);
+        return () => window.clearTimeout(timer);
+    }, [audioReferences, configHydrated, effectiveConfig.restoreWorkbenchDraftOnStart, prompt, referenceLimits.audios, referenceLimits.images, referenceLimits.videos, references, videoReferences]);
 
     useEffect(() => {
         setSelectedResultIds((ids) => {
@@ -371,6 +411,12 @@ export default function VideoPage() {
             });
             await saveLog(log);
             if (targetLog) setPreviewLog(log);
+            if (effectiveConfig.clearVideoInputsAfterSubmit === "true") {
+                setPrompt("");
+                setReferences([]);
+                setVideoReferences([]);
+                setAudioReferences([]);
+            }
             void pollGenerationLog(log, snapshot.config, { resultId, startedAtMs: taskStartedAt, runStarted: true });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "生成失败";
@@ -396,6 +442,7 @@ export default function VideoPage() {
             await saveLog(failedLog);
             if (targetLog) setPreviewLog(failedLog);
             message.error(errorMessage);
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频任务创建失败", errorMessage);
             finishLogRun(logId);
         }
     };
@@ -450,6 +497,33 @@ export default function VideoPage() {
         saveAs(video.url, "video.mp4");
     };
 
+    const downloadSelectedVideos = async () => {
+        const targets = selectedSuccessResults.map((result) => result.video).filter((video): video is GeneratedVideo => Boolean(video));
+        if (!targets.length) {
+            message.warning("请选择可下载的视频结果");
+            return;
+        }
+        const messageKey = "video-workbench-download-zip";
+        message.loading({ key: messageKey, content: "正在打包视频", duration: 0 });
+        try {
+            const files = await Promise.all(
+                targets.map(async (video, index) => {
+                    const blob = video.storageKey ? await getMediaBlob(video.storageKey) : video.url ? await (await fetch(video.url)).blob() : null;
+                    if (!blob) throw new Error("视频文件缺失");
+                    return {
+                        name: `${String(index + 1).padStart(2, "0")}-${safeArchiveName(video.id)}.${fileExtensionFromMime(blob.type || video.mimeType, "mp4")}`,
+                        data: blob,
+                    };
+                }),
+            );
+            const zip = await createZip(files);
+            saveAs(zip, `relaybases-videos-${timestampForFileName()}.zip`);
+            message.success({ key: messageKey, content: `已打包 ${files.length} 个视频` });
+        } catch (error) {
+            message.error({ key: messageKey, content: error instanceof Error ? error.message : "视频打包失败" });
+        }
+    };
+
     const saveResultToAssets = async (video: GeneratedVideo) => {
         const savedAsset = findGeneratedVideoAsset(video, assets);
         if (savedAsset) {
@@ -473,8 +547,22 @@ export default function VideoPage() {
     const editResultVideo = (video: GeneratedVideo) => {
         const reference: ReferenceVideo = { id: nanoid(), name: "generated-video.mp4", type: video.mimeType || "video/mp4", url: video.url, storageKey: video.storageKey, bytes: video.bytes, width: video.width, height: video.height, durationMs: video.videoDurationMs };
         const referenceKey = reference.storageKey || reference.url;
-        setVideoReferences((value) => [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)].slice(0, SEEDANCE_REFERENCE_LIMITS.videos));
-        message.success("已进入视频编辑模式");
+        const applyReference = (mode: "append" | "replace") => {
+            setVideoReferences((value) => (mode === "replace" ? [reference] : [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)]).slice(0, referenceLimits.videos || SEEDANCE_REFERENCE_LIMITS.videos));
+            message.success(mode === "replace" ? "已替换参考视频" : "已加入参考视频");
+        };
+        if (effectiveConfig.referenceEditMode === "ask" && videoReferences.length) {
+            modal.confirm({
+                title: "处理参考视频",
+                content: "将当前结果加入参考视频，或替换已有参考视频。",
+                okText: "替换",
+                cancelText: "追加",
+                onOk: () => applyReference("replace"),
+                onCancel: () => applyReference("append"),
+            });
+            return;
+        }
+        applyReference(effectiveConfig.referenceEditMode === "replace" ? "replace" : "append");
     };
 
     const deleteResult = async (result: GenerationResult) => {
@@ -643,6 +731,7 @@ export default function VideoPage() {
                     await saveLog(completedLog);
                     setPreviewLog((current) => (current?.id === completedLog.id ? completedLog : current));
                     message.success("视频已生成");
+                    notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成完成", `${log.prompt || log.title || "视频任务"} 已完成`);
                     void createVideoThumbnail(stored.url).then(async (thumbnail) => {
                         const normalized = normalizeVideoThumbnail(thumbnail);
                         if (!normalized) return;
@@ -663,6 +752,7 @@ export default function VideoPage() {
             await saveLog(failedLog);
             setPreviewLog((current) => (current?.id === failedLog.id ? failedLog : current));
             message.error(errorMessage);
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成失败", errorMessage);
         } finally {
             activeLogIdsRef.current.delete(resultId);
             finishLogRun(logId);
@@ -740,6 +830,9 @@ export default function VideoPage() {
                                     <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedResults.length} onClick={() => requestDeleteResults(selectedResults)}>
                                         删除选中
                                     </Button>
+                                    <Button size="small" icon={<Download className="size-3.5" />} disabled={!selectedSuccessResults.length} onClick={() => void downloadSelectedVideos()}>
+                                        下载选中
+                                    </Button>
                                 </>
                             ) : null}
                             {running ? (
@@ -763,7 +856,7 @@ export default function VideoPage() {
                                 <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                     {results.map((result) =>
                                         result.status === "success" && result.video ? (
-                                            <ResultVideoCard key={resultIdentityKey(result)} video={result.video} previewSuspended={playerVideo?.id === result.video.id} selected={selectedResultIds.includes(resultIdentityKey(result))} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                            <ResultVideoCard key={resultIdentityKey(result)} video={result.video} previewSuspended={playerVideo?.id === result.video.id} selected={selectedResultIds.includes(resultIdentityKey(result))} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onRegenerate={() => void generate()} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
                                             <FailedVideoCard key={resultIdentityKey(result)} error={result.error || "生成失败"} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} retryLabel={findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试"} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
@@ -807,6 +900,11 @@ export default function VideoPage() {
                                 <Input.TextArea
                                     value={prompt}
                                     onChange={(event) => setPrompt(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (!shouldSubmitPrompt(event, effectiveConfig.submitTaskShortcut)) return;
+                                        event.preventDefault();
+                                        void generate();
+                                    }}
                                     rows={promptCollapsed ? 1 : 2}
                                     autoSize={promptCollapsed ? { minRows: 1, maxRows: 1 } : { minRows: 2, maxRows: 5 }}
                                     placeholder="描述镜头运动、主体动作、场景氛围和画面风格"
@@ -1324,7 +1422,31 @@ function HistoryPill({ label, tone = "neutral", children, className = "" }: { la
     );
 }
 
-function ResultVideoCard({ video, previewSuspended = false, selected, savedToAsset, onSelectedChange, onPlay, onEdit, onDownload, onSaveAsset, onDelete }: { video: GeneratedVideo; previewSuspended?: boolean; selected: boolean; savedToAsset: boolean; onSelectedChange: (checked: boolean) => void; onPlay: () => void; onEdit: (video: GeneratedVideo) => void; onDownload: (video: GeneratedVideo) => void; onSaveAsset: (video: GeneratedVideo) => void | Promise<void>; onDelete: () => void }) {
+function ResultVideoCard({
+    video,
+    previewSuspended = false,
+    selected,
+    savedToAsset,
+    onSelectedChange,
+    onPlay,
+    onEdit,
+    onRegenerate,
+    onDownload,
+    onSaveAsset,
+    onDelete,
+}: {
+    video: GeneratedVideo;
+    previewSuspended?: boolean;
+    selected: boolean;
+    savedToAsset: boolean;
+    onSelectedChange: (checked: boolean) => void;
+    onPlay: () => void;
+    onEdit: (video: GeneratedVideo) => void;
+    onRegenerate: () => void;
+    onDownload: (video: GeneratedVideo) => void;
+    onSaveAsset: (video: GeneratedVideo) => void | Promise<void>;
+    onDelete: () => void;
+}) {
     const durationLabel = videoDurationLabel(video);
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-black shadow-sm dark:border-stone-800">
@@ -1359,6 +1481,9 @@ function ResultVideoCard({ video, previewSuspended = false, selected, savedToAss
                         </Tooltip>
                         <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
                             <Button type="text" aria-label={savedToAsset ? "取消加入素材" : "添加到素材"} className={`${RESULT_OVERLAY_ICON_BUTTON_CLASS} ${savedToAsset ? "!bg-emerald-500/40 !text-white hover:!bg-emerald-500/55" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(video)} />
+                        </Tooltip>
+                        <Tooltip title="重新生成">
+                            <Button type="text" aria-label="重新生成" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<RotateCcw className="size-3.5" />} onClick={onRegenerate} />
                         </Tooltip>
                         <Tooltip title="下载">
                             <Button type="text" aria-label="下载视频" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)} />

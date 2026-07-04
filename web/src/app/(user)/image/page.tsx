@@ -16,6 +16,8 @@ import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
+import { createZip } from "@/lib/zip";
+import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
 import { modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
@@ -23,7 +25,7 @@ import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSiz
 import { requestEdit, requestGeneration } from "@/services/api/image";
 import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api/prompt";
 import { recordDeletedSyncIds } from "@/services/app-sync";
-import { deleteStoredImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
+import { deleteStoredImages, getImageBlob, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { queueImageToVideoReferences } from "@/services/workbench-handoff";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
@@ -110,6 +112,7 @@ const LOG_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
 const LOG_THUMBNAIL_QUALITY = 0.84;
 
 const LOG_STORE_KEY = "infinite-canvas:image_generation_logs";
+const IMAGE_WORKBENCH_DRAFT_KEY = "relaybases-canvas:image-workbench-draft";
 const RESULT_OVERLAY_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-transparent !p-0 !text-white !shadow-none hover:!bg-white/16 hover:!text-white disabled:!bg-transparent disabled:!text-white/45 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
 const RESULT_OVERLAY_DANGER_BUTTON_CLASS = `${RESULT_OVERLAY_ICON_BUTTON_CLASS} hover:!bg-rose-500/45`;
 const RESULT_FAILED_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-red-100/70 !p-0 !text-red-600 !shadow-none hover:!bg-red-200/80 dark:!bg-red-950/60 dark:!text-red-200 dark:hover:!bg-red-900/80 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
@@ -117,7 +120,7 @@ const COMPOSER_CONTROL_CLASS = "h-8 rounded-full border border-input bg-transpar
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
 
 export default function ImagePage() {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sizePopoverRef = useRef<HTMLDivElement>(null);
@@ -153,12 +156,14 @@ export default function ImagePage() {
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
+    const [draftHydrated, setDraftHydrated] = useState(false);
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(15, Number(config.count) || 1));
     const results = resultsBySession[activeSessionId] || [];
     const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
+    const selectedSuccessResults = selectedResults.filter((result) => result.status === "success" && result.image);
     const allResultsSelected = Boolean(results.length) && selectedResultIds.length === results.length;
     const activeRunning = runningBySession[activeSessionId];
     const running = Boolean(activeRunning);
@@ -207,6 +212,35 @@ export default function ImagePage() {
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (effectiveConfig.restoreWorkbenchDraftOnStart !== "true") {
+            setDraftHydrated(true);
+            return;
+        }
+        try {
+            const draft = JSON.parse(window.localStorage.getItem(IMAGE_WORKBENCH_DRAFT_KEY) || "{}") as Partial<Pick<WorkbenchSession, "prompt" | "references">>;
+            if (typeof draft.prompt === "string") setPrompt(draft.prompt);
+            if (Array.isArray(draft.references)) setReferences(draft.references.slice(0, IMAGE_REFERENCE_LIMIT));
+        } catch {}
+        setDraftHydrated(true);
+    }, []);
+
+    useEffect(() => {
+        if (!draftHydrated || typeof window === "undefined") return;
+        if (effectiveConfig.restoreWorkbenchDraftOnStart !== "true") return;
+        const timer = window.setTimeout(() => {
+            window.localStorage.setItem(
+                IMAGE_WORKBENCH_DRAFT_KEY,
+                JSON.stringify({
+                    prompt,
+                    references: references.slice(0, IMAGE_REFERENCE_LIMIT),
+                }),
+            );
+        }, 150);
+        return () => window.clearTimeout(timer);
+    }, [draftHydrated, effectiveConfig.restoreWorkbenchDraftOnStart, prompt, references]);
 
     useEffect(() => {
         setSelectedResultIds((ids) => {
@@ -326,7 +360,7 @@ export default function ImagePage() {
         }
     };
 
-    const generate = () => {
+    const generate = (countOverride?: number) => {
         const text = prompt.trim();
         if (!text) {
             message.error("请输入生图提示词");
@@ -342,18 +376,19 @@ export default function ImagePage() {
         if (!snapshot) return;
 
         const sessionId = activeSessionId;
+        const requestCount = Math.max(1, Math.min(15, Math.floor(countOverride || generationCount)));
         if (!logIdFromSession(sessionId)) {
             rememberWorkbenchSession(sessionId, {
                 prompt: text,
                 model,
-                config: { ...snapshot.config, count: String(generationCount) },
+                config: { ...snapshot.config, count: String(requestCount) },
                 references: snapshot.references,
-            }, generationCount);
+            }, requestCount);
         }
         if (!runningBySession[sessionId]) setElapsedMs(0);
         if (!logIdFromSession(sessionId)) setPreviewLog(null);
         setSelectedResultIds([]);
-        const pendingResults = Array.from({ length: generationCount }, () => ({ id: nanoid(), status: "pending" as const }));
+        const pendingResults = Array.from({ length: requestCount }, () => ({ id: nanoid(), status: "pending" as const }));
         updateSessionResults(sessionId, (value) => [...value, ...pendingResults]);
         const batchStartedAt = performance.now();
         startSessionRun(sessionId, batchStartedAt);
@@ -368,7 +403,7 @@ export default function ImagePage() {
                 (error) => ({ resultId: item.id, status: "failed" as const, error: error instanceof Error ? error.message : "生成失败" }),
             ),
         );
-        void finishGenerationBatch({ sessionId, text, model, snapshot, generationCount, batchStartedAt, tasks });
+        void finishGenerationBatch({ sessionId, text, model, snapshot, generationCount: requestCount, batchStartedAt, tasks });
     };
 
     const finishGenerationBatch = async ({
@@ -400,6 +435,11 @@ export default function ImagePage() {
         const durationMs = performance.now() - batchStartedAt;
         finishSessionRun(sessionId);
         successCount ? message.success("图片已生成") : message.error(failed?.error || "生成失败");
+        notifyWorkbenchTask(
+            effectiveConfig.notifyOnGenerationComplete === "true",
+            successCount ? "图片生成完成" : "图片生成失败",
+            successCount ? `成功 ${successCount} 张${failCount ? `，失败 ${failCount} 张` : ""}` : failed?.error || "生成失败",
+        );
 
         void (async () => {
             const logImages = await Promise.all(
@@ -431,10 +471,52 @@ export default function ImagePage() {
         saveAs(image.dataUrl, `image-${index + 1}.png`);
     };
 
+    const downloadSelectedImages = async () => {
+        const targets = selectedSuccessResults.map((result) => result.image).filter((image): image is GeneratedImage => Boolean(image));
+        if (!targets.length) {
+            message.warning("请选择可下载的图片结果");
+            return;
+        }
+        const messageKey = "image-workbench-download-zip";
+        message.loading({ key: messageKey, content: "正在打包图片", duration: 0 });
+        try {
+            const files = await Promise.all(
+                targets.map(async (image, index) => {
+                    const blob = image.storageKey ? await getImageBlob(image.storageKey) : image.dataUrl ? await (await fetch(image.dataUrl)).blob() : null;
+                    if (!blob) throw new Error("图片文件缺失");
+                    return {
+                        name: `${String(index + 1).padStart(2, "0")}-${safeArchiveName(image.id)}.${fileExtensionFromMime(blob.type || image.mimeType, "png")}`,
+                        data: blob,
+                    };
+                }),
+            );
+            const zip = await createZip(files);
+            saveAs(zip, `relaybases-images-${timestampForFileName()}.zip`);
+            message.success({ key: messageKey, content: `已打包 ${files.length} 张图片` });
+        } catch (error) {
+            message.error({ key: messageKey, content: error instanceof Error ? error.message : "图片打包失败" });
+        }
+    };
+
     const addResultToReferences = async (image: GeneratedImage, index: number) => {
         const stored = await uploadImage(image.dataUrl);
-        setReferences((value) => [{ id: nanoid(), name: `result-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }, ...value].slice(0, IMAGE_REFERENCE_LIMIT));
-        message.success("已进入编辑模式");
+        const reference = { id: nanoid(), name: `result-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey };
+        const applyReference = (mode: "append" | "replace") => {
+            setReferences((value) => (mode === "replace" ? [reference] : [reference, ...value]).slice(0, IMAGE_REFERENCE_LIMIT));
+            message.success(mode === "replace" ? "已替换参考图" : "已加入参考图");
+        };
+        if (effectiveConfig.referenceEditMode === "ask" && references.length) {
+            modal.confirm({
+                title: "处理参考图",
+                content: "将当前结果加入参考图，或替换已有参考图。",
+                okText: "替换",
+                cancelText: "追加",
+                onOk: () => applyReference("replace"),
+                onCancel: () => applyReference("append"),
+            });
+            return;
+        }
+        applyReference(effectiveConfig.referenceEditMode === "replace" ? "replace" : "append");
     };
 
     const generateVideoFromImage = async (image: GeneratedImage, index: number) => {
@@ -684,6 +766,9 @@ export default function ImagePage() {
                                     <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedResults.length} onClick={() => requestDeleteResults(selectedResults)}>
                                         删除选中
                                     </Button>
+                                    <Button size="small" icon={<Download className="size-3.5" />} disabled={!selectedSuccessResults.length} onClick={() => void downloadSelectedImages()}>
+                                        下载选中
+                                    </Button>
                                 </>
                             ) : null}
                             {running ? (
@@ -708,7 +793,7 @@ export default function ImagePage() {
                                     <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                         {results.map((result, index) =>
                                             result.status === "success" && result.image ? (
-                                                <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                                <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onRegenerate={() => generate(1)} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                             ) : result.status === "failed" ? (
                                                 <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
                                             ) : (
@@ -753,6 +838,11 @@ export default function ImagePage() {
                                 <Input.TextArea
                                     value={prompt}
                                     onChange={(event) => setPrompt(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (!shouldSubmitPrompt(event, effectiveConfig.submitTaskShortcut)) return;
+                                        event.preventDefault();
+                                        generate();
+                                    }}
                                     rows={promptCollapsed ? 1 : 2}
                                     autoSize={promptCollapsed ? { minRows: 1, maxRows: 1 } : { minRows: 2, maxRows: 5 }}
                                     placeholder="描述画面主体、风格、构图、光线和用途"
@@ -834,7 +924,7 @@ export default function ImagePage() {
                                             />
                                         </label>
                                     </div>
-                                    <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={generate} className="xl:min-w-36">
+                                    <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => generate()} className="xl:min-w-36">
                                         生成 {generationCount} 张
                                     </Button>
                                 </div>
@@ -1008,6 +1098,7 @@ function ResultImageCard({
     onSelectedChange,
     onEdit,
     onGenerateVideo,
+    onRegenerate,
     onDownload,
     onSaveAsset,
     onDelete,
@@ -1019,6 +1110,7 @@ function ResultImageCard({
     onSelectedChange: (checked: boolean) => void;
     onEdit: (image: GeneratedImage, index: number) => void;
     onGenerateVideo: (image: GeneratedImage, index: number) => void;
+    onRegenerate: () => void;
     onDownload: (image: GeneratedImage, index: number) => void;
     onSaveAsset: (image: GeneratedImage, index: number) => void;
     onDelete: () => void;
@@ -1070,6 +1162,9 @@ function ResultImageCard({
                             </Tooltip>
                             <Tooltip title="用这张图生成视频">
                                 <Button type="text" aria-label="用这张图生成视频" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<VideoIcon className="size-3.5" />} onClick={() => void onGenerateVideo(displayImage, index)} />
+                            </Tooltip>
+                            <Tooltip title="重新生成">
+                                <Button type="text" aria-label="重新生成" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<RefreshCw className="size-3.5" />} onClick={onRegenerate} />
                             </Tooltip>
                             <Tooltip title="下载">
                                 <Button type="text" aria-label="下载图片" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(displayImage, index)} />

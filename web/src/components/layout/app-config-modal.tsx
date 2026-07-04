@@ -11,6 +11,7 @@ import { syncAppDataToCloud, syncAppDataToWebdav, type AppSyncDomainKey, type Ap
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { useI18n } from "@/lib/i18n";
+import { requestWorkbenchNotificationPermission } from "@/lib/workbench-preferences";
 import {
     encodeChannelModel,
     filterModelsByCapability,
@@ -389,6 +390,16 @@ export function AppConfigModal() {
                         children: (
                             <Form layout="vertical" requiredMark={false}>
                                 <div className="grid gap-4 md:grid-cols-4">
+                                    <Form.Item label="任务提交方式" extra="选择 Ctrl + Enter 时，Enter 换行；选择 Enter 时，Shift + Enter 换行。" className="mb-4">
+                                        <Select
+                                            value={config.submitTaskShortcut}
+                                            options={[
+                                                { label: "Ctrl + Enter", value: "ctrlEnter" },
+                                                { label: "Enter", value: "enter" },
+                                            ]}
+                                            onChange={(value) => updateConfig("submitTaskShortcut", value)}
+                                        />
+                                    </Form.Item>
                                     <Form.Item label="画布默认生图张数" extra="新建画布生图和配置节点默认使用，单个节点仍可单独覆盖。" className="mb-4">
                                         <Input
                                             type="number"
@@ -416,8 +427,40 @@ export function AppConfigModal() {
                                             onBlur={(event) => updateConfig("audioSpeed", normalizeAudioSpeedValue(event.target.value))}
                                         />
                                     </Form.Item>
-                                    <Form.Item label="提交任务后清空输入框" extra="开启后，生图工作台在任务成功创建后清空提示词和参考图；配置缺失或提交失败时不会清空。" className="mb-4">
+                                    <Form.Item label="生图提交后清空输入" extra="开启后，生图任务成功创建时清空提示词和参考图；配置缺失或提交失败时不会清空。" className="mb-4">
                                         <Switch checked={config.clearImageInputsAfterSubmit === "true"} checkedChildren="开启" unCheckedChildren="关闭" onChange={(checked) => updateConfig("clearImageInputsAfterSubmit", checked ? "true" : "false")} />
+                                    </Form.Item>
+                                    <Form.Item label="视频提交后清空输入" extra="开启后，视频任务成功创建时清空提示词和参考素材；配置缺失或提交失败时不会清空。" className="mb-4">
+                                        <Switch checked={config.clearVideoInputsAfterSubmit === "true"} checkedChildren="开启" unCheckedChildren="关闭" onChange={(checked) => updateConfig("clearVideoInputsAfterSubmit", checked ? "true" : "false")} />
+                                    </Form.Item>
+                                    <Form.Item label="任务完成后系统通知" extra="开启后，生图或视频任务完成、失败时发送浏览器系统通知。" className="mb-4">
+                                        <Switch
+                                            checked={config.notifyOnGenerationComplete === "true"}
+                                            checkedChildren="开启"
+                                            unCheckedChildren="关闭"
+                                            onChange={(checked) => {
+                                                updateConfig("notifyOnGenerationComplete", checked ? "true" : "false");
+                                                if (!checked) return;
+                                                void requestWorkbenchNotificationPermission().then((permission) => {
+                                                    if (permission === "denied") message.warning("浏览器通知权限已被拒绝，可在浏览器站点权限中重新开启");
+                                                    if (permission === "unsupported") message.warning("当前浏览器不支持系统通知");
+                                                });
+                                            }}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label="启动时恢复输入" extra="开启后，重新打开生图或视频工作台时恢复上次提示词和参考素材。" className="mb-4">
+                                        <Switch checked={config.restoreWorkbenchDraftOnStart === "true"} checkedChildren="开启" unCheckedChildren="关闭" onChange={(checked) => updateConfig("restoreWorkbenchDraftOnStart", checked ? "true" : "false")} />
+                                    </Form.Item>
+                                    <Form.Item label="结果编辑方式" extra="控制生成结果加入参考素材时，是追加、替换，还是每次询问。" className="mb-4">
+                                        <Select
+                                            value={config.referenceEditMode}
+                                            options={[
+                                                { label: "追加素材", value: "append" },
+                                                { label: "替换素材", value: "replace" },
+                                                { label: "每次询问", value: "ask" },
+                                            ]}
+                                            onChange={(value) => updateConfig("referenceEditMode", value)}
+                                        />
                                     </Form.Item>
                                 </div>
                                 <Form.Item label="默认音频指令" className="mb-4">

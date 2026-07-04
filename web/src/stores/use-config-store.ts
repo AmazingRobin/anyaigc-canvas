@@ -5,6 +5,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
+import { normalizeReferenceEditMode, normalizeSubmitTaskShortcut, type ReferenceEditMode, type SubmitTaskShortcut } from "@/lib/workbench-preferences";
+
 export type ApiCallFormat = "openai" | "gemini";
 
 export type ModelChannel = {
@@ -49,6 +51,11 @@ export type AiConfig = {
     count: string;
     canvasImageCount: string;
     clearImageInputsAfterSubmit: string;
+    clearVideoInputsAfterSubmit: string;
+    submitTaskShortcut: SubmitTaskShortcut;
+    notifyOnGenerationComplete: string;
+    restoreWorkbenchDraftOnStart: string;
+    referenceEditMode: ReferenceEditMode;
 };
 
 export type WebdavSyncConfig = {
@@ -141,6 +148,11 @@ export const defaultConfig: AiConfig = {
     count: "3",
     canvasImageCount: "3",
     clearImageInputsAfterSubmit: "false",
+    clearVideoInputsAfterSubmit: "false",
+    submitTaskShortcut: "ctrlEnter",
+    notifyOnGenerationComplete: "false",
+    restoreWorkbenchDraftOnStart: "true",
+    referenceEditMode: "append",
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -515,6 +527,11 @@ function normalizeRelayBasesConfig(config: AiConfig): AiConfig {
         videoWatermark: config.videoWatermark || defaultConfig.videoWatermark,
         canvasImageCount: config.canvasImageCount || defaultConfig.canvasImageCount,
         clearImageInputsAfterSubmit: config.clearImageInputsAfterSubmit === "true" ? "true" : "false",
+        clearVideoInputsAfterSubmit: config.clearVideoInputsAfterSubmit === "true" ? "true" : "false",
+        submitTaskShortcut: normalizeSubmitTaskShortcut(config.submitTaskShortcut),
+        notifyOnGenerationComplete: config.notifyOnGenerationComplete === "true" ? "true" : "false",
+        restoreWorkbenchDraftOnStart: config.restoreWorkbenchDraftOnStart === "false" ? "false" : "true",
+        referenceEditMode: normalizeReferenceEditMode(config.referenceEditMode),
     };
 }
 
