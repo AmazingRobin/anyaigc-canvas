@@ -788,7 +788,7 @@ export default function ImagePage() {
                                                 </button>
                                             </div>
                                         ))}
-                                        {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">PNG/JPG · 最多 5 张 · 50MB/张</span> : null}
+                                        {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">PNG/JPG · 最多 5 张 · 单张≤50MB</span> : null}
                                         </div>
                                     </Image.PreviewGroup>
                                     <div className="flex shrink-0 gap-2">

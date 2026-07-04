@@ -1083,34 +1083,34 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
     const value = model.toLowerCase();
     if (seedance) {
         return {
-            image: `PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
-            video: `MP4/MOV · 2-15s · ${formatReferenceLimit(limits.videoMaxBytes)}/个`,
-            audio: `MP3/WAV · 2-15s · ${formatReferenceLimit(limits.audioMaxBytes)}/个`,
+            image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: `MP4/MOV · 2-15s · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
+            audio: `MP3/WAV · 2-15s · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
         };
     }
     if (value === "veo-omni-flash-video-edit") {
         return {
-            image: `PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
-            video: `MP4/MOV · ${formatReferenceLimit(limits.videoMaxBytes)}/个`,
+            image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
             audio: "不使用",
         };
     }
     if (value === "veo-3-1") {
         return {
-            image: `首帧/尾帧 · 最多 2 张 · PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
+            image: `首帧/尾帧 · 最多 2 张 · PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
             video: "不使用",
             audio: "不使用",
         };
     }
     if (limits.videos || limits.audios) {
         return {
-            image: `PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
-            video: `MP4/MOV · ${formatReferenceLimit(limits.videoMaxBytes)}/个`,
-            audio: `MP3/WAV · ${formatReferenceLimit(limits.audioMaxBytes)}/个`,
+            image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
+            audio: `MP3/WAV · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
         };
     }
     return {
-        image: `PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
+        image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
         video: "不使用",
         audio: "不使用",
     };
