@@ -152,6 +152,7 @@ export default function VideoPage() {
     const ratioOptions = videoRatioOptions(seedanceVideo);
     const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, videoResolutionLabel(effectiveConfig.vquality, model));
     const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, secondsValue);
+    const secondsTiming = seedanceVideo ? { min: 4, max: 15, defaultValue: 5, fixed: false } : relayBasesVideoTiming(modelName);
     const canGenerate = Boolean(prompt.trim());
     const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
     const allResultsSelected = Boolean(results.length) && selectedResultIds.length === results.length;
@@ -801,7 +802,11 @@ export default function VideoPage() {
                                         {relayBasesVideo ? <VideoComposerSelect label="模式" value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
                                         <VideoComposerSelect label="比例" value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
                                         {resolutionOptions.length > 1 ? <VideoComposerSelect label="清晰度" value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label="清晰度" value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model)} />}
-                                        {secondsOptions.length > 1 ? <VideoComposerSelect label="时长" value={secondsValue} options={secondsOptions} onChange={(value) => updateConfig("videoSeconds", value)} /> : <VideoComposerMetric label="时长" value={secondsOptions[0]?.label || (secondsValue === "-1" ? "智能" : `${secondsValue}s`)} />}
+                                        {secondsTiming.fixed ? (
+                                            <VideoComposerMetric label="时长" value={secondsOptions[0]?.label || (secondsValue === "-1" ? "智能" : `${secondsValue}s`)} />
+                                        ) : (
+                                            <VideoComposerDurationControl value={secondsValue} options={secondsOptions} min={secondsTiming.min} max={secondsTiming.max} allowSmart={seedanceVideo} onChange={(value) => updateConfig("videoSeconds", value)} />
+                                        )}
                                         {seedanceVideo ? (
                                             <>
                                                 <VideoToggleControl label="声音" checked={boolConfig(effectiveConfig.videoGenerateAudio, true)} onChange={(checked) => updateConfig("videoGenerateAudio", String(checked))} />
@@ -900,13 +905,13 @@ function VideoComposerSelect({ label, value, options, onChange }: { label: strin
     return (
         <Select value={selected?.value || value} onValueChange={onChange}>
             <SelectTrigger
-                className={`max-w-[190px] min-w-[7.5rem] justify-start gap-1 ${COMPOSER_CONTROL_CLASS}`}
+                className={`w-auto max-w-[11rem] justify-start gap-1.5 ${COMPOSER_CONTROL_CLASS}`}
                 aria-label={`选择${label}`}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
                 <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">{label}</span>
-                <span className="min-w-0 flex-1 truncate text-left text-stone-700 dark:text-stone-200">{selected?.label || value}</span>
+                <span className="min-w-0 shrink-0 truncate text-left text-stone-700 dark:text-stone-200">{selected?.label || value}</span>
             </SelectTrigger>
             <SelectContent className="z-[3000] min-w-[9rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
                 {options.map((item) => (
@@ -916,6 +921,63 @@ function VideoComposerSelect({ label, value, options, onChange }: { label: strin
                 ))}
             </SelectContent>
         </Select>
+    );
+}
+
+function VideoComposerDurationControl({ value, options, min, max, allowSmart, onChange }: { value: string; options: Array<{ value: string; label: string; disabled?: boolean }>; min: number; max: number; allowSmart?: boolean; onChange: (value: string) => void }) {
+    const [draft, setDraft] = useState(value === "-1" ? "" : value);
+    const selected = options.find((item) => item.value === value);
+    const customValue = "__custom_duration__";
+
+    useEffect(() => {
+        setDraft(value === "-1" ? "" : value);
+    }, [value]);
+
+    const commit = () => {
+        const text = draft.trim();
+        if (!text && allowSmart) {
+            onChange("-1");
+            return;
+        }
+        const seconds = Math.max(min, Math.min(max, Math.floor(Number(text) || min)));
+        setDraft(String(seconds));
+        onChange(String(seconds));
+    };
+
+    return (
+        <div className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS} px-0`}>
+            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">时长</span>
+            <input
+                type="number"
+                min={min}
+                max={max}
+                value={draft}
+                placeholder={allowSmart && value === "-1" ? "智能" : String(min)}
+                className="h-full w-10 bg-transparent px-1 text-center text-stone-700 outline-none placeholder:text-stone-400 [appearance:textfield] dark:text-stone-200 dark:placeholder:text-stone-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                onChange={(event) => setDraft(event.target.value.replace(/[^\d]/g, ""))}
+                onBlur={commit}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                onMouseDown={(event) => event.stopPropagation()}
+            />
+            <span className="pr-1 text-xs text-stone-500 dark:text-stone-400">s</span>
+            <Select value={selected?.value || customValue} onValueChange={(next) => next !== customValue && onChange(next)}>
+                <SelectTrigger className="h-7 w-7 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-stone-100/80 focus-visible:ring-0 dark:hover:bg-stone-800/70" aria-label="选择时长预设" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} />
+                <SelectContent className="z-[3000] min-w-[7rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+                    {selected ? null : (
+                        <SelectItem value={customValue} disabled>
+                            当前 {value === "-1" ? "智能" : `${value}s`}
+                        </SelectItem>
+                    )}
+                    {options.map((item) => (
+                        <SelectItem key={item.value} value={item.value} disabled={item.disabled}>
+                            {item.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
     );
 }
 

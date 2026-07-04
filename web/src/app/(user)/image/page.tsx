@@ -822,15 +822,15 @@ export default function ImagePage() {
                                             ) : null}
                                         </div>
                                         <ComposerQualitySelect value={effectiveConfig.quality || "auto"} onChange={(value) => updateConfig("quality", value)} />
-                                        <label className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS}`}>
-                                            <span className="px-3 text-xs text-stone-500 dark:text-stone-400">张数</span>
+                                        <label className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS} px-0`}>
+                                            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">张数</span>
                                             <input
                                                 type="number"
                                                 min={1}
                                                 max={15}
                                                 value={generationCount}
                                                 onChange={(event) => updateConfig("count", String(Math.max(1, Math.min(15, Math.floor(Number(event.target.value) || 1)))))}
-                                                className="h-full w-14 bg-transparent px-2 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                                className="h-full w-10 bg-transparent pl-1 pr-3 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                             />
                                         </label>
                                     </div>
@@ -962,13 +962,13 @@ function ComposerQualitySelect({ value, onChange }: { value: string; onChange: (
     return (
         <Select value={value || "auto"} onValueChange={onChange}>
             <SelectTrigger
-                className={`min-w-[8rem] justify-start gap-1 ${COMPOSER_CONTROL_CLASS}`}
+                className={`w-auto max-w-[9rem] justify-start gap-1.5 ${COMPOSER_CONTROL_CLASS}`}
                 aria-label="选择生成质量"
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
                 <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">质量</span>
-                <span className="min-w-0 flex-1 truncate text-left text-stone-700 dark:text-stone-200">{selected.label}</span>
+                <span className="min-w-0 shrink-0 truncate text-left text-stone-700 dark:text-stone-200">{selected.label}</span>
             </SelectTrigger>
             <SelectContent className="z-[3000] min-w-[8rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
                 {IMAGE_QUALITY_OPTIONS.map((item) => (
