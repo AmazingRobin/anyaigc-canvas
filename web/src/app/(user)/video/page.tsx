@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, Search, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Pin, Play, Plus, RotateCcw, Search, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX, X } from "lucide-react";
 import { Children, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { App, Button, Drawer, Empty, Input, Modal, Tooltip, Typography } from "antd";
@@ -17,7 +17,7 @@ import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolution
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
-import { matchesWorkbenchPromptSearch } from "@/lib/workbench-history-search";
+import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
@@ -63,6 +63,8 @@ type ReferencePreview = { kind: "image"; label: string; item: ReferenceImage } |
 type GenerationLog = {
     id: string;
     createdAt: number;
+    updatedAt: number;
+    pinnedAt?: number;
     title: string;
     prompt: string;
     time: string;
@@ -398,6 +400,7 @@ export default function VideoPage() {
             const log = buildLog({
                 id: logId,
                 createdAt: targetLog?.createdAt,
+                pinnedAt: targetLog?.pinnedAt,
                 time: targetLog?.time,
                 prompt: snapshot.text,
                 model,
@@ -427,6 +430,7 @@ export default function VideoPage() {
                 buildLog({
                     id: logId,
                     createdAt: targetLog?.createdAt,
+                    pinnedAt: targetLog?.pinnedAt,
                     time: targetLog?.time,
                     prompt: snapshot.text,
                     model,
@@ -678,6 +682,19 @@ export default function VideoPage() {
         return nextLogs;
     };
 
+    const togglePinnedLog = async (log: GenerationLog) => {
+        const stored = await logStore.getItem<GenerationLog>(log.id);
+        const current = await normalizeLog(stored || log);
+        const next: GenerationLog = {
+            ...current,
+            pinnedAt: current.pinnedAt ? undefined : Date.now(),
+            updatedAt: Date.now(),
+        };
+        await logStore.setItem(log.id, serializeLog(next));
+        setLogs((value) => sortWorkbenchHistoryItems(value.map((item) => (item.id === next.id ? next : item))));
+        setPreviewLog((currentPreview) => (currentPreview?.id === next.id ? { ...currentPreview, pinnedAt: next.pinnedAt, updatedAt: next.updatedAt } : currentPreview));
+    };
+
     const resumePendingLogs = (items: GenerationLog[]) => {
         for (const log of items) {
             if (!log.task) continue;
@@ -814,6 +831,7 @@ export default function VideoPage() {
                         onSelectedLogIdsChange={setSelectedLogIds}
                         onCreateSession={createSession}
                         onDeleteSelected={() => setDeleteConfirmOpen(true)}
+                        onTogglePin={togglePinnedLog}
                         onPreviewLog={previewGenerationLog}
                     />
                 </aside>
@@ -1006,6 +1024,7 @@ export default function VideoPage() {
                     onCreateSession={createSession}
                     onDeleteSelected={() => setDeleteConfirmOpen(true)}
                     onClose={() => setLogsOpen(false)}
+                    onTogglePin={togglePinnedLog}
                     onPreviewLog={(log) => {
                         previewGenerationLog(log);
                         setLogsOpen(false);
@@ -1688,6 +1707,7 @@ function LogPanel({
     onCreateSession,
     onDeleteSelected,
     onClose,
+    onTogglePin,
     onPreviewLog,
 }: {
     logs: GenerationLog[];
@@ -1697,10 +1717,11 @@ function LogPanel({
     onCreateSession: () => void;
     onDeleteSelected: () => void;
     onClose?: () => void;
+    onTogglePin: (log: GenerationLog) => void | Promise<void>;
     onPreviewLog: (log: GenerationLog) => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
-    const filteredLogs = logs.filter((log) => matchesWorkbenchPromptSearch(log.prompt || log.title || "", searchQuery));
+    const filteredLogs = sortWorkbenchHistoryItems(logs.filter((log) => matchesWorkbenchPromptSearch(log.prompt || log.title || "", searchQuery)));
     const filteredLogIds = filteredLogs.map((log) => log.id);
     const allSelected = Boolean(filteredLogIds.length) && filteredLogIds.every((id) => selectedLogIds.includes(id));
     const [visibleCount, setVisibleCount] = useState(INITIAL_LOG_VISIBLE_COUNT);
@@ -1769,6 +1790,7 @@ function LogPanel({
                             selected={selectedLogIds.includes(log.id)}
                             active={activeLogId === log.id}
                             onSelectedChange={(checked) => onSelectedLogIdsChange(checked ? [...selectedLogIds, log.id] : selectedLogIds.filter((id) => id !== log.id))}
+                            onTogglePin={() => void onTogglePin(log)}
                             onClick={() => onPreviewLog(log)}
                         />
                     ))}
@@ -1789,7 +1811,21 @@ function HistorySearchEmptyState() {
     return <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-stone-200 text-center text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">未找到匹配的生成记录</div>;
 }
 
-function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
+function LogCard({
+    log,
+    selected,
+    active,
+    onSelectedChange,
+    onTogglePin,
+    onClick,
+}: {
+    log: GenerationLog;
+    selected: boolean;
+    active: boolean;
+    onSelectedChange: (checked: boolean) => void;
+    onTogglePin: () => void;
+    onClick: () => void;
+}) {
     const promptPreview = log.prompt || log.title || "";
     const sizeLabel = videoSizeLabel(log.config.size || log.size, log.model);
     const resolutionLabel = videoResolutionBadge(log.config.vquality || log.resolution);
@@ -1813,6 +1849,19 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             }}
             title={promptPreview}
         >
+            <Tooltip title={log.pinnedAt ? "取消置顶" : "置顶"}>
+                <Button
+                    type="text"
+                    size="small"
+                    aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
+                    className={`!absolute !right-12 !top-3 z-10 !inline-flex !size-7 !items-center !justify-center !rounded-full !border-0 !p-0 !shadow-sm [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!bg-amber-100/90 !text-amber-700 hover:!bg-amber-100 dark:!bg-amber-950/80 dark:!text-amber-200" : "!bg-white/80 !text-stone-500 hover:!bg-white dark:!bg-stone-950/80 dark:!text-stone-300"}`}
+                    icon={<Pin className="size-3.5" />}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onTogglePin();
+                    }}
+                />
+            </Tooltip>
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
             <div className="grid min-h-[112px] grid-cols-[112px_minmax(0,1fr)] gap-2 sm:min-h-[136px] sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-3">
                 <div className="relative h-[112px] self-start sm:h-[136px]">
@@ -1974,7 +2023,7 @@ async function readStoredLogs() {
         await logStore.iterate<GenerationLog, void>((value) => {
             logs.push(value);
         });
-        return (await Promise.all(logs.map(normalizeLog))).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        return sortWorkbenchHistoryItems(await Promise.all(logs.map(normalizeLog)));
     } catch {
         return [];
     }
@@ -2015,6 +2064,8 @@ async function normalizeLog(log: Partial<GenerationLog>): Promise<GenerationLog>
     return {
         id: log.id || nanoid(),
         createdAt: log.createdAt || Date.now(),
+        updatedAt: log.updatedAt || log.createdAt || Date.now(),
+        pinnedAt: log.pinnedAt,
         title: log.title || log.model || "未命名",
         prompt: log.prompt || "",
         time: log.time || new Date().toLocaleString("zh-CN", { hour12: false }),
@@ -2083,6 +2134,7 @@ async function deleteVideoResultFromLog(logId: string, result: GenerationResult)
     }
     const nextLog: GenerationLog = {
         ...log,
+        updatedAt: Date.now(),
         video: nextVideos[nextVideos.length - 1],
         videos: nextVideos,
         failures: nextFailures,
@@ -2166,6 +2218,7 @@ function appendVideoToLog(log: GenerationLog, video: GeneratedVideo): Generation
     return {
         ...log,
         status: "成功",
+        updatedAt: Date.now(),
         durationMs: log.durationMs + video.durationMs,
         video,
         videos,
@@ -2179,6 +2232,7 @@ function appendFailureToVideoLog(log: GenerationLog, failure: GeneratedFailure):
     return {
         ...log,
         status: videos.length ? "成功" : "失败",
+        updatedAt: Date.now(),
         durationMs: log.durationMs + failure.durationMs,
         video: videos[videos.length - 1],
         videos,
@@ -2231,6 +2285,7 @@ function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
 function buildLog({
     id,
     createdAt,
+    pinnedAt,
     time,
     prompt,
     model,
@@ -2248,6 +2303,7 @@ function buildLog({
 }: {
     id?: string;
     createdAt?: number;
+    pinnedAt?: number;
     time?: string;
     prompt: string;
     model: string;
@@ -2277,6 +2333,8 @@ function buildLog({
     return {
         id: id || nanoid(),
         createdAt: createdAt || Date.now(),
+        updatedAt: Date.now(),
+        pinnedAt,
         title: prompt.slice(0, 12) || "未命名",
         prompt,
         time: time || new Date().toLocaleString("zh-CN", { hour12: false }),

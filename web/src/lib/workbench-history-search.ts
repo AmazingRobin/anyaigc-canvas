@@ -18,3 +18,16 @@ export function matchesWorkbenchPromptSearch(prompt: string, query: string) {
     }
     return needle.length > 1;
 }
+
+type WorkbenchHistorySortItem = {
+    createdAt?: number;
+    pinnedAt?: number;
+};
+
+export function sortWorkbenchHistoryItems<T extends WorkbenchHistorySortItem>(items: T[]) {
+    return [...items].sort((a, b) => {
+        const pinnedDiff = (b.pinnedAt || 0) - (a.pinnedAt || 0);
+        if (pinnedDiff) return pinnedDiff;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, Search, Sparkles, Trash2, Upload, VideoIcon, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Pin, Plus, RefreshCw, Search, Sparkles, Trash2, Upload, VideoIcon, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -16,7 +16,7 @@ import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
-import { matchesWorkbenchPromptSearch } from "@/lib/workbench-history-search";
+import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
 import { modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
@@ -84,6 +84,8 @@ type GenerationLog = {
     id: string;
     sessionId?: string;
     createdAt: number;
+    updatedAt: number;
+    pinnedAt?: number;
     title: string;
     prompt: string;
     time: string;
@@ -170,6 +172,7 @@ export default function ImagePage() {
     const activeRunning = runningBySession[activeSessionId];
     const running = Boolean(activeRunning);
     const runningCount = activeRunning?.count || 0;
+    const persistedSessionIds = new Set(logs.map((log) => log.sessionId).filter((id): id is string => Boolean(id)));
     const workbenchSessions: WorkbenchSessionView[] = Object.values(sessionsById)
         .map((session) => {
             const sessionResults = resultsBySession[session.id] || [];
@@ -187,7 +190,7 @@ export default function ImagePage() {
                 firstImage: successImages[0],
             };
         })
-        .filter((session) => !logIdFromSession(session.id) && (session.running || session.requestCount || session.id === activeSessionId))
+        .filter((session) => !logIdFromSession(session.id) && !persistedSessionIds.has(session.id) && (session.running || session.requestCount || session.id === activeSessionId))
         .sort((a, b) => b.createdAt - a.createdAt);
 
     useEffect(() => {
@@ -268,6 +271,16 @@ export default function ImagePage() {
                 references: next.references.slice(0, IMAGE_REFERENCE_LIMIT),
             },
         }));
+    };
+
+    const forgetWorkbenchSession = (sessionId?: string) => {
+        if (!sessionId || logIdFromSession(sessionId)) return;
+        setSessionsById((value) => {
+            if (!value[sessionId]) return value;
+            const next = { ...value };
+            delete next[sessionId];
+            return next;
+        });
     };
 
     const startSessionRun = (sessionId: string, startedAt: number) => {
@@ -622,8 +635,9 @@ export default function ImagePage() {
         setSelectedResultIds(allResultsSelected ? [] : results.map((result) => result.id));
     };
 
-    const saveLog = (log: GenerationLog) => {
-        void logStore.setItem(log.id, serializeLog(log)).then(refreshLogs);
+    const saveLog = async (log: GenerationLog) => {
+        await logStore.setItem(log.id, serializeLog(log));
+        await refreshLogs();
     };
 
     const saveBatchLog = async (payload: Parameters<typeof buildLog>[0]) => {
@@ -638,6 +652,8 @@ export default function ImagePage() {
                     id: targetLogId,
                     sessionId: existing.sessionId,
                     createdAt: existing.createdAt,
+                    updatedAt: Date.now(),
+                    pinnedAt: existing.pinnedAt,
                     time: existing.time,
                     durationMs: existing.durationMs + nextBatch.durationMs,
                     images: [...existing.images, ...nextBatch.images],
@@ -645,15 +661,30 @@ export default function ImagePage() {
                     thumbnails: normalizeLogThumbnails([...existing.thumbnails, ...nextBatch.thumbnails]),
                 });
                 await logStore.setItem(targetLogId, serializeLog(merged));
+                forgetWorkbenchSession(payload.sessionId);
                 setPreviewLog(merged);
                 await refreshLogs();
                 return;
             }
         }
-        saveLog(nextBatch);
+        await saveLog(nextBatch);
+        forgetWorkbenchSession(payload.sessionId);
     };
 
     const refreshLogs = async () => setLogs(await readStoredLogs());
+
+    const togglePinnedLog = async (log: GenerationLog) => {
+        const stored = await logStore.getItem<GenerationLog>(log.id);
+        const current = normalizeLogMetadata(stored || log);
+        const next: GenerationLog = {
+            ...current,
+            pinnedAt: current.pinnedAt ? undefined : Date.now(),
+            updatedAt: Date.now(),
+        };
+        await logStore.setItem(log.id, serializeLog(next));
+        setLogs((value) => sortWorkbenchHistoryItems(value.map((item) => (item.id === next.id ? next : item))));
+        setPreviewLog((currentPreview) => (currentPreview?.id === next.id ? { ...currentPreview, pinnedAt: next.pinnedAt, updatedAt: next.updatedAt } : currentPreview));
+    };
 
     const previewGenerationLog = async (log: GenerationLog) => {
         const requestId = (previewRequestIdRef.current += 1);
@@ -750,6 +781,7 @@ export default function ImagePage() {
                         onSelectedLogIdsChange={setSelectedLogIds}
                         onCreateSession={createSession}
                         onDeleteSelected={() => setDeleteConfirmOpen(true)}
+                        onTogglePin={togglePinnedLog}
                         onPreviewSession={previewWorkbenchSession}
                         onPreviewLog={(log) => void previewGenerationLog(log)}
                     />
@@ -987,6 +1019,7 @@ export default function ImagePage() {
                     onCreateSession={createSession}
                     onDeleteSelected={() => setDeleteConfirmOpen(true)}
                     onClose={() => setLogsOpen(false)}
+                    onTogglePin={togglePinnedLog}
                     onPreviewSession={(session) => {
                         previewWorkbenchSession(session);
                         setLogsOpen(false);
@@ -1264,6 +1297,7 @@ function LogPanel({
     onCreateSession,
     onDeleteSelected,
     onClose,
+    onTogglePin,
     onPreviewSession,
     onPreviewLog,
 }: {
@@ -1276,12 +1310,13 @@ function LogPanel({
     onCreateSession: () => void;
     onDeleteSelected: () => void;
     onClose?: () => void;
+    onTogglePin: (log: GenerationLog) => void | Promise<void>;
     onPreviewSession: (session: WorkbenchSession) => void;
     onPreviewLog: (log: GenerationLog) => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
     const filteredSessions = sessions.filter((session) => matchesWorkbenchPromptSearch(session.prompt || session.model || "", searchQuery));
-    const filteredLogs = logs.filter((log) => matchesWorkbenchPromptSearch(log.prompt || log.title || "", searchQuery));
+    const filteredLogs = sortWorkbenchHistoryItems(logs.filter((log) => matchesWorkbenchPromptSearch(log.prompt || log.title || "", searchQuery)));
     const filteredLogIds = filteredLogs.map((log) => log.id);
     const allSelected = Boolean(filteredLogIds.length) && filteredLogIds.every((id) => selectedLogIds.includes(id));
     const [visibleCount, setVisibleCount] = useState(INITIAL_LOG_VISIBLE_COUNT);
@@ -1365,6 +1400,7 @@ function LogPanel({
                             selected={selectedLogIds.includes(log.id)}
                             active={activeLogId === log.id}
                             onSelectedChange={(checked) => onSelectedLogIdsChange(checked ? [...selectedLogIds, log.id] : selectedLogIds.filter((id) => id !== log.id))}
+                            onTogglePin={() => void onTogglePin(log)}
                             onClick={() => onPreviewLog(log)}
                         />
                     ))}
@@ -1444,7 +1480,21 @@ function SessionCover({ image, pending, count, ratioLabel, sizeLabel }: { image?
     );
 }
 
-function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
+function LogCard({
+    log,
+    selected,
+    active,
+    onSelectedChange,
+    onTogglePin,
+    onClick,
+}: {
+    log: GenerationLog;
+    selected: boolean;
+    active: boolean;
+    onSelectedChange: (checked: boolean) => void;
+    onTogglePin: () => void;
+    onClick: () => void;
+}) {
     const thumbnail = normalizeLogThumbnails(log.thumbnails)[0] || "";
     const actualImageCount = actualLogImageCount(log);
     const actualFailureCount = actualLogFailureCount(log);
@@ -1467,6 +1517,19 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             }}
             title={promptPreview}
         >
+            <Tooltip title={log.pinnedAt ? "取消置顶" : "置顶"}>
+                <Button
+                    type="text"
+                    size="small"
+                    aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
+                    className={`!absolute !right-12 !top-3 z-10 !inline-flex !size-7 !items-center !justify-center !rounded-full !border-0 !p-0 !shadow-sm [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!bg-amber-100/90 !text-amber-700 hover:!bg-amber-100 dark:!bg-amber-950/80 dark:!text-amber-200" : "!bg-white/80 !text-stone-500 hover:!bg-white dark:!bg-stone-950/80 dark:!text-stone-300"}`}
+                    icon={<Pin className="size-3.5" />}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onTogglePin();
+                    }}
+                />
+            </Tooltip>
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
             <div className="grid min-h-[112px] grid-cols-[112px_minmax(0,1fr)] gap-2 sm:min-h-[160px] sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-3">
                 <div className="relative">
@@ -1614,7 +1677,7 @@ async function readStoredLogs() {
             values.push(value);
         });
         const logs = values.map(normalizeLogMetadata);
-        return logs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        return sortWorkbenchHistoryItems(logs);
     } catch {
         return [];
     }
@@ -1629,6 +1692,8 @@ function normalizeLogMetadata(log: Partial<GenerationLog>): GenerationLog {
         id: log.id || nanoid(),
         sessionId: log.sessionId,
         createdAt: log.createdAt || Date.now(),
+        updatedAt: log.updatedAt || log.createdAt || Date.now(),
+        pinnedAt: log.pinnedAt,
         title: log.title || log.model || "未命名",
         prompt: log.prompt || log.title || "",
         time: log.time || new Date().toLocaleString("zh-CN", { hour12: false }),
@@ -1668,6 +1733,8 @@ async function hydrateLogMedia(log: Partial<GenerationLog>): Promise<GenerationL
         id: log.id || nanoid(),
         sessionId: log.sessionId,
         createdAt: log.createdAt || Date.now(),
+        updatedAt: log.updatedAt || log.createdAt || Date.now(),
+        pinnedAt: log.pinnedAt,
         title: log.title || log.model || "未命名",
         prompt: log.prompt || log.title || "",
         time: log.time || new Date().toLocaleString("zh-CN", { hour12: false }),
@@ -1827,6 +1894,7 @@ function recalculateLogCounts(log: GenerationLog): GenerationLog {
     const failCount = actualLogFailureCount(log);
     return {
         ...log,
+        updatedAt: Date.now(),
         successCount,
         failCount,
         status: successCount ? "成功" : "失败",
@@ -1925,6 +1993,7 @@ function buildLog({
         id: nanoid(),
         sessionId,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
         title: prompt.slice(0, 12) || "未命名",
         prompt,
         time: new Date().toLocaleString("zh-CN", { hour12: false }),

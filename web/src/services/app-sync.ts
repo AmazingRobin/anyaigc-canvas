@@ -471,7 +471,7 @@ async function replaceStoredLogs(store: LogStore, logs: StoredLog[]) {
 function mergeLogDomainData(local: LogDomainData, remote: LogDomainData): LogDomainData {
     const deletedLogIds = mergeDeletedSyncIds(local.deletedLogIds, remote.deletedLogIds);
     return {
-        logs: mergeById(filterDeletedItems(local.logs, deletedLogIds), filterDeletedItems(remote.logs, deletedLogIds), "createdAt"),
+        logs: mergeLogsById(filterDeletedItems(local.logs, deletedLogIds), filterDeletedItems(remote.logs, deletedLogIds)),
         deletedLogIds,
     };
 }
@@ -539,6 +539,30 @@ function mergeById<T extends { id?: string }>(local: T[], remote: T[], timeKey: 
         if (!current || getTime(item as Record<string, unknown>, timeKey) >= getTime(current as Record<string, unknown>, timeKey)) items.set(id, item);
     });
     return Array.from(items.values()).sort((a, b) => getTime(b as Record<string, unknown>, timeKey) - getTime(a as Record<string, unknown>, timeKey));
+}
+
+function mergeLogsById(local: StoredLog[], remote: StoredLog[]) {
+    const items = new Map<string, StoredLog>();
+    remote.forEach((item) => {
+        const id = item.id || "";
+        if (id) items.set(id, item);
+    });
+    local.forEach((item) => {
+        const id = item.id || "";
+        if (!id) return;
+        const current = items.get(id);
+        if (!current || getLogMergeTime(item) >= getLogMergeTime(current)) items.set(id, item);
+    });
+    return Array.from(items.values()).sort((a, b) => {
+        const pinnedDiff = getTime(b as Record<string, unknown>, "pinnedAt") - getTime(a as Record<string, unknown>, "pinnedAt");
+        if (pinnedDiff) return pinnedDiff;
+        return getTime(b as Record<string, unknown>, "createdAt") - getTime(a as Record<string, unknown>, "createdAt");
+    });
+}
+
+function getLogMergeTime(item: StoredLog) {
+    const value = item as Record<string, unknown>;
+    return getTime(value, "updatedAt") || getTime(value, "createdAt");
 }
 
 function collectStorageKeys(value: unknown, keys = new Set<string>()) {
