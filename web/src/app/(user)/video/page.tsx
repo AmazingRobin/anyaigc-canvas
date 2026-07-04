@@ -478,7 +478,8 @@ export default function VideoPage() {
     };
 
     const deleteResult = async (result: GenerationResult) => {
-        if (activeLogId) updateLogResults(activeLogId, (value) => value.filter((item) => item.id !== result.id));
+        const targetKey = resultIdentityKey(result);
+        if (activeLogId) updateLogResults(activeLogId, (value) => value.filter((item) => resultIdentityKey(item) !== targetKey));
         const logId = previewLog?.id || activeResultLogId || (await findVideoLogIdForResult(result.id));
         if (logId) {
             const nextLog = await deleteVideoResultFromLog(logId, result);
@@ -498,12 +499,12 @@ export default function VideoPage() {
 
     const confirmDeleteResults = async () => {
         const targets = resultDeleteTargets;
-        const targetIds = new Set(targets.map((result) => result.id));
+        const targetKeys = new Set(targets.map(resultIdentityKey));
         setResultDeleteTargets([]);
         for (const result of targets) {
             await deleteResult(result);
         }
-        setSelectedResultIds((ids) => ids.filter((id) => !targetIds.has(id)));
+        setSelectedResultIds((ids) => ids.filter((id) => !targetKeys.has(id)));
     };
 
     const toggleAllResults = () => {
@@ -1905,11 +1906,19 @@ async function deleteVideoResultFromLog(logId: string, result: GenerationResult)
     const stored = await logStore.getItem<GenerationLog>(logId);
     if (!stored) return null;
     const log = await normalizeLog(stored);
-    const resultIds = new Set([result.id, result.video?.id].filter((id): id is string => Boolean(id)));
-    const resultKeys = new Set([result.video ? videoIdentityKey(result.video) : "", ...Array.from(resultIds)].filter(Boolean));
-    const removedVideos = logVideos(log).filter((video) => resultIds.has(video.id) || resultKeys.has(videoIdentityKey(video)));
-    const nextVideos = logVideos(log).filter((video) => !resultIds.has(video.id) && !resultKeys.has(videoIdentityKey(video)));
-    const nextFailures = log.failures.filter((failure) => !resultIds.has(failure.id));
+    let nextVideos = logVideos(log);
+    let nextFailures = log.failures;
+    let removedVideos: GeneratedVideo[] = [];
+
+    if (result.video) {
+        const targetVideoKey = videoIdentityKey(result.video);
+        removedVideos = nextVideos.filter((video) => videoIdentityKey(video) === targetVideoKey);
+        nextVideos = nextVideos.filter((video) => videoIdentityKey(video) !== targetVideoKey);
+    } else if (result.status === "failed") {
+        const targetFailureKey = resultIdentityKey(result);
+        nextFailures = nextFailures.filter((failure) => resultIdentityKey({ id: failure.id, status: "failed", error: failure.error }) !== targetFailureKey);
+    }
+
     const removedKeys = removedVideos.map((video) => video.storageKey).filter((key): key is string => Boolean(key));
     if (removedKeys.length) await deleteStoredMedia(removedKeys);
     if (!nextVideos.length && !nextFailures.length && log.status !== "生成中") {
