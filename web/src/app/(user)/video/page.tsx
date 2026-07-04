@@ -678,12 +678,15 @@ export default function VideoPage() {
                                     className="!resize-none !rounded-none !border-0 !bg-transparent !px-0 !py-0 !text-base !shadow-none focus:!shadow-none"
                                 />
 
-                                <div className="grid min-w-0 gap-3 xl:grid-cols-3">
+                                <div className="min-w-0">
                                     <div className="min-w-0">
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">参考图</span>
-                                            <div className="flex shrink-0 gap-2">
-                                                <Tooltip title="从剪切板读取参考图">
+                                        <div className="mb-2 flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="text-xs font-semibold text-stone-500 dark:text-stone-400">参考素材</div>
+                                                <div className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">图片 5 张内 · 视频 3 个 · 音频 3 个</div>
+                                            </div>
+                                            <div className="flex shrink-0 gap-1.5">
+                                                <Tooltip title="从剪贴板读取参考图">
                                                     <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={() => void addReferencesFromClipboard()} />
                                                 </Tooltip>
                                                 <Tooltip title="上传参考素材">
@@ -691,13 +694,13 @@ export default function VideoPage() {
                                                 </Tooltip>
                                             </div>
                                         </div>
-                                        <div className="hide-scrollbar flex min-h-[72px] min-w-0 gap-3 overflow-x-auto overscroll-x-contain">
+                                        <div className="hide-scrollbar flex min-h-[86px] min-w-0 gap-2 overflow-x-auto overscroll-x-contain rounded-xl bg-stone-50/70 px-2 py-2 ring-1 ring-stone-200/70 dark:bg-stone-900/35 dark:ring-stone-800/70">
                                             {references.map((item, index) => (
                                                 <div
                                                     key={item.id}
                                                     role="button"
                                                     tabIndex={0}
-                                                    className="group relative size-[72px] shrink-0 cursor-zoom-in overflow-hidden rounded-xl bg-stone-100 shadow-sm outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
+                                                    className="group relative size-[72px] shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-stone-100 outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
                                                     aria-label={`查看${seedanceReferenceLabel("image", index)}`}
                                                     onClick={() => setReferencePreview({ kind: "image", label: seedanceReferenceLabel("image", index), item })}
                                                     onKeyDown={(event) => {
@@ -727,24 +730,12 @@ export default function VideoPage() {
                                                     </button>
                                                 </div>
                                             ))}
-                                            {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">可选，最多 5 张，支持 PNG/JPG，单张 30MB 内</span> : null}
-                                        </div>
-                                    </div>
-
-                                    <div className="min-w-0">
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">参考视频</span>
-                                            <Tooltip title="上传参考素材">
-                                                <Button size="small" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} />
-                                            </Tooltip>
-                                        </div>
-                                        <div className="hide-scrollbar flex min-h-[72px] min-w-0 gap-3 overflow-x-auto overscroll-x-contain">
                                             {videoReferences.map((item, index) => (
                                                 <div
                                                     key={item.id}
                                                     role="button"
                                                     tabIndex={0}
-                                                    className="group relative h-[72px] w-28 shrink-0 cursor-zoom-in overflow-hidden rounded-xl bg-black shadow-sm outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
+                                                    className="group relative h-[72px] w-28 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-black outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
                                                     aria-label={`查看${seedanceReferenceLabel("video", index)}`}
                                                     onClick={() => setReferencePreview({ kind: "video", label: seedanceReferenceLabel("video", index), item })}
                                                     onKeyDown={(event) => {
@@ -774,20 +765,8 @@ export default function VideoPage() {
                                                     </button>
                                                 </div>
                                             ))}
-                                            {!videoReferences.length ? <span className="flex h-9 items-center text-sm text-stone-400">可选，最多 3 个，MP4/MOV，单个 50MB 内</span> : null}
-                                        </div>
-                                    </div>
-
-                                    <div className="min-w-0">
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">参考音频</span>
-                                            <Tooltip title="上传参考素材">
-                                                <Button size="small" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} />
-                                            </Tooltip>
-                                        </div>
-                                        <div className="hide-scrollbar flex min-h-[72px] min-w-0 gap-3 overflow-x-auto overscroll-x-contain">
                                             {audioReferences.map((item, index) => (
-                                                <div key={item.id} className="group relative flex h-[72px] w-44 shrink-0 flex-col justify-center gap-1.5 rounded-xl bg-stone-50 px-2 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
+                                                <div key={item.id} className="group relative flex h-[72px] w-56 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-background px-2 ring-1 ring-stone-200/70 dark:bg-stone-950/70 dark:ring-stone-800/70">
                                                     <div className="flex min-w-0 items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
                                                         <Music2 className="size-4 shrink-0" />
                                                         <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{seedanceReferenceLabel("audio", index)}</span>
@@ -805,7 +784,9 @@ export default function VideoPage() {
                                                     </button>
                                                 </div>
                                             ))}
-                                            {!audioReferences.length ? <span className="flex h-9 items-center text-sm text-stone-400">可选，最多 3 个，mp3/wav，单个 15MB 内</span> : null}
+                                            {!references.length && !videoReferences.length && !audioReferences.length ? (
+                                                <span className="flex h-[72px] items-center text-sm text-stone-400">支持 PNG/JPG、MP4/MOV、mp3/wav；图片单张 30MB 内，视频 50MB 内，音频 15MB 内</span>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </div>
@@ -1205,16 +1186,15 @@ function LogPanel({
 }
 
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
-    const displayTitle = compactLogTitle(log.prompt || log.title || log.model || "");
     const promptPreview = log.prompt || log.title || "";
     const sizeLabel = videoSizeLabel(log.config.size || log.size, log.model);
     const resolutionLabel = videoResolutionBadge(log.config.vquality || log.resolution);
     const secondsLabel = videoSecondsBadge(log.config.videoSeconds || log.seconds);
-    const statusTone = log.status === "成功" ? "success" : log.status === "生成中" ? "pending" : "danger";
     const videos = logVideos(log);
     const failCount = log.failures.length;
     const pendingCount = log.status === "生成中" ? 1 : 0;
     const requestCount = Math.max(1, videos.length + failCount + pendingCount);
+    const coverVideo = log.video || videos[videos.length - 1];
 
     return (
         <div
@@ -1230,33 +1210,31 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             title={promptPreview}
         >
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
-            <div className="space-y-3">
-                <LogVideoCover logId={log.id} video={log.video || videos[videos.length - 1]} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
-                <div className="min-w-0 pr-9">
-                    <div className="line-clamp-2 text-base font-medium leading-6">{displayTitle}</div>
-                    <div className="mt-1 line-clamp-3 text-sm leading-5 text-stone-500 dark:text-stone-400">{promptPreview}</div>
+            <div className="grid min-h-[160px] grid-cols-[160px_minmax(0,1fr)] gap-3">
+                <div className="relative">
+                    <LogVideoCover logId={log.id} video={coverVideo} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
                 </div>
-                <div className="flex flex-wrap gap-1">
-                    <HistoryPill label="模型" className="max-w-full">
-                        {log.model || "默认"}
-                    </HistoryPill>
-                    <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode)}</HistoryPill>
-                    <HistoryPill label="比例">{sizeLabel}</HistoryPill>
-                    <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                    <HistoryPill label="请求">{requestCount}</HistoryPill>
-                    {videos.length ? <HistoryPill tone="success" label="成功">{videos.length}</HistoryPill> : null}
-                    {log.status === "生成中" ? <HistoryPill tone="pending" label="生成中">1</HistoryPill> : null}
-                    {failCount ? <HistoryPill tone="danger" label="失败">{failCount}</HistoryPill> : null}
-                    <HistoryPill tone={statusTone} label="状态">
-                        {log.status}
-                    </HistoryPill>
-                    <HistoryPill tone="info" label="耗时">
-                        {formatDuration(log.durationMs)}
-                    </HistoryPill>
-                    <HistoryPill label="时长">{secondsLabel}</HistoryPill>
-                    <HistoryPill label="时间">{log.time}</HistoryPill>
+                <div className="flex min-w-0 flex-col py-1 pr-9">
+                    <div className="line-clamp-5 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview || compactLogTitle(log.model || "")}</div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        <HistoryPill label="模型" className="max-w-full">
+                            {log.model || "默认"}
+                        </HistoryPill>
+                        <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode)}</HistoryPill>
+                        <HistoryPill label="比例">{sizeLabel}</HistoryPill>
+                        <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-1 pt-2">
+                        <HistoryPill label="请求">{requestCount}</HistoryPill>
+                        {videos.length ? <HistoryPill tone="success" label="成功">{videos.length}</HistoryPill> : null}
+                        {log.status === "生成中" ? <HistoryPill tone="pending" label="生成中">1</HistoryPill> : null}
+                        {failCount ? <HistoryPill tone="danger" label="失败">{failCount}</HistoryPill> : null}
+                        <HistoryPill tone="info" label="耗时">
+                            {formatDuration(log.durationMs)}
+                        </HistoryPill>
+                        <HistoryPill label="时长">{secondsLabel}</HistoryPill>
+                        <HistoryPill label="时间">{log.time}</HistoryPill>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1324,7 +1302,7 @@ function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { l
     return (
         <span
             ref={coverRef}
-            className="relative grid aspect-video w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            className="relative grid h-full min-h-[160px] w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(20,184,166,.14), rgba(99,102,241,.10))" }}
         >
             {thumbnail ? (
