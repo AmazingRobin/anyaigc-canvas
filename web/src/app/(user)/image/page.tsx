@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, RefreshCw, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
@@ -142,6 +142,7 @@ export default function ImagePage() {
     const [sizePopoverOpen, setSizePopoverOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
     const [promptOptimizing, setPromptOptimizing] = useState(false);
+    const [promptCollapsed, setPromptCollapsed] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
@@ -721,7 +722,15 @@ export default function ImagePage() {
                         <div className="mx-auto max-w-6xl overflow-visible rounded-2xl bg-background shadow-[0_16px_44px_rgba(15,23,42,0.10)] ring-1 ring-stone-200/70 dark:bg-stone-950 dark:shadow-[0_16px_44px_rgba(0,0,0,0.28)] dark:ring-stone-800/70">
                             <div className="space-y-3 p-3 lg:p-4">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">提示词</span>
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-stone-700 transition hover:text-stone-950 dark:text-stone-200 dark:hover:text-white"
+                                        onClick={() => setPromptCollapsed((collapsed) => !collapsed)}
+                                        aria-expanded={!promptCollapsed}
+                                    >
+                                        <span>提示词</span>
+                                        <ChevronDown className={`size-4 text-stone-400 transition-transform ${promptCollapsed ? "-rotate-90" : ""}`} />
+                                    </button>
                                     <div className="flex flex-wrap gap-2">
                                         <Tooltip title="使用文本模型优化和丰富提示词">
                                             <Button size="small" icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} disabled={!prompt.trim() || promptOptimizing} onClick={() => void optimizePrompt()}>
@@ -739,8 +748,8 @@ export default function ImagePage() {
                                 <Input.TextArea
                                     value={prompt}
                                     onChange={(event) => setPrompt(event.target.value)}
-                                    rows={2}
-                                    autoSize={{ minRows: 2, maxRows: 5 }}
+                                    rows={promptCollapsed ? 1 : 2}
+                                    autoSize={promptCollapsed ? { minRows: 1, maxRows: 1 } : { minRows: 2, maxRows: 5 }}
                                     placeholder="描述画面主体、风格、构图、光线和用途"
                                     className="!resize-none !rounded-none !border-0 !bg-transparent !px-0 !py-0 !text-base !shadow-none focus:!shadow-none"
                                 />
@@ -793,7 +802,7 @@ export default function ImagePage() {
                                         <div ref={sizePopoverRef} className="relative">
                                             <ComposerMetric label="尺寸" value={imageSizeName(effectiveConfig.size || "auto")} onClick={() => setSizePopoverOpen((open) => !open)} />
                                             {sizePopoverOpen ? (
-                                                <div className="absolute bottom-full left-0 z-50 mb-3 max-h-[min(68vh,560px)] w-[384px] max-w-[calc(100vw-40px)] overflow-y-auto rounded-[18px] bg-background p-3 shadow-[0_18px_44px_rgba(15,23,42,0.16)] ring-1 ring-stone-200/80 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.36)] dark:ring-stone-800/80">
+                                                <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-50 max-h-[min(58dvh,520px)] overflow-y-auto rounded-[18px] bg-background p-3 shadow-[0_18px_44px_rgba(15,23,42,0.16)] ring-1 ring-stone-200/80 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.36)] dark:ring-stone-800/80 sm:absolute sm:inset-x-auto sm:bottom-full sm:left-0 sm:mb-3 sm:max-h-[min(68vh,560px)] sm:w-[384px] sm:max-w-[calc(100vw-40px)]">
                                                     <ImageSettingsPanel
                                                         config={effectiveConfig}
                                                         onConfigChange={(key, value) => updateConfig(key, value)}
@@ -840,7 +849,15 @@ export default function ImagePage() {
                     event.target.value = "";
                 }}
             />
-            <Drawer title="生成记录" placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)} extra={<Button size="small" onClick={() => setLogsOpen(false)}>关闭</Button>}>
+            <Drawer
+                title={null}
+                placement="bottom"
+                height="min(88dvh, 720px)"
+                open={logsOpen}
+                onClose={() => setLogsOpen(false)}
+                closable={false}
+                styles={{ body: { height: "100%", overflow: "hidden", padding: 12 }, content: { borderRadius: "18px 18px 0 0" } }}
+            >
                 <LogPanel
                     sessions={workbenchSessions}
                     logs={logs}
@@ -850,8 +867,15 @@ export default function ImagePage() {
                     onSelectedLogIdsChange={setSelectedLogIds}
                     onCreateSession={createSession}
                     onDeleteSelected={() => setDeleteConfirmOpen(true)}
-                    onPreviewSession={previewWorkbenchSession}
-                    onPreviewLog={(log) => void previewGenerationLog(log)}
+                    onClose={() => setLogsOpen(false)}
+                    onPreviewSession={(session) => {
+                        previewWorkbenchSession(session);
+                        setLogsOpen(false);
+                    }}
+                    onPreviewLog={(log) => {
+                        void previewGenerationLog(log);
+                        setLogsOpen(false);
+                    }}
                 />
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
@@ -1111,6 +1135,7 @@ function LogPanel({
     onSelectedLogIdsChange,
     onCreateSession,
     onDeleteSelected,
+    onClose,
     onPreviewSession,
     onPreviewLog,
 }: {
@@ -1122,6 +1147,7 @@ function LogPanel({
     onSelectedLogIdsChange: (ids: string[]) => void;
     onCreateSession: () => void;
     onDeleteSelected: () => void;
+    onClose?: () => void;
     onPreviewSession: (session: WorkbenchSession) => void;
     onPreviewLog: (log: GenerationLog) => void;
 }) {
@@ -1142,7 +1168,14 @@ function LogPanel({
                     <div>
                         <h2 className="text-base font-semibold">生成记录</h2>
                     </div>
-                    <HistoryPill>{logs.length}</HistoryPill>
+                    <div className="flex items-center gap-2">
+                        <HistoryPill>{logs.length}</HistoryPill>
+                        {onClose ? (
+                            <Button size="small" onClick={onClose}>
+                                关闭
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
                 <div className="mb-4 flex flex-wrap gap-2">
                     <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreateSession}>
@@ -1206,10 +1239,10 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
             onClick={onClick}
             title={promptPreview}
         >
-            <div className="grid min-h-[160px] grid-cols-[160px_minmax(0,1fr)] gap-3">
+            <div className="grid min-h-[112px] grid-cols-[112px_minmax(0,1fr)] gap-2 sm:min-h-[160px] sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-3">
                 <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.successCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
                 <div className="flex min-w-0 flex-col py-1">
-                    <div className="line-clamp-5 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview}</div>
+                    <div className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-5">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
                             {session.model || "默认"}
@@ -1281,12 +1314,12 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             title={promptPreview}
         >
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
-            <div className="grid min-h-[160px] grid-cols-[160px_minmax(0,1fr)] gap-3">
+            <div className="grid min-h-[112px] grid-cols-[112px_minmax(0,1fr)] gap-2 sm:min-h-[160px] sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-3">
                 <div className="relative">
                     <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
                 </div>
                 <div className="flex min-w-0 flex-col py-1 pr-9">
-                    <div className="line-clamp-5 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview}</div>
+                    <div className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-5">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
                             {log.model || "默认"}

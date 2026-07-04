@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Drawer, Empty, Input, Modal, Tooltip, Typography } from "antd";
 import localforage from "localforage";
@@ -11,11 +11,11 @@ import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/c
 import { ModelPicker } from "@/components/model-picker";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { SelectionBubble } from "@/components/selection-bubble";
-import { VideoSettingsPanel, normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolutionLabel, videoSizeLabel } from "@/components/video-settings-panel";
-import { canvasThemes } from "@/lib/canvas-theme";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolutionLabel, videoSizeLabel } from "@/components/video-settings-panel";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
-import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceRatio, seedanceReferenceLabel, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
-import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
+import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
+import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredMedia, resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
@@ -24,8 +24,7 @@ import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, videoGenerationPollConfig, type VideoGenerationTask } from "@/services/api/video";
 import { consumeImageToVideoReferences } from "@/services/workbench-handoff";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
-import { modelOptionName, normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { isRelayBasesVideoModel, modelOptionName, normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
@@ -81,7 +80,6 @@ type GenerationLog = {
 
 type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "videoCallMode" | "size" | "vquality" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark">;
 
-type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 type PollGenerationOptions = { notify?: boolean; resultId?: string };
 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
@@ -92,19 +90,26 @@ const RESULT_OVERLAY_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !ju
 const RESULT_OVERLAY_DANGER_BUTTON_CLASS = `${RESULT_OVERLAY_ICON_BUTTON_CLASS} hover:!bg-rose-500/45`;
 const RESULT_FAILED_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-red-100/70 !p-0 !text-red-600 !shadow-none hover:!bg-red-200/80 dark:!bg-red-950/60 dark:!text-red-200 dark:hover:!bg-red-900/80 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
 const COMPOSER_CONTROL_CLASS = "h-8 rounded-full border border-input bg-transparent px-3 text-sm font-normal shadow-sm transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-900/70";
+const VIDEO_MODE_OPTIONS = [
+    { value: "sync", label: "同步" },
+    { value: "async", label: "异步·4倍扣费" },
+];
+const RELAYBASES_VIDEO_RATIO_OPTIONS = [
+    { value: "16:9", label: "横屏" },
+    { value: "9:16", label: "竖屏" },
+    { value: "1:1", label: "方形" },
+];
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
     const { message } = App.useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const settingsPopoverRef = useRef<HTMLDivElement>(null);
     const activeLogIdsRef = useRef<Set<string>>(new Set());
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const addAsset = useAssetStore((state) => state.addAsset);
     const replaceAssets = useAssetStore((state) => state.replaceAssets);
     const assets = useAssetStore((state) => state.assets);
@@ -116,9 +121,9 @@ export default function VideoPage() {
     const [logs, setLogs] = useState<GenerationLog[]>([]);
     const [running, setRunning] = useState(false);
     const [logsOpen, setLogsOpen] = useState(false);
-    const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
     const [promptDialogOpen, setPromptDialogOpen] = useState(false);
     const [promptOptimizing, setPromptOptimizing] = useState(false);
+    const [promptCollapsed, setPromptCollapsed] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
     const [configHydrated, setConfigHydrated] = useState(() => (typeof window === "undefined" ? false : (useConfigStore.persist?.hasHydrated?.() ?? true)));
     const [startedAt, setStartedAt] = useState(0);
@@ -132,6 +137,15 @@ export default function VideoPage() {
     const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
 
     const model = effectiveConfig.videoModel || effectiveConfig.model;
+    const modelName = modelOptionName(model);
+    const seedanceVideo = isSeedanceVideoConfig({ ...effectiveConfig, model });
+    const relayBasesVideo = isRelayBasesVideoModel(model);
+    const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
+    const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : "fixed";
+    const secondsValue = seedanceVideo ? String(normalizeSeedanceDuration(effectiveConfig.videoSeconds)) : String(normalizeRelayBasesVideoDuration(effectiveConfig.videoSeconds, modelName));
+    const ratioOptions = videoRatioOptions(seedanceVideo);
+    const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, videoResolutionLabel(effectiveConfig.vquality, model));
+    const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, secondsValue);
     const canGenerate = Boolean(prompt.trim());
     const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
     const allResultsSelected = Boolean(results.length) && selectedResultIds.length === results.length;
@@ -141,16 +155,6 @@ export default function VideoPage() {
         const timer = window.setInterval(() => setElapsedMs(performance.now() - startedAt), 1000);
         return () => window.clearInterval(timer);
     }, [running, startedAt]);
-
-    useEffect(() => {
-        if (!settingsPopoverOpen) return;
-        const closeOnOutsideClick = (event: MouseEvent) => {
-            if (settingsPopoverRef.current?.contains(event.target as Node)) return;
-            setSettingsPopoverOpen(false);
-        };
-        document.addEventListener("mousedown", closeOnOutsideClick);
-        return () => document.removeEventListener("mousedown", closeOnOutsideClick);
-    }, [settingsPopoverOpen]);
 
     useEffect(() => {
         const persistApi = useConfigStore.persist;
@@ -654,7 +658,15 @@ export default function VideoPage() {
                         <div className="mx-auto max-w-6xl overflow-visible rounded-2xl bg-background shadow-[0_16px_44px_rgba(15,23,42,0.10)] ring-1 ring-stone-200/70 dark:bg-stone-950 dark:shadow-[0_16px_44px_rgba(0,0,0,0.28)] dark:ring-stone-800/70">
                             <div className="space-y-3 p-3 lg:p-4">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">提示词</span>
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-stone-700 transition hover:text-stone-950 dark:text-stone-200 dark:hover:text-white"
+                                        onClick={() => setPromptCollapsed((collapsed) => !collapsed)}
+                                        aria-expanded={!promptCollapsed}
+                                    >
+                                        <span>提示词</span>
+                                        <ChevronDown className={`size-4 text-stone-400 transition-transform ${promptCollapsed ? "-rotate-90" : ""}`} />
+                                    </button>
                                     <div className="flex flex-wrap gap-2">
                                         <Tooltip title="使用文本模型优化和丰富提示词">
                                             <Button size="small" icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} disabled={!prompt.trim() || promptOptimizing} onClick={() => void optimizePrompt()}>
@@ -672,8 +684,8 @@ export default function VideoPage() {
                                 <Input.TextArea
                                     value={prompt}
                                     onChange={(event) => setPrompt(event.target.value)}
-                                    rows={2}
-                                    autoSize={{ minRows: 2, maxRows: 5 }}
+                                    rows={promptCollapsed ? 1 : 2}
+                                    autoSize={promptCollapsed ? { minRows: 1, maxRows: 1 } : { minRows: 2, maxRows: 5 }}
                                     placeholder="描述镜头运动、主体动作、场景氛围和画面风格"
                                     className="!resize-none !rounded-none !border-0 !bg-transparent !px-0 !py-0 !text-base !shadow-none focus:!shadow-none"
                                 />
@@ -786,25 +798,16 @@ export default function VideoPage() {
                                 <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
                                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                                         <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
-                                        <div ref={settingsPopoverRef} className="relative">
-                                            <button
-                                                type="button"
-                                                className={`inline-flex max-w-[180px] cursor-pointer items-center gap-1 overflow-hidden ${COMPOSER_CONTROL_CLASS}`}
-                                                onClick={() => setSettingsPopoverOpen((open) => !open)}
-                                            >
-                                                <SlidersHorizontal className="size-3.5 shrink-0 text-stone-500 dark:text-stone-400" />
-                                                <span className="min-w-0 truncate text-stone-700 dark:text-stone-200">参数</span>
-                                            </button>
-                                            {settingsPopoverOpen ? (
-                                                <div className="absolute bottom-full left-0 z-50 mb-3 max-h-[min(68vh,560px)] w-[420px] max-w-[calc(100vw-40px)] overflow-y-auto rounded-[18px] bg-background p-3 shadow-[0_18px_44px_rgba(15,23,42,0.16)] ring-1 ring-stone-200/80 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.36)] dark:ring-stone-800/80">
-                                                    <GenerationSettings config={effectiveConfig} model={model} updateConfig={updateConfig} openConfigDialog={openConfigDialog} />
-                                                </div>
-                                            ) : null}
-                                        </div>
-                                        <VideoComposerMetric label="模式" value={videoModeLabel(effectiveConfig.videoCallMode)} />
-                                        <VideoComposerMetric label="比例" value={videoSizeLabel(effectiveConfig.size, model)} />
-                                        <VideoComposerMetric label="清晰度" value={videoResolutionLabel(effectiveConfig.vquality, model)} />
-                                        <VideoComposerMetric label="时长" value={videoComposerSecondsLabel(effectiveConfig, model)} />
+                                        {relayBasesVideo ? <VideoComposerSelect label="模式" value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
+                                        <VideoComposerSelect label="比例" value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
+                                        {resolutionOptions.length > 1 ? <VideoComposerSelect label="清晰度" value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label="清晰度" value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model)} />}
+                                        {secondsOptions.length > 1 ? <VideoComposerSelect label="时长" value={secondsValue} options={secondsOptions} onChange={(value) => updateConfig("videoSeconds", value)} /> : <VideoComposerMetric label="时长" value={secondsOptions[0]?.label || (secondsValue === "-1" ? "智能" : `${secondsValue}s`)} />}
+                                        {seedanceVideo ? (
+                                            <>
+                                                <VideoToggleControl label="声音" checked={boolConfig(effectiveConfig.videoGenerateAudio, true)} onChange={(checked) => updateConfig("videoGenerateAudio", String(checked))} />
+                                                <VideoToggleControl label="水印" checked={boolConfig(effectiveConfig.videoWatermark, false)} onChange={(checked) => updateConfig("videoWatermark", String(checked))} />
+                                            </>
+                                        ) : null}
                                     </div>
                                     <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => void generate()} className="xl:min-w-36">
                                         开始生成
@@ -826,7 +829,15 @@ export default function VideoPage() {
                     event.target.value = "";
                 }}
             />
-            <Drawer title="生成记录" placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)} extra={<Button size="small" onClick={() => setLogsOpen(false)}>关闭</Button>}>
+            <Drawer
+                title={null}
+                placement="bottom"
+                height="min(88dvh, 720px)"
+                open={logsOpen}
+                onClose={() => setLogsOpen(false)}
+                closable={false}
+                styles={{ body: { height: "100%", overflow: "hidden", padding: 12 }, content: { borderRadius: "18px 18px 0 0" } }}
+            >
                 <LogPanel
                     logs={logs}
                     selectedLogIds={selectedLogIds}
@@ -834,7 +845,11 @@ export default function VideoPage() {
                     onSelectedLogIdsChange={setSelectedLogIds}
                     onCreateSession={createSession}
                     onDeleteSelected={() => setDeleteConfirmOpen(true)}
-                    onPreviewLog={previewGenerationLog}
+                    onClose={() => setLogsOpen(false)}
+                    onPreviewLog={(log) => {
+                        previewGenerationLog(log);
+                        setLogsOpen(false);
+                    }}
                 />
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
@@ -868,25 +883,67 @@ function VideoComposerMetric({ label, value }: { label: string; value: string })
     );
 }
 
-function videoComposerSecondsLabel(config: AiConfig, model: string) {
-    if (isSeedanceVideoConfig({ ...config, model })) return videoSecondsBadge(config.videoSeconds);
-    return `${normalizeRelayBasesVideoDuration(config.videoSeconds, modelOptionName(model))}s`;
+function VideoComposerSelect({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string; disabled?: boolean }>; onChange: (value: string) => void }) {
+    const selected = options.find((item) => item.value === value) || options[0];
+    return (
+        <Select value={selected?.value || value} onValueChange={onChange}>
+            <SelectTrigger
+                className={`max-w-[190px] min-w-[7.5rem] justify-start gap-1 ${COMPOSER_CONTROL_CLASS}`}
+                aria-label={`选择${label}`}
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+            >
+                <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">{label}</span>
+                <span className="min-w-0 flex-1 truncate text-left text-stone-700 dark:text-stone-200">{selected?.label || value}</span>
+            </SelectTrigger>
+            <SelectContent className="z-[1200] min-w-[9rem] rounded-xl border border-border/70 bg-popover p-1 shadow-xl" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+                {options.map((item) => (
+                    <SelectItem key={item.value} value={item.value} disabled={item.disabled}>
+                        {item.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
 }
 
-function GenerationSettings({ config, model, updateConfig, openConfigDialog }: { config: AiConfig; model: string; updateConfig: UpdateAiConfig; openConfigDialog: (shouldPromptContinue?: boolean) => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
-
+function VideoToggleControl({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
     return (
-        <>
-            <label className="col-span-2 block min-w-0 sm:col-span-1">
-                <span className="mb-1.5 block text-sm font-semibold sm:mb-2 sm:text-base">模型</span>
-                <ModelPicker config={config} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" fullWidth onMissingConfig={() => openConfigDialog(false)} />
-            </label>
-            <div className="col-span-2">
-                <VideoSettingsPanel config={config} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} className="space-y-4" />
-            </div>
-        </>
+        <button
+            type="button"
+            className={`inline-flex h-8 items-center gap-1 rounded-full border px-3 text-sm font-normal shadow-sm transition-colors ${checked ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200" : "border-input bg-transparent text-stone-700 hover:bg-stone-100/70 dark:text-stone-200 dark:hover:bg-stone-900/70"}`}
+            onClick={() => onChange(!checked)}
+            aria-pressed={checked}
+        >
+            <span className="shrink-0 text-xs opacity-70">{label}</span>
+            <span className="min-w-0 truncate">{checked ? "开" : "关"}</span>
+        </button>
     );
+}
+
+function videoRatioOptions(seedance: boolean) {
+    if (!seedance) return RELAYBASES_VIDEO_RATIO_OPTIONS;
+    return seedanceRatioOptions.map((item) => ({ value: item.value, label: item.value === "adaptive" ? item.label : `${item.label} ${item.value}` }));
+}
+
+function videoResolutionOptions(seedance: boolean, model: string, fixedLabel: string) {
+    if (!seedance) return [{ value: "fixed", label: fixedLabel }];
+    return seedanceResolutionOptions.map((item) => ({ value: item.value, label: item.label, disabled: item.value === "1080p" && isSeedanceFastModel(model) }));
+}
+
+function videoSecondsOptions(seedance: boolean, model: string, currentValue: string) {
+    const options = seedance ? seedanceDurationOptions.map((value) => ({ value: String(value), label: value === -1 ? "智能" : `${value}s` })) : relayBasesVideoTiming(model).options.map((value) => ({ value: String(value), label: `${value}s` }));
+    if (currentValue && !options.some((item) => item.value === currentValue)) options.push({ value: currentValue, label: currentValue === "-1" ? "智能" : `${currentValue}s` });
+    return uniqueVideoOptions(options);
+}
+
+function uniqueVideoOptions(options: Array<{ value: string; label: string; disabled?: boolean }>) {
+    const seen = new Set<string>();
+    return options.filter((item) => {
+        if (seen.has(item.value)) return false;
+        seen.add(item.value);
+        return true;
+    });
 }
 
 type HistoryPillTone = "neutral" | "success" | "danger" | "pending" | "info";
@@ -1113,6 +1170,7 @@ function LogPanel({
     onSelectedLogIdsChange,
     onCreateSession,
     onDeleteSelected,
+    onClose,
     onPreviewLog,
 }: {
     logs: GenerationLog[];
@@ -1121,6 +1179,7 @@ function LogPanel({
     onSelectedLogIdsChange: (ids: string[]) => void;
     onCreateSession: () => void;
     onDeleteSelected: () => void;
+    onClose?: () => void;
     onPreviewLog: (log: GenerationLog) => void;
 }) {
     const allSelected = Boolean(logs.length) && selectedLogIds.length === logs.length;
@@ -1138,7 +1197,14 @@ function LogPanel({
             <div className="shrink-0">
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <h2 className="text-base font-semibold">生成记录</h2>
-                    <HistoryPill>{logs.length}</HistoryPill>
+                    <div className="flex items-center gap-2">
+                        <HistoryPill>{logs.length}</HistoryPill>
+                        {onClose ? (
+                            <Button size="small" onClick={onClose}>
+                                关闭
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
                 <div className="mb-4 flex flex-wrap gap-2">
                     <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreateSession}>
@@ -1202,12 +1268,12 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             title={promptPreview}
         >
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
-            <div className="grid min-h-[136px] grid-cols-[136px_minmax(0,1fr)] gap-3">
-                <div className="relative h-[136px] self-start">
+            <div className="grid min-h-[112px] grid-cols-[112px_minmax(0,1fr)] gap-2 sm:min-h-[136px] sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-3">
+                <div className="relative h-[112px] self-start sm:h-[136px]">
                     <LogVideoCover logId={log.id} video={coverVideo} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
                 </div>
                 <div className="flex min-w-0 flex-col py-1 pr-9">
-                    <div className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview || compactLogTitle(log.model || "")}</div>
+                    <div className="line-clamp-2 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-3">{promptPreview || compactLogTitle(log.model || "")}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
                             {log.model || "默认"}
