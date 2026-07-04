@@ -633,7 +633,7 @@ export default function VideoPage() {
                     >
                         <div className="mx-auto max-w-6xl">
                             {results.length ? (
-                                <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 360px))" }}>
+                                <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                     {results.map((result) =>
                                         result.status === "success" && result.video ? (
                                             <ResultVideoCard key={result.id} video={result.video} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
@@ -920,7 +920,7 @@ function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPl
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-black shadow-sm dark:border-stone-800">
             <SelectionBubble className="absolute right-3 top-3 z-30" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
-            <div className="group relative aspect-video w-full overflow-hidden bg-black text-left">
+            <div className="group relative aspect-square w-full overflow-hidden bg-black text-left">
                 <video src={video.url} poster={video.thumbnail || undefined} className="size-full object-cover" muted playsInline preload="metadata" />
                 <button type="button" className="absolute inset-0 z-10 grid place-items-center bg-black/0 transition hover:bg-black/18" onClick={onPlay} aria-label="播放视频">
                     <span className="grid size-12 place-items-center rounded-full bg-white/90 text-stone-950 shadow-lg transition hover:scale-105">
@@ -958,7 +958,7 @@ function ResultVideoCard({ video, selected, savedToAsset, onSelectedChange, onPl
 
 function PendingVideoCard({ selected, onSelectedChange }: { selected: boolean; onSelectedChange: (checked: boolean) => void }) {
     return (
-        <div className="relative aspect-video overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50 dark:border-stone-700 dark:bg-stone-900">
+        <div className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50 dark:border-stone-700 dark:bg-stone-900">
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-stone-500 dark:text-stone-400">
                 <LoaderCircle className="size-6 animate-spin" />
@@ -972,7 +972,7 @@ function FailedVideoCard({ error, selected, retryLabel = "重试", onSelectedCha
     return (
         <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
-            <div className="flex aspect-video flex-col items-center justify-center gap-3 p-5 text-center">
+            <div className="flex aspect-square flex-col items-center justify-center gap-3 p-5 text-center">
                 <div className="text-sm font-medium text-red-600 dark:text-red-300">生成失败</div>
                 <Typography.Paragraph ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
                     {error}

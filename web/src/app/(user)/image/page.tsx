@@ -699,7 +699,7 @@ export default function ImagePage() {
                         <div className="mx-auto max-w-6xl">
                             {results.length ? (
                                 <Image.PreviewGroup>
-                                    <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(176px, 232px))" }}>
+                                    <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                         {results.map((result, index) =>
                                             result.status === "success" && result.image ? (
                                                 <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
