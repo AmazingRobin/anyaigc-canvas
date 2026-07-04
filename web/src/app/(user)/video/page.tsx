@@ -1210,12 +1210,12 @@ function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: Ge
             title={promptPreview}
         >
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
-            <div className="grid min-h-[160px] grid-cols-[160px_minmax(0,1fr)] gap-3">
-                <div className="relative">
+            <div className="grid min-h-[136px] grid-cols-[136px_minmax(0,1fr)] gap-3">
+                <div className="relative h-[136px] self-start">
                     <LogVideoCover logId={log.id} video={coverVideo} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
                 </div>
                 <div className="flex min-w-0 flex-col py-1 pr-9">
-                    <div className="line-clamp-5 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview || compactLogTitle(log.model || "")}</div>
+                    <div className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300">{promptPreview || compactLogTitle(log.model || "")}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
                             {log.model || "默认"}
@@ -1302,7 +1302,7 @@ function LogVideoCover({ logId, video, status, sizeLabel, resolutionLabel }: { l
     return (
         <span
             ref={coverRef}
-            className="relative grid h-full min-h-[160px] w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
+            className="relative grid h-full w-full place-items-center overflow-hidden rounded-md border border-stone-200 bg-stone-100 text-stone-400 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500"
             style={thumbnail ? undefined : { backgroundImage: "linear-gradient(135deg, rgba(20,184,166,.14), rgba(99,102,241,.10))" }}
         >
             {thumbnail ? (
