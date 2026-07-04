@@ -749,7 +749,7 @@ export default function ImagePage() {
                                     <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">参考图</span>
                                     <Image.PreviewGroup>
                                         <div
-                                        className="hide-scrollbar flex min-w-0 flex-1 gap-3 overflow-x-auto overscroll-x-contain"
+                                        className="hide-scrollbar flex min-w-0 flex-1 gap-2.5 overflow-x-auto overscroll-x-contain"
                                         onWheel={(event) => {
                                             if (event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return;
                                             event.preventDefault();
@@ -757,8 +757,8 @@ export default function ImagePage() {
                                         }}
                                     >
                                         {references.map((item, index) => (
-                                            <div key={item.id} className="group relative size-[72px] shrink-0 overflow-hidden rounded-xl bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
-                                                <Image src={item.dataUrl} alt={item.name} className="!size-[72px] object-cover" preview={{ mask: null }} />
+                                            <div key={item.id} className="group relative size-24 shrink-0 overflow-hidden rounded-xl bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
+                                                <Image src={item.dataUrl} alt={item.name} className="!size-24 object-cover" preview={{ mask: null }} />
                                                 <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{imageReferenceLabel(index)}</span>
                                                 <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
                                                 <button
@@ -1675,9 +1675,27 @@ function moveListItem<T>(items: T[], index: number, offset: number) {
 function ReferenceOrderButtons({ index, total, onMove }: { index: number; total: number; onMove: (offset: number) => void }) {
     if (total <= 1) return null;
     return (
-        <div className="absolute inset-x-1 bottom-1 flex justify-between">
-            <Button size="small" className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm" icon={<ArrowLeft className="size-3" />} disabled={index <= 0} onClick={() => onMove(-1)} />
-            <Button size="small" className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm" icon={<ArrowRight className="size-3" />} disabled={index >= total - 1} onClick={() => onMove(1)} />
+        <div className="absolute inset-x-1 bottom-1 flex justify-between opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+            <Button
+                size="small"
+                className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm"
+                icon={<ArrowLeft className="size-3" />}
+                disabled={index <= 0}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    onMove(-1);
+                }}
+            />
+            <Button
+                size="small"
+                className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm"
+                icon={<ArrowRight className="size-3" />}
+                disabled={index >= total - 1}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    onMove(1);
+                }}
+            />
         </div>
     );
 }

@@ -694,13 +694,13 @@ export default function VideoPage() {
                                                 </Tooltip>
                                             </div>
                                         </div>
-                                        <div className="hide-scrollbar flex min-h-[86px] min-w-0 gap-2 overflow-x-auto overscroll-x-contain rounded-xl bg-stone-50/70 px-2 py-2 ring-1 ring-stone-200/70 dark:bg-stone-900/35 dark:ring-stone-800/70">
+                                        <div className="hide-scrollbar flex min-h-[110px] min-w-0 gap-2.5 overflow-x-auto overscroll-x-contain rounded-xl bg-stone-50/70 px-2 py-2 ring-1 ring-stone-200/70 dark:bg-stone-900/35 dark:ring-stone-800/70">
                                             {references.map((item, index) => (
                                                 <div
                                                     key={item.id}
                                                     role="button"
                                                     tabIndex={0}
-                                                    className="group relative size-[72px] shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-stone-100 outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
+                                                    className="group relative size-24 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-stone-100 outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
                                                     aria-label={`查看${seedanceReferenceLabel("image", index)}`}
                                                     onClick={() => setReferencePreview({ kind: "image", label: seedanceReferenceLabel("image", index), item })}
                                                     onKeyDown={(event) => {
@@ -710,11 +710,7 @@ export default function VideoPage() {
                                                     }}
                                                 >
                                                     <img src={item.dataUrl} alt={item.name} className="size-full object-cover" />
-                                                    <span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/15 group-hover:opacity-100 group-focus-visible:bg-black/15 group-focus-visible:opacity-100">
-                                                        <span className="grid size-8 place-items-center rounded-full bg-white/90 text-stone-950 shadow-sm">
-                                                            <Maximize2 className="size-4" />
-                                                        </span>
-                                                    </span>
+                                                    <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10 group-focus-visible:bg-black/10" />
                                                     <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("image", index)}</span>
                                                     <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
                                                     <button
@@ -735,7 +731,7 @@ export default function VideoPage() {
                                                     key={item.id}
                                                     role="button"
                                                     tabIndex={0}
-                                                    className="group relative h-[72px] w-28 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-black outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
+                                                    className="group relative h-24 w-36 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-black outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
                                                     aria-label={`查看${seedanceReferenceLabel("video", index)}`}
                                                     onClick={() => setReferencePreview({ kind: "video", label: seedanceReferenceLabel("video", index), item })}
                                                     onKeyDown={(event) => {
@@ -745,11 +741,7 @@ export default function VideoPage() {
                                                     }}
                                                 >
                                                     <video src={item.url} className="size-full object-cover" muted preload="metadata" />
-                                                    <span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/20 group-hover:opacity-100 group-focus-visible:bg-black/20 group-focus-visible:opacity-100">
-                                                        <span className="grid size-8 place-items-center rounded-full bg-white/90 text-stone-950 shadow-sm">
-                                                            <Play className="ml-0.5 size-4 fill-current" />
-                                                        </span>
-                                                    </span>
+                                                    <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/15 group-focus-visible:bg-black/15" />
                                                     <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("video", index)}</span>
                                                     <ReferenceOrderButtons index={index} total={videoReferences.length} onMove={(offset) => setVideoReferences((value) => moveListItem(value, index, offset))} />
                                                     <button
@@ -766,7 +758,7 @@ export default function VideoPage() {
                                                 </div>
                                             ))}
                                             {audioReferences.map((item, index) => (
-                                                <div key={item.id} className="group relative flex h-[72px] w-56 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-background px-2 ring-1 ring-stone-200/70 dark:bg-stone-950/70 dark:ring-stone-800/70">
+                                                <div key={item.id} className="group relative flex h-24 w-56 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-background px-2 ring-1 ring-stone-200/70 dark:bg-stone-950/70 dark:ring-stone-800/70">
                                                     <div className="flex min-w-0 items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
                                                         <Music2 className="size-4 shrink-0" />
                                                         <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{seedanceReferenceLabel("audio", index)}</span>
@@ -785,7 +777,7 @@ export default function VideoPage() {
                                                 </div>
                                             ))}
                                             {!references.length && !videoReferences.length && !audioReferences.length ? (
-                                                <span className="flex h-[72px] items-center text-sm text-stone-400">支持 PNG/JPG、MP4/MOV、mp3/wav；图片单张 30MB 内，视频 50MB 内，音频 15MB 内</span>
+                                                <span className="flex h-24 items-center text-sm text-stone-400">支持 PNG/JPG、MP4/MOV、mp3/wav；图片单张 30MB 内，视频 50MB 内，音频 15MB 内</span>
                                             ) : null}
                                         </div>
                                     </div>
@@ -1560,7 +1552,7 @@ function appendFailureToVideoLog(log: GenerationLog, failure: GeneratedFailure):
 function ReferenceOrderButtons({ index, total, onMove }: { index: number; total: number; onMove: (offset: number) => void }) {
     if (total <= 1) return null;
     return (
-        <div className="absolute inset-x-1 bottom-1 flex justify-between">
+        <div className="absolute inset-x-1 bottom-1 flex justify-between opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
             <Button
                 size="small"
                 className="!h-6 !w-6 !min-w-6 !rounded-full !bg-white/85 !p-0 !shadow-sm"
