@@ -2,6 +2,7 @@
 
 export type SubmitTaskShortcut = "ctrlEnter" | "enter";
 export type ReferenceEditMode = "append" | "replace" | "ask";
+export type WorkbenchNotificationStatus = "disabled" | "unsupported" | "default" | "denied" | "sent" | "failed";
 
 type SubmitKeyEvent = {
     key: string;
@@ -33,10 +34,37 @@ export async function requestWorkbenchNotificationPermission() {
     return Notification.requestPermission();
 }
 
-export function notifyWorkbenchTask(enabled: boolean, title: string, body: string) {
-    if (!enabled || typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission !== "granted") return;
-    new Notification(title, { body });
+export function notifyWorkbenchTask(enabled: boolean, title: string, body: string, options: { tag?: string; requireInteraction?: boolean } = {}): WorkbenchNotificationStatus {
+    if (!enabled) return "disabled";
+    if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+    if (Notification.permission === "default") return "default";
+    if (Notification.permission === "denied") return "denied";
+    try {
+        const notification = new Notification(title, {
+            body,
+            icon: "/relaybases-mark.svg",
+            badge: "/relaybases-mark.svg",
+            tag: options.tag || `relaybases-workbench-${Date.now()}`,
+            requireInteraction: options.requireInteraction ?? false,
+        });
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+        };
+        return "sent";
+    } catch (error) {
+        console.warn("[RelayBases] Workbench notification failed", error);
+        return "failed";
+    }
+}
+
+export async function requestAndTestWorkbenchNotification() {
+    const permission = await requestWorkbenchNotificationPermission();
+    if (permission !== "granted") return { permission, status: permission as WorkbenchNotificationStatus };
+    return {
+        permission,
+        status: notifyWorkbenchTask(true, "RelayBases 通知已开启", "生成任务完成或失败时，将发送系统通知。", { tag: "relaybases-workbench-notification-test" }),
+    };
 }
 
 export function fileExtensionFromMime(mimeType?: string, fallback = "bin") {

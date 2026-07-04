@@ -442,7 +442,7 @@ export default function VideoPage() {
             await saveLog(failedLog);
             if (targetLog) setPreviewLog(failedLog);
             message.error(errorMessage);
-            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频任务创建失败", errorMessage);
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频任务创建失败", errorMessage, { tag: `relaybases-video-create-${resultId}`, requireInteraction: true });
             finishLogRun(logId);
         }
     };
@@ -731,7 +731,7 @@ export default function VideoPage() {
                     await saveLog(completedLog);
                     setPreviewLog((current) => (current?.id === completedLog.id ? completedLog : current));
                     message.success("视频已生成");
-                    notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成完成", `${log.prompt || log.title || "视频任务"} 已完成`);
+                    notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成完成", `${log.prompt || log.title || "视频任务"} 已完成`, { tag: `relaybases-video-${resultId}`, requireInteraction: true });
                     void createVideoThumbnail(stored.url).then(async (thumbnail) => {
                         const normalized = normalizeVideoThumbnail(thumbnail);
                         if (!normalized) return;
@@ -752,7 +752,7 @@ export default function VideoPage() {
             await saveLog(failedLog);
             setPreviewLog((current) => (current?.id === failedLog.id ? failedLog : current));
             message.error(errorMessage);
-            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成失败", errorMessage);
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成失败", errorMessage, { tag: `relaybases-video-${resultId}`, requireInteraction: true });
         } finally {
             activeLogIdsRef.current.delete(resultId);
             finishLogRun(logId);

@@ -439,6 +439,7 @@ export default function ImagePage() {
             effectiveConfig.notifyOnGenerationComplete === "true",
             successCount ? "图片生成完成" : "图片生成失败",
             successCount ? `成功 ${successCount} 张${failCount ? `，失败 ${failCount} 张` : ""}` : failed?.error || "生成失败",
+            { tag: `relaybases-image-${sessionId}`, requireInteraction: true },
         );
 
         void (async () => {
