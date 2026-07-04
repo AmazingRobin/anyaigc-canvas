@@ -158,9 +158,10 @@ export default function VideoPage() {
     const activeLogId = previewLog?.id || activeResultLogId;
     const activeRunning = activeLogId ? runningByLog[activeLogId] : undefined;
     const results = activeLogId ? dedupeGenerationResults(resultsByLog[activeLogId] || []) : [];
+    const resultKeys = results.map(resultIdentityKey);
     const running = Boolean(activeRunning);
-    const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
-    const allResultsSelected = Boolean(results.length) && selectedResultIds.length === results.length;
+    const selectedResults = results.filter((result) => selectedResultIds.includes(resultIdentityKey(result)));
+    const allResultsSelected = Boolean(results.length) && resultKeys.every((key) => selectedResultIds.includes(key));
 
     useEffect(() => {
         if (!activeRunning?.startedAt) {
@@ -200,7 +201,7 @@ export default function VideoPage() {
     useEffect(() => {
         setSelectedResultIds((ids) => {
             if (!ids.length) return ids;
-            const available = new Set(results.map((result) => result.id));
+            const available = new Set(results.map(resultIdentityKey));
             const next = ids.filter((id) => available.has(id));
             return next.length === ids.length ? ids : next;
         });
@@ -506,7 +507,7 @@ export default function VideoPage() {
     };
 
     const toggleAllResults = () => {
-        setSelectedResultIds(allResultsSelected ? [] : results.map((result) => result.id));
+        setSelectedResultIds(allResultsSelected ? [] : resultKeys);
     };
 
     const insertPickedAsset = async (payload: InsertAssetPayload) => {
@@ -761,11 +762,11 @@ export default function VideoPage() {
                                 <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                     {results.map((result) =>
                                         result.status === "success" && result.video ? (
-                                            <ResultVideoCard key={result.id} video={result.video} previewSuspended={playerVideo?.id === result.video.id} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                            <ResultVideoCard key={resultIdentityKey(result)} video={result.video} previewSuspended={playerVideo?.id === result.video.id} selected={selectedResultIds.includes(resultIdentityKey(result))} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} onPlay={() => setPlayerVideo(result.video || null)} onEdit={editResultVideo} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
-                                            <FailedVideoCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} retryLabel={findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试"} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
+                                            <FailedVideoCard key={resultIdentityKey(result)} error={result.error || "生成失败"} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} retryLabel={findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试"} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
-                                            <PendingVideoCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
+                                            <PendingVideoCard key={resultIdentityKey(result)} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} />
                                         ),
                                     )}
                                 </div>
