@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Maximize2, Music2, Pause, PenLine, Play, Plus, RotateCcw, Search, Sparkles, Trash2, Upload, VideoIcon, Volume2, VolumeX, X } from "lucide-react";
 import { Children, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { App, Button, Drawer, Empty, Input, Modal, Tooltip, Typography } from "antd";
@@ -17,6 +17,7 @@ import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolution
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
+import { matchesWorkbenchPromptSearch } from "@/lib/workbench-history-search";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
@@ -95,6 +96,7 @@ const RESULT_OVERLAY_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !ju
 const RESULT_OVERLAY_DANGER_BUTTON_CLASS = `${RESULT_OVERLAY_ICON_BUTTON_CLASS} hover:!bg-rose-500/45`;
 const RESULT_FAILED_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-red-100/70 !p-0 !text-red-600 !shadow-none hover:!bg-red-200/80 dark:!bg-red-950/60 dark:!text-red-200 dark:hover:!bg-red-900/80 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
 const COMPOSER_CONTROL_CLASS = "h-8 rounded-full border border-input bg-transparent px-3 text-sm font-normal shadow-sm transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-900/70";
+const HISTORY_SEARCH_INPUT_CLASS = "mb-3 !rounded-lg !border-stone-200 !bg-background !shadow-none transition-colors hover:!border-stone-300 focus-within:!border-stone-300 focus-within:!shadow-none [&.ant-input-affix-wrapper-focused]:!border-stone-300 [&.ant-input-affix-wrapper-focused]:!shadow-none [&_input]:!outline-none dark:!border-stone-800 dark:hover:!border-stone-700 dark:focus-within:!border-stone-700 dark:[&.ant-input-affix-wrapper-focused]:!border-stone-700";
 const VIDEO_MODE_OPTIONS = [
     { value: "sync", label: "同步" },
     { value: "async", label: "异步·4倍扣费" },
@@ -1697,15 +1699,27 @@ function LogPanel({
     onClose?: () => void;
     onPreviewLog: (log: GenerationLog) => void;
 }) {
-    const allSelected = Boolean(logs.length) && selectedLogIds.length === logs.length;
+    const [searchQuery, setSearchQuery] = useState("");
+    const filteredLogs = logs.filter((log) => matchesWorkbenchPromptSearch(log.prompt || log.title || "", searchQuery));
+    const filteredLogIds = filteredLogs.map((log) => log.id);
+    const allSelected = Boolean(filteredLogIds.length) && filteredLogIds.every((id) => selectedLogIds.includes(id));
     const [visibleCount, setVisibleCount] = useState(INITIAL_LOG_VISIBLE_COUNT);
-    const visibleLogs = logs.slice(0, visibleCount);
-    const hiddenCount = Math.max(0, logs.length - visibleLogs.length);
-    const toggleAll = () => onSelectedLogIdsChange(allSelected ? [] : logs.map((log) => log.id));
+    const visibleLogs = filteredLogs.slice(0, visibleCount);
+    const hiddenCount = Math.max(0, filteredLogs.length - visibleLogs.length);
+    const hasSearch = Boolean(searchQuery.trim());
+    const visibleCountLabel = hasSearch ? `${filteredLogs.length}/${logs.length}` : logs.length;
+    const toggleAll = () => {
+        if (allSelected) {
+            const filteredIdSet = new Set(filteredLogIds);
+            onSelectedLogIdsChange(selectedLogIds.filter((id) => !filteredIdSet.has(id)));
+            return;
+        }
+        onSelectedLogIdsChange(Array.from(new Set([...selectedLogIds, ...filteredLogIds])));
+    };
 
     useEffect(() => {
         setVisibleCount(INITIAL_LOG_VISIBLE_COUNT);
-    }, [logs.length]);
+    }, [logs.length, searchQuery]);
 
     return (
         <div className="flex h-full min-h-0 flex-col">
@@ -1713,7 +1727,7 @@ function LogPanel({
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <h2 className="text-base font-semibold">生成记录</h2>
                     <div className="flex items-center gap-2">
-                        <HistoryPill>{logs.length}</HistoryPill>
+                        <HistoryPill>{visibleCountLabel}</HistoryPill>
                         {onClose ? (
                             <Button size="small" onClick={onClose}>
                                 关闭
@@ -1721,11 +1735,23 @@ function LogPanel({
                         ) : null}
                     </div>
                 </div>
+                <Input
+                    className={HISTORY_SEARCH_INPUT_CLASS}
+                    allowClear
+                    size="small"
+                    prefix={<Search className="size-3.5 text-stone-400" />}
+                    placeholder="搜索提示词"
+                    value={searchQuery}
+                    onChange={(event) => {
+                        setSearchQuery(event.target.value);
+                        onSelectedLogIdsChange([]);
+                    }}
+                />
                 <div className="mb-4 flex flex-wrap gap-2">
                     <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreateSession}>
                         新建
                     </Button>
-                    <Button size="small" icon={<CheckSquare className="size-3.5" />} disabled={!logs.length} onClick={toggleAll}>
+                    <Button size="small" icon={<CheckSquare className="size-3.5" />} disabled={!filteredLogs.length} onClick={toggleAll}>
                         {allSelected ? "取消" : "全选"}
                     </Button>
                     <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedLogIds.length} onClick={onDeleteSelected}>
@@ -1752,10 +1778,15 @@ function LogPanel({
                         </Button>
                     ) : null}
                     {!logs.length ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-stone-300 text-center text-sm text-stone-500 dark:border-stone-700">暂无生成记录</div> : null}
+                    {hasSearch && !filteredLogs.length ? <HistorySearchEmptyState /> : null}
                 </div>
             </div>
         </div>
     );
+}
+
+function HistorySearchEmptyState() {
+    return <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-stone-200 text-center text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">未找到匹配的生成记录</div>;
 }
 
 function LogCard({ log, selected, active, onSelectedChange, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onClick: () => void }) {
