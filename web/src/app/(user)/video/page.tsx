@@ -1016,6 +1016,7 @@ function videoReferenceLimits(seedance: boolean, model: string): VideoReferenceL
     if (seedance) return { ...SEEDANCE_REFERENCE_LIMITS };
     if (value === "veo-omni-flash-video-edit") return { ...base, images: 5, videos: 1, audios: 0 };
     if (value === "veo-omni-flash") return { ...base, images: 5, videos: 0, audios: 0 };
+    if (value === "veo-3-1") return { ...base, images: 2, videos: 0, audios: 0 };
     if (RELAYBASES_MULTI_REFERENCE_MODELS.has(value)) return { ...base, images: 5, videos: 3, audios: 3 };
     return { ...base, images: 5, videos: 0, audios: 0 };
 }
@@ -1049,6 +1050,13 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
         return {
             image: `PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
             video: `MP4/MOV · ${formatReferenceLimit(limits.videoMaxBytes)}/个`,
+            audio: "不使用",
+        };
+    }
+    if (value === "veo-3-1") {
+        return {
+            image: `首帧/尾帧 · 最多 2 张 · PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
+            video: "不使用",
             audio: "不使用",
         };
     }

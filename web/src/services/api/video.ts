@@ -156,9 +156,9 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 
 async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions) {
     const modelName = modelOptionName(model);
-    const images = await Promise.all(references.map((image) => resolveRelayBasesImageUrl(config, image, options)));
-    const videos = await Promise.all(videoReferences.map((video) => resolveRelayBasesVideoReferenceUrl(config, video, options)));
-    const audios = await Promise.all(audioReferences.map((audio) => resolveRelayBasesAudioReferenceUrl(config, audio, options)));
+    const images = uniqueReferenceUrls(await Promise.all(references.map((image) => resolveRelayBasesImageUrl(config, image, options))));
+    const videos = uniqueReferenceUrls(await Promise.all(videoReferences.map((video) => resolveRelayBasesVideoReferenceUrl(config, video, options))));
+    const audios = uniqueReferenceUrls(await Promise.all(audioReferences.map((audio) => resolveRelayBasesAudioReferenceUrl(config, audio, options))));
     const payload: Record<string, unknown> = {
         model: modelName,
         prompt,
@@ -178,6 +178,11 @@ async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prom
         return payload;
     }
 
+    if (modelName === "veo-3-1") {
+        if (images.length) payload.images = images.slice(0, 2);
+        return payload;
+    }
+
     if (modelName === "video-fast-480p" || modelName === "video-fast-720p" || modelName === "video-pro-480p" || modelName === "video-pro-720p" || modelName === "video-pro-1080p" || modelName === "video-standard-720p") {
         if (images[0]) payload.image_url = images[0];
         if (images.length > 1) payload.extra_images = images.slice(1, 5);
@@ -188,6 +193,16 @@ async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prom
 
     if (images.length) payload.images = images.slice(0, 5);
     return payload;
+}
+
+function uniqueReferenceUrls(values: string[]) {
+    const seen = new Set<string>();
+    return values.filter((value) => {
+        const key = value.trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 async function resolveRelayBasesImageUrl(config: AiConfig, image: ReferenceImage, options?: RequestOptions) {
