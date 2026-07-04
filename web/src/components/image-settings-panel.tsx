@@ -110,12 +110,12 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             <button
                                 key={item.value}
                                 type="button"
-                                className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
-                                style={{ borderColor: theme.node.stroke, background: selectedAspect?.value === item.value ? theme.node.fill : "transparent", color: theme.node.text }}
+                                className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:bg-stone-950/[0.03] hover:opacity-90 dark:hover:bg-white/[0.05]"
+                                style={mutedOptionStyle(theme, selectedAspect?.value === item.value)}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onClick={() => selectAspect(item.value)}
                             >
-                                <AspectIcon type={item.icon} width={item.width} height={item.height} color={theme.node.muted} />
+                                <AspectIcon type={item.icon} width={item.width} height={item.height} color={mutedPreviewColor(theme)} />
                                 <span>{item.label}</span>
                             </button>
                         ))}
@@ -160,12 +160,28 @@ export function imageSizeLabel(size: string) {
     return aspectOptions.find((item) => (item.size || item.value) === size || item.value === size)?.label || size;
 }
 
+export function mutedOptionStyle(theme: CanvasTheme, selected = false) {
+    return {
+        background: selected ? `color-mix(in srgb, ${theme.node.fill} 82%, transparent)` : "transparent",
+        borderColor: mutedBorderColor(theme, selected),
+        color: theme.node.text,
+    };
+}
+
+export function mutedBorderColor(theme: CanvasTheme, selected = false) {
+    return `color-mix(in srgb, ${selected ? theme.node.muted : theme.node.stroke} ${selected ? 44 : 58}%, transparent)`;
+}
+
+export function mutedPreviewColor(theme: CanvasTheme) {
+    return `color-mix(in srgb, ${theme.node.muted} 56%, transparent)`;
+}
+
 function OptionPill({ selected, theme, onClick, children }: { selected: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
     return (
         <button
             type="button"
-            className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:opacity-80"
-            style={{ background: selected ? theme.node.fill : "transparent", borderColor: theme.node.stroke, color: theme.node.text }}
+            className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:bg-stone-950/[0.03] hover:opacity-90 dark:hover:bg-white/[0.05]"
+            style={mutedOptionStyle(theme, selected)}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={onClick}
         >
@@ -205,7 +221,7 @@ function DimensionInput({ prefix, value, disabled, theme, alignToStep, onChange 
 
 function CountInput({ value, max, theme, wide, onChange }: { value: number; max: number; theme: CanvasTheme; wide?: boolean; onChange: (value: number | null) => void }) {
     return (
-        <label className={`${wide ? "col-span-1" : "col-span-2"} flex h-9 overflow-hidden rounded-full border text-sm`} style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
+        <label className={`${wide ? "col-span-1" : "col-span-2"} flex h-9 overflow-hidden rounded-full border text-sm`} style={{ borderColor: mutedBorderColor(theme), color: theme.node.text }}>
             <input
                 type="number"
                 min={1}
@@ -216,7 +232,7 @@ function CountInput({ value, max, theme, wide, onChange }: { value: number; max:
                 onChange={(event) => onChange(Number(event.target.value) || null)}
                 onMouseDown={(event) => event.stopPropagation()}
             />
-            <span className="grid w-10 place-items-center border-l text-xs font-medium" style={{ borderColor: theme.node.stroke, color: theme.node.muted }}>
+            <span className="grid w-10 place-items-center border-l text-xs font-medium" style={{ borderColor: mutedBorderColor(theme), color: theme.node.muted }}>
                 张
             </span>
         </label>
@@ -230,7 +246,7 @@ function AspectIcon({ type, width, height, color }: { type: string; width: numbe
     const boxHeight = ratio >= 1 ? Math.max(10, 24 / ratio) : 24;
     return (
         <span className="grid h-7 w-9 place-items-center">
-            <span className="rounded-[3px] border" style={{ width: boxWidth, height: boxHeight, borderColor: color, opacity: 0.78 }} />
+            <span className="rounded-[3px] border" style={{ width: boxWidth, height: boxHeight, borderColor: color, opacity: 0.62 }} />
         </span>
     );
 }

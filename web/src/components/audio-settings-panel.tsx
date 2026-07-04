@@ -2,7 +2,7 @@
 
 import { type ReactNode } from "react";
 
-import { ImageSettingsTheme } from "@/components/image-settings-panel";
+import { ImageSettingsTheme, mutedBorderColor, mutedOptionStyle } from "@/components/image-settings-panel";
 import { audioFormatOptions, audioSpeedLabel, audioVoiceOptions, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue } from "@/lib/audio-generation";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -60,7 +60,7 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         max={4}
                         step={0.05}
                         className="h-9 w-full rounded-full border bg-transparent px-3 text-center text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        style={{ borderColor: theme.node.stroke, color: theme.node.text, WebkitTextFillColor: theme.node.text }}
+                        style={{ borderColor: mutedBorderColor(theme), color: theme.node.text, WebkitTextFillColor: theme.node.text }}
                         value={config.audioSpeed || "1"}
                         onChange={(event) => onConfigChange("audioSpeed", event.target.value)}
                         onBlur={(event) => onConfigChange("audioSpeed", normalizeAudioSpeedValue(event.target.value))}
@@ -72,7 +72,7 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         value={config.audioInstructions || ""}
                         placeholder="例如：自然、温暖、适合旁白。"
                         className="thin-scrollbar h-20 w-full resize-none rounded-xl border bg-transparent px-3 py-2 text-sm leading-5 outline-none"
-                        style={{ borderColor: theme.node.stroke, color: theme.node.text }}
+                        style={{ borderColor: mutedBorderColor(theme), color: theme.node.text }}
                         onChange={(event) => onConfigChange("audioInstructions", event.target.value)}
                         onMouseDown={(event) => event.stopPropagation()}
                     />
@@ -84,7 +84,7 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
 
 function OptionPill({ selected, theme, onClick, children }: { selected: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
     return (
-        <button type="button" className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:opacity-80" style={{ background: selected ? theme.node.fill : "transparent", borderColor: theme.node.stroke, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onClick={onClick}>
+        <button type="button" className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:bg-stone-950/[0.03] hover:opacity-90 dark:hover:bg-white/[0.05]" style={mutedOptionStyle(theme, selected)} onMouseDown={(event) => event.stopPropagation()} onClick={onClick}>
             {children}
         </button>
     );

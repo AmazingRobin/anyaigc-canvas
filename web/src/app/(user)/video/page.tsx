@@ -784,7 +784,9 @@ export default function VideoPage() {
                                     >
                                         <FolderPlus className="size-3.5 shrink-0 text-stone-500 dark:text-stone-400" />
                                         <span className="shrink-0 text-stone-700 dark:text-stone-200">参考素材</span>
-                                        <span className="min-w-0 truncate text-xs text-stone-500 dark:text-stone-400">{videoReferenceSummary(references, videoReferences, audioReferences)}</span>
+                                        {videoReferenceSummary(references, videoReferences, audioReferences) ? (
+                                            <span className="min-w-0 truncate text-xs text-stone-500 dark:text-stone-400">{videoReferenceSummary(references, videoReferences, audioReferences)}</span>
+                                        ) : null}
                                     </button>
                                     {referencePopoverOpen ? (
                                         <div ref={referencePopoverDesktopPanelRef} className="absolute bottom-full left-0 z-[3000] mb-3 hidden max-h-[min(72vh,620px)] w-[520px] max-w-[calc(100vw-40px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.42)] dark:ring-stone-800/90 sm:block" onMouseDown={(event) => event.stopPropagation()}>
@@ -962,7 +964,7 @@ function formatReferenceLimit(bytes: number) {
 
 function videoReferenceSummary(images: ReferenceImage[], videos: ReferenceVideo[], audios: ReferenceAudio[]) {
     const total = images.length + videos.length + audios.length;
-    if (!total) return "未添加";
+    if (!total) return "";
     return [
         images.length ? `图 ${images.length}` : "",
         videos.length ? `视频 ${videos.length}` : "",
@@ -976,22 +978,22 @@ function videoReferenceRequirementLines(seedance: boolean, model: string, limits
     const value = model.toLowerCase();
     if (seedance) {
         return [
-            `参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`,
-            `参考视频：最多 ${limits.videos} 个，支持 MP4/MOV，H.264/H.265，24-60 FPS；单个 ${formatReferenceLimit(limits.videoMaxBytes)} 内、2-15 秒，总时长不超过 15 秒。`,
-            `参考音频：最多 ${limits.audios} 个，支持 MP3/WAV，单个 ${formatReferenceLimit(limits.audioMaxBytes)} 内、2-15 秒。`,
+            `图片 ${limits.images} 张 · PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
+            `视频 ${limits.videos} 个 · MP4/MOV · 2-15s · ${formatReferenceLimit(limits.videoMaxBytes)}/个`,
+            `音频 ${limits.audios} 个 · MP3/WAV · 2-15s · ${formatReferenceLimit(limits.audioMaxBytes)}/个`,
         ];
     }
     if (value === "veo-omni-flash-video-edit") {
-        return [`参考视频：需要 1 个，支持 MP4/MOV，单个 ${formatReferenceLimit(limits.videoMaxBytes)} 内。`, `参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`, "当前模型不使用参考音频。"];
+        return [`视频 1 个 · MP4/MOV · ${formatReferenceLimit(limits.videoMaxBytes)}/个`, `图片 ${limits.images} 张 · PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`, "音频不使用"];
     }
     if (limits.videos || limits.audios) {
         return [
-            `参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`,
-            `参考视频：最多 ${limits.videos} 个，支持 MP4/MOV，单个 ${formatReferenceLimit(limits.videoMaxBytes)} 内。`,
-            `参考音频：最多 ${limits.audios} 个，支持 MP3/WAV，单个 ${formatReferenceLimit(limits.audioMaxBytes)} 内。`,
+            `图片 ${limits.images} 张 · PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`,
+            `视频 ${limits.videos} 个 · MP4/MOV · ${formatReferenceLimit(limits.videoMaxBytes)}/个`,
+            `音频 ${limits.audios} 个 · MP3/WAV · ${formatReferenceLimit(limits.audioMaxBytes)}/个`,
         ];
     }
-    return [`参考图：最多 ${limits.images} 张，支持 PNG/JPG，单张 ${formatReferenceLimit(limits.imageMaxBytes)} 内。`, "当前模型不使用参考视频和参考音频。"];
+    return [`图片 ${limits.images} 张 · PNG/JPG · ${formatReferenceLimit(limits.imageMaxBytes)}/张`, "视频/音频不使用"];
 }
 
 function VideoReferencePanel({
@@ -1027,12 +1029,14 @@ function VideoReferencePanel({
     onRemoveVideo: (id: string) => void;
     onRemoveAudio: (id: string) => void;
 }) {
+    const summary = videoReferenceSummary(references, videoReferences, audioReferences);
+
     return (
         <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <div className="text-sm font-semibold text-stone-800 dark:text-stone-100">参考素材</div>
-                    <div className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">{videoReferenceSummary(references, videoReferences, audioReferences)}</div>
+                    {summary ? <div className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">已添加：{summary}</div> : null}
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                     <Tooltip title="从剪贴板读取参考图">
@@ -1044,13 +1048,13 @@ function VideoReferencePanel({
                 </div>
             </div>
 
-            <div className="space-y-1 rounded-xl bg-stone-50/85 px-3 py-2 text-xs leading-relaxed text-stone-500 ring-1 ring-stone-200/60 dark:bg-stone-900/45 dark:text-stone-400 dark:ring-stone-800/70">
+            <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] leading-5 text-stone-400 dark:text-stone-500">
                 {videoReferenceRequirementLines(seedance, modelName, limits).map((line) => (
-                    <div key={line}>{line}</div>
+                    <span key={line}>{line}</span>
                 ))}
             </div>
 
-            <VideoReferenceStrip title={`参考图 ${references.length}/${limits.images}`} empty="尚未添加参考图">
+            <VideoReferenceStrip title={`图片 ${references.length}/${limits.images}`} empty="未添加">
                 {references.map((item, index) => (
                     <div
                         key={item.id}
@@ -1085,7 +1089,7 @@ function VideoReferencePanel({
             </VideoReferenceStrip>
 
             {limits.videos > 0 || videoReferences.length ? (
-                <VideoReferenceStrip title={limits.videos > 0 ? `参考视频 ${videoReferences.length}/${limits.videos}` : "参考视频"} note={limits.videos > 0 ? undefined : "当前模型不使用"} empty={limits.videos > 0 ? "尚未添加参考视频" : "当前模型不使用参考视频"}>
+                <VideoReferenceStrip title={limits.videos > 0 ? `视频 ${videoReferences.length}/${limits.videos}` : "视频"} note={limits.videos > 0 ? undefined : "不使用"} empty={limits.videos > 0 ? "未添加" : "当前模型不使用"}>
                     {videoReferences.map((item, index) => (
                         <div
                             key={item.id}
@@ -1121,7 +1125,7 @@ function VideoReferencePanel({
             ) : null}
 
             {limits.audios > 0 || audioReferences.length ? (
-                <VideoReferenceStrip title={limits.audios > 0 ? `参考音频 ${audioReferences.length}/${limits.audios}` : "参考音频"} note={limits.audios > 0 ? undefined : "当前模型不使用"} empty={limits.audios > 0 ? "尚未添加参考音频" : "当前模型不使用参考音频"}>
+                <VideoReferenceStrip title={limits.audios > 0 ? `音频 ${audioReferences.length}/${limits.audios}` : "音频"} note={limits.audios > 0 ? undefined : "不使用"} empty={limits.audios > 0 ? "未添加" : "当前模型不使用"}>
                     {audioReferences.map((item, index) => (
                         <div key={item.id} className="group relative flex h-16 w-44 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-stone-50 px-2 ring-1 ring-stone-200/70 dark:bg-stone-900/55 dark:ring-stone-800/70">
                             <div className="flex min-w-0 items-center gap-2 pr-5 text-xs text-stone-500 dark:text-stone-400">
@@ -1153,9 +1157,9 @@ function VideoReferenceStrip({ title, note, empty, children }: { title: string; 
         <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs">
                 <span className="font-semibold text-stone-600 dark:text-stone-300">{title}</span>
-                {note ? <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700 ring-1 ring-amber-200/70 dark:bg-amber-950/25 dark:text-amber-200 dark:ring-amber-900/60">{note}</span> : null}
+                {note ? <span className="text-[11px] text-stone-400 dark:text-stone-500">{note}</span> : null}
             </div>
-            {hasChildren ? <div className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">{children}</div> : <div className="rounded-xl bg-stone-50/70 px-3 py-2 text-xs text-stone-400 ring-1 ring-stone-200/60 dark:bg-stone-900/35 dark:ring-stone-800/70">{empty}</div>}
+            {hasChildren ? <div className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">{children}</div> : <div className="px-1 py-1 text-xs text-stone-400 dark:text-stone-500">{empty}</div>}
         </div>
     );
 }

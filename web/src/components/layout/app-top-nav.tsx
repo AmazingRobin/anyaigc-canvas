@@ -39,10 +39,10 @@ export function AppTopNav() {
                                         WebkitMask: "url(/relaybases-mark.svg) center / contain no-repeat",
                                     }}
                                 />
-                                <span className="hidden text-base font-semibold sm:inline">RelayBases</span>
+                                <span className="text-base font-semibold">RelayBases</span>
                             </a>
                             <span className="mx-3 hidden h-5 w-px shrink-0 bg-stone-200 sm:block dark:bg-stone-800" />
-                            <Link href="/" className="group flex h-full shrink-0 items-center gap-2 rounded-full px-1.5 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:bg-stone-950/[0.04] hover:text-stone-700 sm:gap-2.5 sm:px-2.5 dark:text-stone-100 dark:hover:bg-white/[0.07] dark:hover:text-white">
+                            <Link href="/" className="group hidden h-full shrink-0 items-center gap-2 rounded-full px-1.5 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:bg-stone-950/[0.04] hover:text-stone-700 sm:flex sm:gap-2.5 sm:px-2.5 dark:text-stone-100 dark:hover:bg-white/[0.07] dark:hover:text-white">
                                 <RelayBasesCanvasIcon className="size-8 transition duration-300 group-hover:scale-105" />
                                 <span className="text-base font-semibold">无限画布</span>
                             </Link>
