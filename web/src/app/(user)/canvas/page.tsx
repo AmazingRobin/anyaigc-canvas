@@ -13,6 +13,7 @@ import { CanvasProjectCard } from "./components/canvas-project-card";
 import type { CanvasExportFile } from "./export-types";
 import { useCanvasStore } from "./stores/use-canvas-store";
 import { useCanvasUiStore } from "./stores/use-canvas-ui-store";
+import { canvasAgentQuerySuffix } from "./utils/canvas-navigation-query";
 import { exportCanvasProjects } from "./utils/canvas-export";
 
 export default function CanvasPage() {
@@ -39,8 +40,7 @@ function CanvasPageContent() {
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
 
     const mode = searchParams.get("mode");
-    const agentMode = mode === "new" || mode === "recent" || mode === "choose";
-    const agentQuery = agentMode ? `?${searchParams.toString()}` : "";
+    const agentQuery = canvasAgentQuerySuffix(searchParams);
     const enterProject = (id: string) => {
         router.push(`/canvas/${id}${agentQuery}`);
     };

@@ -20,6 +20,7 @@ import { UserStatusActions } from "@/components/layout/user-status-actions";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl } from "../utils/canvas-image-data";
+import { hasCanvasAgentCredentials, isCanvasAgentMode } from "../utils/canvas-navigation-query";
 import { fitNodeSize, nodeSizeFromRatio } from "../utils/canvas-node-size";
 import { App, Button, Dropdown, Modal } from "antd";
 import { NODE_DEFAULT_SIZE, getNodeSpec } from "../constants";
@@ -328,7 +329,9 @@ function InfiniteCanvasPage() {
     const [assistantClosing, setAssistantClosing] = useState(false);
     const [agentMode, setAgentMode] = useState<CanvasAgentMode>("online");
     const [agentUndoSnapshot, setAgentUndoSnapshot] = useState<CanvasAgentSnapshot | null>(null);
-    const codexAutoConnect = ["new", "recent", "choose"].includes(searchParams.get("mode") || "");
+    const canvasLaunchMode = searchParams.get("mode");
+    const canvasLaunchHasAgent = hasCanvasAgentCredentials(searchParams);
+    const codexAutoConnect = isCanvasAgentMode(canvasLaunchMode) && canvasLaunchHasAgent;
     const codexCompactAgent = codexAutoConnect && searchParams.has("agentUrl");
     const [titleEditing, setTitleEditing] = useState(false);
     const [titleDraft, setTitleDraft] = useState("");
@@ -460,13 +463,14 @@ function InfiniteCanvasPage() {
     }, [hydrated, message, openProject, projectId, router]);
 
     useEffect(() => {
-        if (!projectLoaded || !["new", "recent", "choose"].includes(searchParams.get("mode") || "")) return;
-        if (searchParams.has("agentUrl")) {
+        const mode = searchParams.get("mode");
+        if (!projectLoaded || !isCanvasAgentMode(mode)) return;
+        if (hasCanvasAgentCredentials(searchParams)) {
             setAgentMode("local");
             return;
         }
-        openAgent("online");
-    }, [projectLoaded, searchParams]);
+        router.replace(`/canvas/${projectId}`);
+    }, [projectId, projectLoaded, router, searchParams]);
 
     useEffect(() => {
         if (!projectLoaded || applyingHistoryRef.current || historyPausedRef.current) return;
