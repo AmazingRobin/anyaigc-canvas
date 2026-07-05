@@ -1854,8 +1854,8 @@ function LogCard({
                     type="text"
                     size="small"
                     aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
-                    className={`!absolute !right-3 !top-12 z-10 !inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !p-0 !shadow-md !ring-1 [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!bg-amber-100 !text-amber-700 !ring-amber-200 hover:!bg-amber-100 dark:!bg-amber-950/90 dark:!text-amber-200 dark:!ring-amber-800" : "!bg-white !text-stone-700 !ring-stone-200 hover:!bg-stone-50 dark:!bg-stone-950/95 dark:!text-stone-100 dark:!ring-stone-700 dark:hover:!bg-stone-900"}`}
-                    icon={<Pin className={`size-4 stroke-[2.6] ${log.pinnedAt ? "fill-amber-500/20" : ""}`} />}
+                    className={`!absolute !right-3 !top-12 z-10 !inline-flex !size-7 !items-center !justify-center !rounded-full !border-0 !p-0 !shadow-sm [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!bg-amber-100/90 !text-amber-700 hover:!bg-amber-100 dark:!bg-amber-950/80 dark:!text-amber-200" : "!bg-white/80 !text-stone-500 hover:!bg-white dark:!bg-stone-950/80 dark:!text-stone-300"}`}
+                    icon={<Pin className="size-3.5" />}
                     onClick={(event) => {
                         event.stopPropagation();
                         onTogglePin();
