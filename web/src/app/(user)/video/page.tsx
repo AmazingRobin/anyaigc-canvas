@@ -1854,8 +1854,12 @@ function LogCard({
                     type="text"
                     size="small"
                     aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
-                    className={`!absolute !right-3 !top-12 z-10 !inline-flex !size-7 !items-center !justify-center !rounded-full !border-0 !p-0 !shadow-sm [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!bg-stone-200/70 !text-stone-700 hover:!bg-stone-200/80 dark:!bg-stone-700/60 dark:!text-stone-100" : "!bg-white/80 !text-stone-500 hover:!bg-white dark:!bg-stone-950/80 dark:!text-stone-300"}`}
-                    icon={<Pin className={`size-3.5 ${log.pinnedAt ? "fill-current" : ""}`} />}
+                    className={`!absolute !right-3 !top-12 z-10 !inline-grid !size-7 !place-items-center !rounded-full !border !p-0 !shadow-[0_2px_7px_rgba(15,23,42,0.06)] !backdrop-blur-md [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!border-stone-300/60 !bg-white/80 !text-stone-700 dark:!border-stone-600/60 dark:!bg-stone-950/75 dark:!text-stone-200" : "!border-stone-200/60 !bg-white/40 !text-stone-400 !opacity-[0.68] hover:!bg-white/70 hover:!text-stone-700 dark:!border-white/10 dark:!bg-stone-950/40 dark:!text-stone-500 dark:hover:!bg-stone-950/70 dark:hover:!text-stone-200"}`}
+                    icon={
+                        <span className={`grid size-3.5 place-items-center rounded-[4px] border transition ${log.pinnedAt ? "border-stone-400/50 bg-stone-200/70 text-stone-700 dark:border-stone-500/50 dark:bg-stone-700/60 dark:text-stone-100" : "border-current/35 bg-transparent"}`}>
+                            <Pin className={`size-2.5 ${log.pinnedAt ? "fill-current" : ""}`} />
+                        </span>
+                    }
                     onClick={(event) => {
                         event.stopPropagation();
                         onTogglePin();
