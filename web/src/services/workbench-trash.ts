@@ -91,8 +91,11 @@ export async function purgeExpiredWorkbenchTrash(domain?: AppSyncDomainKey) {
 }
 
 export function formatTrashExpiry(expiresAt: number) {
-    const days = Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
-    return days ? `${days} 天后清理` : "即将清理";
+    const remaining = Math.max(0, expiresAt - Date.now());
+    if (!remaining) return "即将清理";
+    const dayMs = 24 * 60 * 60 * 1000;
+    if (remaining >= dayMs) return `${Math.ceil(remaining / dayMs)} 天后清理`;
+    return `${Math.ceil(remaining / (60 * 60 * 1000))} 小时后清理`;
 }
 
 function trashKey(domain: AppSyncDomainKey, id: string) {

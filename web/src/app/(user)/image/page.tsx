@@ -701,20 +701,37 @@ export default function ImagePage() {
         setTrashOpen(true);
     };
 
-    const restoreTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
-        const restored = await restoreWorkbenchTrashEntry<GenerationLog>("image-workbench", entry.id);
-        if (!restored?.log?.id) return;
-        const log = normalizeLogMetadata({ ...restored.log, updatedAt: Date.now() });
-        await clearDeletedSyncIds("image-workbench", [log.id]);
-        await logStore.setItem(log.id, serializeLog(log));
+    const restoreTrashItems = async (entries: WorkbenchTrashEntry<GenerationLog>[]) => {
+        const restoredLogs: GenerationLog[] = [];
+        for (const entry of entries) {
+            const restored = await restoreWorkbenchTrashEntry<GenerationLog>("image-workbench", entry.id);
+            if (!restored?.log?.id) continue;
+            restoredLogs.push(normalizeLogMetadata({ ...restored.log, updatedAt: Date.now() }));
+        }
+        if (!restoredLogs.length) return;
+        await clearDeletedSyncIds(
+            "image-workbench",
+            restoredLogs.map((log) => log.id),
+        );
+        await Promise.all(restoredLogs.map((log) => logStore.setItem(log.id, serializeLog(log))));
         await Promise.all([refreshLogs(), refreshTrash()]);
-        message.success("生成记录已恢复");
+        message.success(restoredLogs.length === 1 ? "生成记录已恢复" : `已恢复 ${restoredLogs.length} 条生成记录`);
+    };
+
+    const restoreTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
+        await restoreTrashItems([entry]);
+    };
+
+    const removeTrashItems = async (entries: WorkbenchTrashEntry<GenerationLog>[]) => {
+        for (const entry of entries) {
+            await removeWorkbenchTrashEntry("image-workbench", entry.id);
+        }
+        await refreshTrash();
+        message.success(entries.length === 1 ? "已彻底删除" : `已彻底删除 ${entries.length} 条生成记录`);
     };
 
     const removeTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
-        await removeWorkbenchTrashEntry("image-workbench", entry.id);
-        await refreshTrash();
-        message.success("已彻底删除");
+        await removeTrashItems([entry]);
     };
 
     const clearTrash = async () => {
@@ -1114,10 +1131,11 @@ export default function ImagePage() {
                     }}
                 />
             </Drawer>
-            <Drawer title="回收站" placement="right" width={420} open={trashOpen} onClose={() => setTrashOpen(false)} styles={{ body: { padding: 12 } }}>
+            <Drawer title="回收站" placement="right" width="min(560px, 100vw)" open={trashOpen} onClose={() => setTrashOpen(false)} styles={{ body: { padding: 12 } }}>
                 <TrashPanel
                     entries={trashItems}
                     onRestore={(entry) => void restoreTrashItem(entry)}
+                    onRestoreSelected={(entries) => void restoreTrashItems(entries)}
                     onRemove={(entry) =>
                         modal.confirm({
                             title: "彻底删除生成记录",
@@ -1126,6 +1144,16 @@ export default function ImagePage() {
                             okButtonProps: { danger: true },
                             cancelText: "取消",
                             onOk: () => removeTrashItem(entry),
+                        })
+                    }
+                    onRemoveSelected={(entries) =>
+                        modal.confirm({
+                            title: "彻底删除生成记录",
+                            content: `确定彻底删除选中的 ${entries.length} 条生成记录吗？相关本地媒体文件也会被清理。`,
+                            okText: "彻底删除",
+                            okButtonProps: { danger: true },
+                            cancelText: "取消",
+                            onOk: () => removeTrashItems(entries),
                         })
                     }
                     onClear={() =>
@@ -1172,28 +1200,84 @@ function HistorySearchEmptyState() {
     return <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-stone-200 text-center text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">未找到匹配的生成记录</div>;
 }
 
-function TrashPanel({ entries, onRestore, onRemove, onClear }: { entries: WorkbenchTrashEntry<GenerationLog>[]; onRestore: (entry: WorkbenchTrashEntry<GenerationLog>) => void; onRemove: (entry: WorkbenchTrashEntry<GenerationLog>) => void; onClear: () => void }) {
+function TrashPanel({
+    entries,
+    onRestore,
+    onRestoreSelected,
+    onRemove,
+    onRemoveSelected,
+    onClear,
+}: {
+    entries: WorkbenchTrashEntry<GenerationLog>[];
+    onRestore: (entry: WorkbenchTrashEntry<GenerationLog>) => void;
+    onRestoreSelected: (entries: WorkbenchTrashEntry<GenerationLog>[]) => void;
+    onRemove: (entry: WorkbenchTrashEntry<GenerationLog>) => void;
+    onRemoveSelected: (entries: WorkbenchTrashEntry<GenerationLog>[]) => void;
+    onClear: () => void;
+}) {
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        setSelectedIds((ids) => ids.filter((id) => entries.some((entry) => entry.id === id)));
+    }, [entries]);
+
+    const selectedEntries = entries.filter((entry) => selectedIds.includes(entry.id));
+    const allSelected = entries.length > 0 && selectedEntries.length === entries.length;
+
     return (
         <div className="flex h-full min-h-0 flex-col">
-            <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
+            <div className="mb-3 flex shrink-0 items-start justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 p-3 dark:border-stone-800 dark:bg-stone-900/40">
                 <div>
                     <div className="text-sm font-semibold text-stone-900 dark:text-stone-100">生成记录回收站</div>
-                    <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">删除后保留 {WORKBENCH_TRASH_RETENTION_DAYS} 天，到期自动清理。</div>
+                    <div className="mt-1 text-xs leading-5 text-stone-500 dark:text-stone-400">删除后保留 {WORKBENCH_TRASH_RETENTION_DAYS} 天，每条记录按自己的到期时间自动清理。</div>
                 </div>
                 <Button size="small" danger disabled={!entries.length} onClick={onClear}>
                     清空
                 </Button>
             </div>
+            <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
+                <Button size="small" icon={<CheckSquare className="size-3.5" />} disabled={!entries.length} onClick={() => setSelectedIds(allSelected ? [] : entries.map((entry) => entry.id))}>
+                    {allSelected ? "取消全选" : "全选"}
+                </Button>
+                <Button size="small" icon={<RefreshCw className="size-3.5" />} disabled={!selectedEntries.length} onClick={() => onRestoreSelected(selectedEntries)}>
+                    恢复选中{selectedEntries.length ? ` ${selectedEntries.length}` : ""}
+                </Button>
+                <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedEntries.length} onClick={() => onRemoveSelected(selectedEntries)}>
+                    彻底删除{selectedEntries.length ? ` ${selectedEntries.length}` : ""}
+                </Button>
+            </div>
             <div className="thin-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {entries.map((entry) => {
                     const promptPreview = entry.log.prompt || entry.log.title || "未命名";
+                    const selected = selectedIds.includes(entry.id);
+                    const thumbnail = trashImageThumbnail(entry.log);
+                    const successCount = actualLogImageCount(entry.log);
+                    const failCount = actualLogFailureCount(entry.log);
+                    const expirePercent = trashRemainingPercent(entry);
                     return (
-                        <div key={entry.id} className="rounded-lg border border-stone-200 bg-background p-3 shadow-sm dark:border-stone-800">
-                            <div className="line-clamp-3 text-sm font-medium leading-5 text-stone-800 dark:text-stone-100">{promptPreview}</div>
-                            <div className="mt-2 flex flex-wrap gap-1">
-                                <HistoryPill label="模型">{entry.log.model || "默认"}</HistoryPill>
-                                <HistoryPill label="删除">{new Date(entry.deletedAt).toLocaleString("zh-CN", { hour12: false })}</HistoryPill>
-                                <HistoryPill tone="danger">{formatTrashExpiry(entry.expiresAt)}</HistoryPill>
+                        <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
+                            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={(checked) => setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, entry.id])) : ids.filter((id) => id !== entry.id)))} ariaLabel="选择回收站记录" />
+                            <div className="flex gap-3 pr-8">
+                                <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
+                                    {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(47,125,225,.14),rgba(233,76,137,.10))] text-stone-400"><ImagePlus className="size-5" /></div>}
+                                    {successCount > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{successCount}</span> : null}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        <HistoryPill label="模型">{entry.log.config?.imageModel || entry.log.model || "默认"}</HistoryPill>
+                                        <HistoryPill label="尺寸">{imageSizeLabel(entry.log.config?.size || entry.log.size)}</HistoryPill>
+                                        {successCount ? <HistoryPill tone="success" label="成功">{successCount}</HistoryPill> : null}
+                                        {failCount ? <HistoryPill tone="danger" label="失败">{failCount}</HistoryPill> : null}
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        <HistoryPill label="删除">{formatTrashDate(entry.deletedAt)}</HistoryPill>
+                                        <HistoryPill tone="danger" label="清理">{formatTrashExpiry(entry.expiresAt)}</HistoryPill>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                                <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-amber-300 transition-[width]" style={{ width: `${expirePercent}%` }} />
                             </div>
                             <div className="mt-3 flex justify-end gap-2">
                                 <Button size="small" icon={<RefreshCw className="size-3.5" />} onClick={() => onRestore(entry)}>
@@ -1210,6 +1294,20 @@ function TrashPanel({ entries, onRestore, onRemove, onClear }: { entries: Workbe
             </div>
         </div>
     );
+}
+
+function trashImageThumbnail(log: GenerationLog) {
+    return normalizeLogThumbnails(log.thumbnails)[0] || log.images?.[0]?.dataUrl || "";
+}
+
+function trashRemainingPercent(entry: WorkbenchTrashEntry<GenerationLog>) {
+    const total = Math.max(1, entry.expiresAt - entry.deletedAt);
+    const remaining = Math.max(0, entry.expiresAt - Date.now());
+    return Math.max(3, Math.min(100, Math.round((remaining / total) * 100)));
+}
+
+function formatTrashDate(value: number) {
+    return new Date(value).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function ComposerMetric({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
