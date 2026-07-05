@@ -2044,10 +2044,8 @@ function TrashPanel({
                     const videos = logVideos(entry.log);
                     const coverVideo = entry.log.video || videos[0];
                     const thumbnail = normalizeVideoThumbnail(coverVideo?.thumbnail);
-                    const failCount = entry.log.failures.length;
                     const sizeLabel = videoSizeLabel(entry.log.config?.size || entry.log.size, entry.log.model);
                     const resolutionLabel = videoResolutionBadge(entry.log.config?.vquality || entry.log.resolution);
-                    const secondsLabel = videoSecondsBadge(entry.log.config?.videoSeconds || entry.log.seconds);
                     const expirePercent = trashRemainingPercent(entry);
                     return (
                         <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
@@ -2056,16 +2054,12 @@ function TrashPanel({
                                 <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-stone-950 ring-1 ring-stone-200/70 dark:ring-stone-800/70">
                                     {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(20,184,166,.16),rgba(99,102,241,.14))] text-stone-300"><VideoIcon className="size-5" /></div>}
                                     <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{sizeLabel}</span>
-                                    {videos.length > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{videos.length}</span> : null}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <div className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="模型">{entry.log.config?.videoModel || entry.log.model || "默认"}</HistoryPill>
                                         <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
-                                        {videos.length ? <HistoryPill tone="success" label="成功">{videos.length}</HistoryPill> : null}
-                                        {failCount ? <HistoryPill tone="danger" label="失败">{failCount}</HistoryPill> : null}
-                                        <HistoryPill label="总时长">{secondsLabel}</HistoryPill>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="删除">{formatTrashDate(entry.deletedAt)}</HistoryPill>
