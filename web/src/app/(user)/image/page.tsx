@@ -1522,7 +1522,7 @@ function LogCard({
                     type="text"
                     size="small"
                     aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
-                    className={`!absolute !right-3 !top-12 z-10 !inline-flex !size-7 !items-center !justify-center !rounded-full !border-0 !p-0 !shadow-sm [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!bg-amber-100/90 !text-amber-700 hover:!bg-amber-100 dark:!bg-amber-950/80 dark:!text-amber-200" : "!bg-white/80 !text-stone-500 hover:!bg-white dark:!bg-stone-950/80 dark:!text-stone-300"}`}
+                    className={`!absolute !right-3 !top-12 z-10 !inline-flex !size-7 !items-center !justify-center !rounded-full !border-0 !p-0 !shadow-sm [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!bg-stone-100/90 !text-stone-600 hover:!bg-stone-100 dark:!bg-stone-900/85 dark:!text-stone-200" : "!bg-white/80 !text-stone-500 hover:!bg-white dark:!bg-stone-950/80 dark:!text-stone-300"}`}
                     icon={<Pin className="size-3.5" />}
                     onClick={(event) => {
                         event.stopPropagation();
