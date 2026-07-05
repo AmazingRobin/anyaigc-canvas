@@ -2043,7 +2043,6 @@ function TrashPanel({
                     const selected = selectedIds.includes(entry.id);
                     const videos = logVideos(entry.log);
                     const coverVideo = entry.log.video || videos[0];
-                    const thumbnail = normalizeVideoThumbnail(coverVideo?.thumbnail);
                     const sizeLabel = videoSizeLabel(entry.log.config?.size || entry.log.size, entry.log.model);
                     const resolutionLabel = videoResolutionBadge(entry.log.config?.vquality || entry.log.resolution);
                     const expirePercent = trashRemainingPercent(entry);
@@ -2051,10 +2050,7 @@ function TrashPanel({
                         <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
                             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={(checked) => setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, entry.id])) : ids.filter((id) => id !== entry.id)))} ariaLabel="选择回收站记录" />
                             <div className="flex gap-3 pr-8">
-                                <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-stone-950 ring-1 ring-stone-200/70 dark:ring-stone-800/70">
-                                    {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(20,184,166,.16),rgba(99,102,241,.14))] text-stone-300"><VideoIcon className="size-5" /></div>}
-                                    <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{sizeLabel}</span>
-                                </div>
+                                <TrashVideoThumbnail logId={entry.log.id} video={coverVideo} sizeLabel={sizeLabel} />
                                 <div className="min-w-0 flex-1">
                                     <div className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
                                     <div className="mt-2 flex flex-wrap gap-1">
@@ -2095,6 +2091,71 @@ function trashRemainingPercent(entry: WorkbenchTrashEntry<GenerationLog>) {
 
 function formatTrashDate(value: number) {
     return new Date(value).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function TrashVideoThumbnail({ logId, video, sizeLabel }: { logId: string; video?: GeneratedVideo; sizeLabel: string }) {
+    const [thumbnail, setThumbnail] = useState(normalizeVideoThumbnail(video?.thumbnail));
+    const [failed, setFailed] = useState(false);
+    const coverRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setThumbnail(normalizeVideoThumbnail(video?.thumbnail));
+        setFailed(false);
+    }, [logId, video?.id, video?.thumbnail]);
+
+    useEffect(() => {
+        if (thumbnail || failed || !video) return;
+        let cancelled = false;
+        let idleId = 0;
+        let timerId: ReturnType<typeof globalThis.setTimeout> | null = null;
+        let observer: IntersectionObserver | null = null;
+        const run = () => {
+            const load = async () => {
+                const videoUrl = await resolveMediaUrl(video.storageKey, video.url);
+                if (!videoUrl || cancelled) return;
+                const nextThumbnail = await createVideoThumbnail(videoUrl);
+                if (cancelled) return;
+                if (!nextThumbnail) {
+                    setFailed(true);
+                    return;
+                }
+                setThumbnail(nextThumbnail);
+                void cacheVideoThumbnail(logId, video.id, nextThumbnail);
+            };
+            if ("requestIdleCallback" in window) {
+                idleId = window.requestIdleCallback(() => void load(), { timeout: 1600 });
+            } else {
+                timerId = globalThis.setTimeout(() => void load(), 120);
+            }
+        };
+        const node = coverRef.current;
+        if (node && "IntersectionObserver" in window) {
+            observer = new IntersectionObserver(
+                ([entry]) => {
+                    if (!entry?.isIntersecting) return;
+                    observer?.disconnect();
+                    run();
+                },
+                { rootMargin: "180px" },
+            );
+            observer.observe(node);
+        } else {
+            run();
+        }
+        return () => {
+            cancelled = true;
+            observer?.disconnect();
+            if (idleId) window.cancelIdleCallback(idleId);
+            if (timerId) globalThis.clearTimeout(timerId);
+        };
+    }, [failed, logId, thumbnail, video]);
+
+    return (
+        <div ref={coverRef} className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-stone-950 ring-1 ring-stone-200/70 dark:ring-stone-800/70">
+            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" loading="lazy" decoding="async" /> : <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(20,184,166,.16),rgba(99,102,241,.14))] text-stone-300"><VideoIcon className="size-5" /></div>}
+            <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{sizeLabel}</span>
+        </div>
+    );
 }
 
 function LogCard({
