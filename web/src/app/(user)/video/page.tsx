@@ -723,7 +723,7 @@ export default function VideoPage() {
         return nextLogs;
     };
 
-    const refreshTrash = async () => setTrashItems(await readWorkbenchTrash<GenerationLog>("video-workbench"));
+    const refreshTrash = async () => setTrashItems(await Promise.all((await readWorkbenchTrash<GenerationLog>("video-workbench")).map(repairVideoTrashEntry)));
 
     const openTrash = async () => {
         await refreshTrash();
@@ -733,9 +733,10 @@ export default function VideoPage() {
     const restoreTrashItems = async (entries: WorkbenchTrashEntry<GenerationLog>[]) => {
         const restoredLogs: GenerationLog[] = [];
         for (const entry of entries) {
+            if (!entry.log?.id) continue;
             const restored = await restoreWorkbenchTrashEntry<GenerationLog>("video-workbench", entry.id);
-            if (!restored?.log?.id) continue;
-            restoredLogs.push(await normalizeLog({ ...restored.log, updatedAt: Date.now() }));
+            if (!restored) continue;
+            restoredLogs.push(await normalizeLog({ ...entry.log, updatedAt: Date.now() }));
         }
         if (!restoredLogs.length) return;
         await clearDeletedSyncIds(
@@ -2415,6 +2416,7 @@ async function deleteVideoResultFromLog(logId: string, result: GenerationResult)
     let nextVideos = logVideos(log);
     let nextFailures = log.failures;
     let removedVideos: GeneratedVideo[] = [];
+    let removedFailures: GeneratedFailure[] = [];
 
     if (result.video) {
         const targetVideoKey = videoIdentityKey(result.video);
@@ -2422,12 +2424,13 @@ async function deleteVideoResultFromLog(logId: string, result: GenerationResult)
         nextVideos = nextVideos.filter((video) => videoIdentityKey(video) !== targetVideoKey);
     } else if (result.status === "failed") {
         const targetFailureKey = resultIdentityKey(result);
+        removedFailures = nextFailures.filter((failure) => resultIdentityKey({ id: failure.id, status: "failed", error: failure.error }) === targetFailureKey);
         nextFailures = nextFailures.filter((failure) => resultIdentityKey({ id: failure.id, status: "failed", error: failure.error }) !== targetFailureKey);
     }
 
     const removedKeys = removedVideos.map((video) => video.storageKey).filter((key): key is string => Boolean(key));
-    if (removedVideos.length || nextFailures.length !== log.failures.length) {
-        await moveLogToWorkbenchTrash("video-workbench", serializeLog(log), { purgeStorageKeys: removedKeys });
+    if (removedVideos.length || removedFailures.length) {
+        await moveLogToWorkbenchTrash("video-workbench", serializeLog(buildVideoResultTrashLog(log, removedVideos, removedFailures)), { purgeStorageKeys: removedKeys });
     }
     if (!nextVideos.length && !nextFailures.length && log.status !== "生成中") {
         await logStore.removeItem(logId);
@@ -2445,6 +2448,58 @@ async function deleteVideoResultFromLog(logId: string, result: GenerationResult)
     };
     await logStore.setItem(logId, serializeLog(nextLog));
     return nextLog;
+}
+
+async function repairVideoTrashEntry(entry: WorkbenchTrashEntry<GenerationLog>): Promise<WorkbenchTrashEntry<GenerationLog>> {
+    const log = await normalizeLog(entry.log || {});
+    const purgeKeys = new Set((entry.purgeStorageKeys || []).filter((key) => key.startsWith("video:")));
+    const videos = logVideos(log);
+    const matchedVideos = purgeKeys.size ? videos.filter((video) => video.storageKey && purgeKeys.has(video.storageKey)) : [];
+    if (matchedVideos.length && (matchedVideos.length !== videos.length || log.failures.length > 0)) {
+        return { ...entry, log: buildVideoResultTrashLog(log, matchedVideos, []) };
+    }
+    if (!purgeKeys.size && entry.logId) {
+        const currentLog = await logStore.getItem<GenerationLog>(entry.logId);
+        if (currentLog) {
+            const current = await normalizeLog(currentLog);
+            const currentFailureKeys = new Set(current.failures.map((failure) => resultIdentityKey({ id: failure.id, status: "failed", error: failure.error })));
+            const removedFailures = log.failures.filter((failure) => !currentFailureKeys.has(resultIdentityKey({ id: failure.id, status: "failed", error: failure.error })));
+            if (removedFailures.length) return { ...entry, log: buildVideoResultTrashLog(log, [], removedFailures) };
+        }
+    }
+    if (!purgeKeys.size && !videos.length && log.failures.length === 1) {
+        return { ...entry, log: buildVideoResultTrashLog(log, [], log.failures) };
+    }
+    return { ...entry, log };
+}
+
+function buildVideoResultTrashLog(log: GenerationLog, videos: GeneratedVideo[], failures: GeneratedFailure[]): GenerationLog {
+    const request = videos[0]?.request || failures[0]?.request;
+    const config = { ...normalizeLogConfig(log), ...(request?.config || {}) };
+    const prompt = request?.prompt || log.prompt || log.title || "";
+    const resultIds = [...videos.map((video) => video.id), ...failures.map((failure) => failure.id)].filter(Boolean);
+    return {
+        ...log,
+        id: `${log.id}:result:${resultIds.join(":") || nanoid(6)}`,
+        updatedAt: Date.now(),
+        title: compactLogTitle(prompt || log.title || config.videoModel || config.model || ""),
+        prompt,
+        model: request?.model || log.model || config.videoModel || config.model || "",
+        config,
+        references: request?.references || log.references || [],
+        videoReferences: request?.videoReferences || log.videoReferences || [],
+        audioReferences: request?.audioReferences || log.audioReferences || [],
+        durationMs: videoLogDurationMs(videos, failures, 0),
+        size: config.size || log.size,
+        resolution: normalizeResolution(config.vquality || log.resolution || ""),
+        seconds: config.videoSeconds || log.seconds,
+        status: videos.length ? "成功" : "失败",
+        task: undefined,
+        video: videos[videos.length - 1],
+        videos,
+        failures,
+        error: videos.length ? undefined : failures[0]?.error,
+    };
 }
 
 function isSupportedAudioFile(file: File) {

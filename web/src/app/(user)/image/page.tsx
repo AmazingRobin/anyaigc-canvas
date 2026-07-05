@@ -694,7 +694,7 @@ export default function ImagePage() {
 
     const refreshLogs = async () => setLogs(await readStoredLogs());
 
-    const refreshTrash = async () => setTrashItems(await readWorkbenchTrash<GenerationLog>("image-workbench"));
+    const refreshTrash = async () => setTrashItems(await Promise.all((await readWorkbenchTrash<GenerationLog>("image-workbench")).map(repairImageTrashEntry)));
 
     const openTrash = async () => {
         await refreshTrash();
@@ -704,9 +704,10 @@ export default function ImagePage() {
     const restoreTrashItems = async (entries: WorkbenchTrashEntry<GenerationLog>[]) => {
         const restoredLogs: GenerationLog[] = [];
         for (const entry of entries) {
+            if (!entry.log?.id) continue;
             const restored = await restoreWorkbenchTrashEntry<GenerationLog>("image-workbench", entry.id);
-            if (!restored?.log?.id) continue;
-            restoredLogs.push(normalizeLogMetadata({ ...restored.log, updatedAt: Date.now() }));
+            if (!restored) continue;
+            restoredLogs.push(normalizeLogMetadata({ ...entry.log, updatedAt: Date.now() }));
         }
         if (!restoredLogs.length) return;
         await clearDeletedSyncIds(
@@ -1250,7 +1251,6 @@ function TrashPanel({
                 {entries.map((entry) => {
                     const promptPreview = entry.log.prompt || entry.log.title || "未命名";
                     const selected = selectedIds.includes(entry.id);
-                    const thumbnail = trashImageThumbnail(entry.log);
                     const successCount = actualLogImageCount(entry.log);
                     const failCount = actualLogFailureCount(entry.log);
                     const expirePercent = trashRemainingPercent(entry);
@@ -1258,10 +1258,7 @@ function TrashPanel({
                         <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
                             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={(checked) => setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, entry.id])) : ids.filter((id) => id !== entry.id)))} ariaLabel="选择回收站记录" />
                             <div className="flex gap-3 pr-8">
-                                <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
-                                    {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(47,125,225,.14),rgba(233,76,137,.10))] text-stone-400"><ImagePlus className="size-5" /></div>}
-                                    {successCount > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{successCount}</span> : null}
-                                </div>
+                                <TrashImageThumbnail log={entry.log} successCount={successCount} />
                                 <div className="min-w-0 flex-1">
                                     <div className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
                                     <div className="mt-2 flex flex-wrap gap-1">
@@ -1292,6 +1289,33 @@ function TrashPanel({
                 })}
                 {!entries.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-sm text-stone-400">回收站为空</span>} /> : null}
             </div>
+        </div>
+    );
+}
+
+function TrashImageThumbnail({ log, successCount }: { log: GenerationLog; successCount: number }) {
+    const image = log.images?.[0];
+    const [thumbnail, setThumbnail] = useState(() => trashImageThumbnail(log));
+
+    useEffect(() => {
+        let cancelled = false;
+        const fallback = trashImageThumbnail(log);
+        setThumbnail(fallback);
+        if (fallback || !image?.storageKey) return () => {
+            cancelled = true;
+        };
+        void resolveImageUrl(image.storageKey, image.dataUrl).then((url) => {
+            if (!cancelled) setThumbnail(url);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [image?.dataUrl, image?.storageKey, log.id, log.thumbnails]);
+
+    return (
+        <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
+            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(47,125,225,.14),rgba(233,76,137,.10))] text-stone-400"><ImagePlus className="size-5" /></div>}
+            {successCount > 1 ? <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">{successCount}</span> : null}
         </div>
     );
 }
@@ -2208,10 +2232,11 @@ async function deleteResultFromLog(logId: string, result: GenerationResult) {
     const resultIds = new Set([result.id, result.image?.id].filter((id): id is string => Boolean(id)));
     const removedImages = log.images.filter((image) => resultIds.has(image.id));
     const nextImages = log.images.filter((image) => !resultIds.has(image.id));
+    const removedFailures = log.failures.filter((failure) => resultIds.has(failure.id));
     const nextFailures = log.failures.filter((failure) => !resultIds.has(failure.id));
     const removedKeys = removedImages.map((image) => image.storageKey).filter((key): key is string => Boolean(key));
-    if (removedImages.length || nextFailures.length !== log.failures.length) {
-        await moveLogToWorkbenchTrash("image-workbench", serializeLog(log), { purgeStorageKeys: removedKeys });
+    if (removedImages.length || removedFailures.length) {
+        await moveLogToWorkbenchTrash("image-workbench", serializeLog(buildImageResultTrashLog(log, removedImages, removedFailures)), { purgeStorageKeys: removedKeys });
     }
     if (!nextImages.length && !nextFailures.length) {
         await logStore.removeItem(logId);
@@ -2220,6 +2245,54 @@ async function deleteResultFromLog(logId: string, result: GenerationResult) {
     const nextLog = recalculateLogCounts({ ...log, images: nextImages, failures: nextFailures, thumbnails: [] });
     await logStore.setItem(logId, serializeLog(nextLog));
     return nextLog;
+}
+
+async function repairImageTrashEntry(entry: WorkbenchTrashEntry<GenerationLog>): Promise<WorkbenchTrashEntry<GenerationLog>> {
+    const log = normalizeLogMetadata(entry.log || {});
+    const purgeKeys = new Set((entry.purgeStorageKeys || []).filter((key) => key.startsWith("image:")));
+    const matchedImages = purgeKeys.size ? log.images.filter((image) => image.storageKey && purgeKeys.has(image.storageKey)) : [];
+    if (matchedImages.length && (matchedImages.length !== log.images.length || log.failures.length > 0)) {
+        return { ...entry, log: buildImageResultTrashLog(log, matchedImages, []) };
+    }
+    if (!purgeKeys.size && entry.logId) {
+        const currentLog = await logStore.getItem<GenerationLog>(entry.logId);
+        if (currentLog) {
+            const currentFailureIds = new Set(normalizeLogMetadata(currentLog).failures.map((failure) => failure.id));
+            const removedFailures = log.failures.filter((failure) => !currentFailureIds.has(failure.id));
+            if (removedFailures.length) return { ...entry, log: buildImageResultTrashLog(log, [], removedFailures) };
+        }
+    }
+    if (!purgeKeys.size && !log.images.length && log.failures.length === 1) {
+        return { ...entry, log: buildImageResultTrashLog(log, [], log.failures) };
+    }
+    return { ...entry, log };
+}
+
+function buildImageResultTrashLog(log: GenerationLog, images: GeneratedImage[], failures: GeneratedFailure[]): GenerationLog {
+    const request = images[0]?.request || failures[0]?.request;
+    const config = { ...normalizeLogConfig(log), ...(request?.config || {}) };
+    const prompt = request?.prompt || log.prompt || log.title || "";
+    const resultIds = [...images.map((image) => image.id), ...failures.map((failure) => failure.id)].filter(Boolean);
+    const durationMs = [...images, ...failures].reduce((sum, item) => sum + (item.durationMs || 0), 0);
+    return recalculateLogCounts({
+        ...log,
+        id: `${log.id}:result:${resultIds.join(":") || nanoid(6)}`,
+        title: compactLogTitle(prompt || log.title || config.imageModel || config.model || ""),
+        prompt,
+        model: request?.model || log.model || config.imageModel || config.model || "",
+        config,
+        references: request?.references || log.references || [],
+        durationMs,
+        successCount: images.length,
+        failCount: failures.length,
+        imageCount: images.length,
+        size: config.size || log.size,
+        quality: config.quality || log.quality,
+        status: images.length ? "成功" : "失败",
+        images,
+        failures,
+        thumbnails: normalizeLogThumbnails(images.map((image) => image.dataUrl).filter(Boolean)),
+    });
 }
 
 function recalculateLogCounts(log: GenerationLog): GenerationLog {
