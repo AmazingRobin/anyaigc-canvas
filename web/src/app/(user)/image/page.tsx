@@ -25,11 +25,20 @@ import { nanoid } from "nanoid";
 import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
 import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api/prompt";
-import { recordDeletedSyncIds } from "@/services/app-sync";
+import { clearDeletedSyncIds, recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredImages, getImageBlob, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { queueImageToVideoReferences } from "@/services/workbench-handoff";
+import { emptyWorkbenchTrash, formatTrashExpiry, moveLogToWorkbenchTrash, moveLogsToWorkbenchTrash, purgeExpiredWorkbenchTrash, readWorkbenchTrash, removeWorkbenchTrashEntry, restoreWorkbenchTrashEntry, WORKBENCH_TRASH_RETENTION_DAYS, type WorkbenchTrashEntry } from "@/services/workbench-trash";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
+
+type GenerationRequestSnapshot = {
+    prompt: string;
+    model: string;
+    config: GenerationLogConfig;
+    references: ReferenceImage[];
+    createdAt: number;
+};
 
 type GeneratedImage = {
     id: string;
@@ -40,6 +49,7 @@ type GeneratedImage = {
     height: number;
     bytes: number;
     mimeType?: string;
+    request?: GenerationRequestSnapshot;
 };
 
 type GenerationResult = {
@@ -47,12 +57,14 @@ type GenerationResult = {
     status: "pending" | "success" | "failed";
     image?: GeneratedImage;
     error?: string;
+    request?: GenerationRequestSnapshot;
 };
 
 type GeneratedFailure = {
     id: string;
     error: string;
     durationMs: number;
+    request?: GenerationRequestSnapshot;
 };
 
 type RunningSession = {
@@ -160,6 +172,8 @@ export default function ImagePage() {
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
+    const [trashOpen, setTrashOpen] = useState(false);
+    const [trashItems, setTrashItems] = useState<WorkbenchTrashEntry<GenerationLog>[]>([]);
     const [draftHydrated, setDraftHydrated] = useState(false);
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
@@ -216,6 +230,11 @@ export default function ImagePage() {
 
     useEffect(() => {
         void refreshLogs();
+        void refreshTrash();
+    }, []);
+
+    useEffect(() => {
+        void purgeExpiredWorkbenchTrash("image-workbench").then(() => refreshTrash());
     }, []);
 
     useEffect(() => {
@@ -392,6 +411,7 @@ export default function ImagePage() {
 
         const sessionId = activeSessionId;
         const requestCount = Math.max(1, Math.min(15, Math.floor(countOverride || generationCount)));
+        const requestSnapshot = buildImageRequestSnapshot(snapshot, model, { count: String(requestCount) });
         if (!logIdFromSession(sessionId)) {
             rememberWorkbenchSession(sessionId, {
                 prompt: text,
@@ -403,7 +423,7 @@ export default function ImagePage() {
         if (!runningBySession[sessionId]) setElapsedMs(0);
         if (!logIdFromSession(sessionId)) setPreviewLog(null);
         setSelectedResultIds([]);
-        const pendingResults = Array.from({ length: requestCount }, () => ({ id: nanoid(), status: "pending" as const }));
+        const pendingResults = Array.from({ length: requestCount }, () => ({ id: nanoid(), status: "pending" as const, request: requestSnapshot }));
         updateSessionResults(sessionId, (value) => [...value, ...pendingResults]);
         const batchStartedAt = performance.now();
         startSessionRun(sessionId, batchStartedAt);
@@ -413,9 +433,9 @@ export default function ImagePage() {
         }
 
         const tasks = pendingResults.map((item) =>
-            runGenerationSlot(sessionId, item.id, snapshot).then(
+            runGenerationSlot(sessionId, item.id, snapshot, requestSnapshot).then(
                 (image) => ({ resultId: item.id, status: "success" as const, image }),
-                (error) => ({ resultId: item.id, status: "failed" as const, error: error instanceof Error ? error.message : "生成失败" }),
+                (error) => ({ resultId: item.id, status: "failed" as const, error: error instanceof Error ? error.message : "生成失败", request: requestSnapshot }),
             ),
         );
         void finishGenerationBatch({ sessionId, text, model, snapshot, generationCount: requestCount, batchStartedAt, tasks });
@@ -442,8 +462,8 @@ export default function ImagePage() {
         const visibleResults = result.filter((item) => !deletedResultIdsRef.current.has(item.resultId));
         const successImages = visibleResults.filter((item): item is { resultId: string; status: "success"; image: GeneratedImage } => item.status === "success").map((item) => item.image);
         const failures = visibleResults
-            .filter((item): item is { resultId: string; status: "failed"; error: string } => item.status === "failed")
-            .map((item) => ({ id: item.resultId, error: item.error, durationMs: performance.now() - batchStartedAt }));
+            .filter((item): item is { resultId: string; status: "failed"; error: string; request: GenerationRequestSnapshot } => item.status === "failed")
+            .map((item) => ({ id: item.resultId, error: item.error, durationMs: performance.now() - batchStartedAt, request: item.request }));
         const successCount = successImages.length;
         const failCount = failures.length;
         const failed = result.find((item): item is { resultId: string; status: "failed"; error: string } => item.status === "failed");
@@ -590,16 +610,17 @@ export default function ImagePage() {
     const deleteSelectedLogs = async () => {
         previewRequestIdRef.current += 1;
         const ids = [...selectedLogIds];
-        const imageKeys = logs.filter((log) => ids.includes(log.id)).flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
+        const targetLogs = logs.filter((log) => ids.includes(log.id)).map(serializeLog);
+        await moveLogsToWorkbenchTrash("image-workbench", targetLogs);
         await recordDeletedSyncIds("image-workbench", ids);
-        await Promise.all([deleteStoredImages(imageKeys), ...ids.map((id) => logStore.removeItem(id))]);
+        await Promise.all(ids.map((id) => logStore.removeItem(id)));
         if (previewLog && ids.includes(previewLog.id)) {
             setPreviewLog(null);
             updateSessionResults(activeSessionId, () => []);
         }
         setSelectedLogIds([]);
         setDeleteConfirmOpen(false);
-        await refreshLogs();
+        await Promise.all([refreshLogs(), refreshTrash()]);
     };
 
     const deleteResult = async (result: GenerationResult) => {
@@ -610,7 +631,7 @@ export default function ImagePage() {
             const nextLog = await deleteResultFromLog(logId, result);
             if (!nextLog) await recordDeletedSyncIds("image-workbench", [logId]);
             if (previewLog?.id === logId) setPreviewLog(nextLog);
-            await refreshLogs();
+            await Promise.all([refreshLogs(), refreshTrash()]);
             return;
         }
         if (result.image?.storageKey) await deleteStoredImages([result.image.storageKey]);
@@ -673,6 +694,35 @@ export default function ImagePage() {
 
     const refreshLogs = async () => setLogs(await readStoredLogs());
 
+    const refreshTrash = async () => setTrashItems(await readWorkbenchTrash<GenerationLog>("image-workbench"));
+
+    const openTrash = async () => {
+        await refreshTrash();
+        setTrashOpen(true);
+    };
+
+    const restoreTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
+        const restored = await restoreWorkbenchTrashEntry<GenerationLog>("image-workbench", entry.id);
+        if (!restored?.log?.id) return;
+        const log = normalizeLogMetadata({ ...restored.log, updatedAt: Date.now() });
+        await clearDeletedSyncIds("image-workbench", [log.id]);
+        await logStore.setItem(log.id, serializeLog(log));
+        await Promise.all([refreshLogs(), refreshTrash()]);
+        message.success("生成记录已恢复");
+    };
+
+    const removeTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
+        await removeWorkbenchTrashEntry("image-workbench", entry.id);
+        await refreshTrash();
+        message.success("已彻底删除");
+    };
+
+    const clearTrash = async () => {
+        await emptyWorkbenchTrash("image-workbench");
+        await refreshTrash();
+        message.success("回收站已清空");
+    };
+
     const togglePinnedLog = async (log: GenerationLog) => {
         const stored = await logStore.getItem<GenerationLog>(log.id);
         const current = normalizeLogMetadata(stored || log);
@@ -704,7 +754,7 @@ export default function ImagePage() {
         if (hydratedLog.config.count) updateConfig("count", hydratedLog.config.count);
         updateSessionResults(sessionId, () => [
             ...hydratedLog.images.map((image) => ({ id: image.id, status: "success" as const, image })),
-            ...hydratedLog.failures.map((failure) => ({ id: failure.id, status: "failed" as const, error: failure.error })),
+            ...hydratedLog.failures.map((failure) => ({ id: failure.id, status: "failed" as const, error: failure.error, request: failure.request })),
         ]);
     };
 
@@ -722,6 +772,20 @@ export default function ImagePage() {
         if (session.config.count) updateConfig("count", session.config.count);
     };
 
+    const reuseImageRequest = (request?: GenerationRequestSnapshot) => {
+        if (!request) {
+            message.warning("这条结果缺少可复用的生成配置");
+            return;
+        }
+        setPrompt(request.prompt);
+        setReferences((request.references || []).slice(0, IMAGE_REFERENCE_LIMIT));
+        if (request.config.imageModel || request.model) updateConfig("imageModel", request.config.imageModel || request.model);
+        if (request.config.quality) updateConfig("quality", request.config.quality);
+        if (request.config.size) updateConfig("size", request.config.size);
+        if (request.config.count) updateConfig("count", request.config.count);
+        message.success("已复用生成配置");
+    };
+
     const buildRequestSnapshot = () => {
         const text = prompt.trim();
         if (!text) {
@@ -736,18 +800,33 @@ export default function ImagePage() {
         return { text, config: { ...effectiveConfig, model, count: "1" }, references: [...references] };
     };
 
-    const runGenerationSlot = async (sessionId: string, resultId: string, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }) => {
+    const buildImageRequestSnapshot = (snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }, modelValue: string, overrides: Partial<GenerationLogConfig> = {}): GenerationRequestSnapshot => ({
+        prompt: snapshot.text,
+        model: modelValue,
+        config: {
+            model: snapshot.config.model,
+            imageModel: snapshot.config.imageModel || modelValue,
+            quality: snapshot.config.quality,
+            size: snapshot.config.size,
+            count: snapshot.config.count,
+            ...overrides,
+        },
+        references: snapshot.references,
+        createdAt: Date.now(),
+    });
+
+    const runGenerationSlot = async (sessionId: string, resultId: string, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }, requestSnapshot: GenerationRequestSnapshot) => {
         const itemStartedAt = performance.now();
         try {
             const result = snapshot.references.length ? await requestEdit(snapshot.config, snapshot.text, snapshot.references) : await requestGeneration(snapshot.config, snapshot.text);
             const image = result[0];
             if (!image) throw new Error("接口没有返回图片");
             const meta = await readImageMeta(image.dataUrl);
-            const nextImage = { id: image.id, dataUrl: image.dataUrl, durationMs: performance.now() - itemStartedAt, width: meta.width, height: meta.height, bytes: getDataUrlByteSize(image.dataUrl) };
+            const nextImage = { id: image.id, dataUrl: image.dataUrl, durationMs: performance.now() - itemStartedAt, width: meta.width, height: meta.height, bytes: getDataUrlByteSize(image.dataUrl), request: requestSnapshot };
             updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "success", image: nextImage }));
             return nextImage;
         } catch (error) {
-            updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "failed", error: error instanceof Error ? error.message : "生成失败" }));
+            updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "failed", error: error instanceof Error ? error.message : "生成失败", request: requestSnapshot }));
             throw error;
         }
     };
@@ -759,11 +838,12 @@ export default function ImagePage() {
         if (!logIdFromSession(sessionId)) setPreviewLog(null);
         const resultId = results[index]?.id;
         if (!resultId) return;
+        const requestSnapshot = buildImageRequestSnapshot(snapshot, model, { count: "1" });
         if (!runningBySession[sessionId]) setElapsedMs(0);
         if (sessionsById[sessionId]) setSessionsById((value) => ({ ...value, [sessionId]: { ...value[sessionId], requestCount: (value[sessionId].requestCount || 0) + 1 } }));
-        updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "pending", error: undefined, image: undefined }));
+        updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "pending", error: undefined, image: undefined, request: requestSnapshot }));
         startSessionRun(sessionId, performance.now());
-        void runGenerationSlot(sessionId, resultId, snapshot)
+        void runGenerationSlot(sessionId, resultId, snapshot, requestSnapshot)
             .catch(() => {})
             .finally(() => finishSessionRun(sessionId));
     };
@@ -781,6 +861,8 @@ export default function ImagePage() {
                         onSelectedLogIdsChange={setSelectedLogIds}
                         onCreateSession={createSession}
                         onDeleteSelected={() => setDeleteConfirmOpen(true)}
+                        onOpenTrash={() => void openTrash()}
+                        trashCount={trashItems.length}
                         onTogglePin={togglePinnedLog}
                         onPreviewSession={previewWorkbenchSession}
                         onPreviewLog={(log) => void previewGenerationLog(log)}
@@ -828,9 +910,9 @@ export default function ImagePage() {
                                     <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                         {results.map((result, index) =>
                                             result.status === "success" && result.image ? (
-                                                <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onRegenerate={() => generate(1)} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                                <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onReuse={() => reuseImageRequest(result.image?.request || result.request)} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onRegenerate={() => generate(1)} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                             ) : result.status === "failed" ? (
-                                                <FailedImageCard key={result.id} error={result.error || "生成失败"} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
+                                                <FailedImageCard key={result.id} error={result.error || "生成失败"} request={result.request} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onReuse={() => reuseImageRequest(result.request)} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
                                             ) : (
                                                 <PendingImageCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
                                             ),
@@ -1018,6 +1100,8 @@ export default function ImagePage() {
                     onSelectedLogIdsChange={setSelectedLogIds}
                     onCreateSession={createSession}
                     onDeleteSelected={() => setDeleteConfirmOpen(true)}
+                    onOpenTrash={() => void openTrash()}
+                    trashCount={trashItems.length}
                     onClose={() => setLogsOpen(false)}
                     onTogglePin={togglePinnedLog}
                     onPreviewSession={(session) => {
@@ -1028,6 +1112,32 @@ export default function ImagePage() {
                         void previewGenerationLog(log);
                         setLogsOpen(false);
                     }}
+                />
+            </Drawer>
+            <Drawer title="回收站" placement="right" width={420} open={trashOpen} onClose={() => setTrashOpen(false)} styles={{ body: { padding: 12 } }}>
+                <TrashPanel
+                    entries={trashItems}
+                    onRestore={(entry) => void restoreTrashItem(entry)}
+                    onRemove={(entry) =>
+                        modal.confirm({
+                            title: "彻底删除生成记录",
+                            content: "彻底删除后将无法从回收站恢复，相关本地媒体文件也会被清理。",
+                            okText: "彻底删除",
+                            okButtonProps: { danger: true },
+                            cancelText: "取消",
+                            onOk: () => removeTrashItem(entry),
+                        })
+                    }
+                    onClear={() =>
+                        modal.confirm({
+                            title: "清空回收站",
+                            content: "回收站内的生成记录和相关本地媒体文件会被彻底删除。",
+                            okText: "清空",
+                            okButtonProps: { danger: true },
+                            cancelText: "取消",
+                            onOk: clearTrash,
+                        })
+                    }
                 />
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
@@ -1060,6 +1170,46 @@ function HistoryEmptyState() {
 
 function HistorySearchEmptyState() {
     return <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-stone-200 text-center text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">未找到匹配的生成记录</div>;
+}
+
+function TrashPanel({ entries, onRestore, onRemove, onClear }: { entries: WorkbenchTrashEntry<GenerationLog>[]; onRestore: (entry: WorkbenchTrashEntry<GenerationLog>) => void; onRemove: (entry: WorkbenchTrashEntry<GenerationLog>) => void; onClear: () => void }) {
+    return (
+        <div className="flex h-full min-h-0 flex-col">
+            <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
+                <div>
+                    <div className="text-sm font-semibold text-stone-900 dark:text-stone-100">生成记录回收站</div>
+                    <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">删除后保留 {WORKBENCH_TRASH_RETENTION_DAYS} 天，到期自动清理。</div>
+                </div>
+                <Button size="small" danger disabled={!entries.length} onClick={onClear}>
+                    清空
+                </Button>
+            </div>
+            <div className="thin-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                {entries.map((entry) => {
+                    const promptPreview = entry.log.prompt || entry.log.title || "未命名";
+                    return (
+                        <div key={entry.id} className="rounded-lg border border-stone-200 bg-background p-3 shadow-sm dark:border-stone-800">
+                            <div className="line-clamp-3 text-sm font-medium leading-5 text-stone-800 dark:text-stone-100">{promptPreview}</div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                                <HistoryPill label="模型">{entry.log.model || "默认"}</HistoryPill>
+                                <HistoryPill label="删除">{new Date(entry.deletedAt).toLocaleString("zh-CN", { hour12: false })}</HistoryPill>
+                                <HistoryPill tone="danger">{formatTrashExpiry(entry.expiresAt)}</HistoryPill>
+                            </div>
+                            <div className="mt-3 flex justify-end gap-2">
+                                <Button size="small" icon={<RefreshCw className="size-3.5" />} onClick={() => onRestore(entry)}>
+                                    恢复
+                                </Button>
+                                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => onRemove(entry)}>
+                                    彻底删除
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })}
+                {!entries.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-sm text-stone-400">回收站为空</span>} /> : null}
+            </div>
+        </div>
+    );
 }
 
 function ComposerMetric({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
@@ -1136,6 +1286,7 @@ function ResultImageCard({
     selected,
     savedToAsset,
     onSelectedChange,
+    onReuse,
     onEdit,
     onGenerateVideo,
     onRegenerate,
@@ -1148,6 +1299,7 @@ function ResultImageCard({
     selected: boolean;
     savedToAsset: boolean;
     onSelectedChange: (checked: boolean) => void;
+    onReuse: () => void;
     onEdit: (image: GeneratedImage, index: number) => void;
     onGenerateVideo: (image: GeneratedImage, index: number) => void;
     onRegenerate: () => void;
@@ -1178,6 +1330,7 @@ function ResultImageCard({
     }, [image.dataUrl, image.id, image.storageKey]);
 
     const displayImage = resolvedUrl && !loadFailed ? { ...image, dataUrl: resolvedUrl } : null;
+    const promptPreview = image.request?.prompt || "";
 
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-stone-100 shadow-sm dark:border-stone-800 dark:bg-stone-900">
@@ -1186,6 +1339,11 @@ function ResultImageCard({
                 <>
                     <Image src={displayImage.dataUrl} alt={`生成结果 ${index + 1}`} className="aspect-square object-cover" onError={() => setLoadFailed(true)} />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/75 via-black/45 to-transparent px-2.5 pb-2 pt-9 text-white">
+                        {promptPreview ? (
+                            <Tooltip title={promptPreview}>
+                                <div className="pointer-events-auto mb-1 line-clamp-2 text-xs font-medium leading-4 text-white">{promptPreview}</div>
+                            </Tooltip>
+                        ) : null}
                         <div className="mb-1 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-[11px] leading-none text-white/78">
                             <span>
                                 {image.width}x{image.height}
@@ -1196,6 +1354,9 @@ function ResultImageCard({
                         <div className="pointer-events-auto flex items-center justify-end gap-1">
                             <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
                                 <Button type="text" aria-label={savedToAsset ? "取消加入素材" : "添加到素材"} className={`${RESULT_OVERLAY_ICON_BUTTON_CLASS} ${savedToAsset ? "!bg-emerald-500/40 !text-white hover:!bg-emerald-500/55" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(displayImage, index)} />
+                            </Tooltip>
+                            <Tooltip title="复用提示词和配置">
+                                <Button type="text" aria-label="复用提示词和配置" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onReuse} />
                             </Tooltip>
                             <Tooltip title="作为参考图继续编辑">
                                 <Button type="text" aria-label="作为参考图继续编辑" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => void onEdit(displayImage, index)} />
@@ -1247,17 +1408,28 @@ function PendingImageCard({ selected, onSelectedChange }: { selected: boolean; o
     );
 }
 
-function FailedImageCard({ error, selected, onSelectedChange, onRetry, onDelete }: { error: string; selected: boolean; onSelectedChange: (checked: boolean) => void; onRetry: () => void; onDelete: () => void }) {
+function FailedImageCard({ error, request, selected, onSelectedChange, onReuse, onRetry, onDelete }: { error: string; request?: GenerationRequestSnapshot; selected: boolean; onSelectedChange: (checked: boolean) => void; onReuse: () => void; onRetry: () => void; onDelete: () => void }) {
+    const promptPreview = request?.prompt || "";
     return (
         <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             <div className="flex aspect-square flex-col items-center justify-center gap-3 p-5 text-center">
                 <div className="text-sm font-medium text-red-600 dark:text-red-300">生成失败</div>
+                {promptPreview ? (
+                    <Tooltip title={promptPreview}>
+                        <Typography.Paragraph ellipsis={{ rows: 3 }} className="!mb-0 !text-xs !font-medium !text-red-700 dark:!text-red-200">
+                            {promptPreview}
+                        </Typography.Paragraph>
+                    </Tooltip>
+                ) : null}
                 <Typography.Paragraph ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
                     {error}
                 </Typography.Paragraph>
             </div>
             <div className="flex justify-end gap-1.5 px-2 pb-2">
+                <Tooltip title="复用提示词和配置">
+                    <Button type="text" aria-label="复用提示词和配置" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onReuse} />
+                </Tooltip>
                 <Tooltip title="重新生成">
                     <Button type="text" aria-label="重新生成" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<RefreshCw className="size-3.5" />} onClick={onRetry} />
                 </Tooltip>
@@ -1296,6 +1468,8 @@ function LogPanel({
     onSelectedLogIdsChange,
     onCreateSession,
     onDeleteSelected,
+    onOpenTrash,
+    trashCount,
     onClose,
     onTogglePin,
     onPreviewSession,
@@ -1309,6 +1483,8 @@ function LogPanel({
     onSelectedLogIdsChange: (ids: string[]) => void;
     onCreateSession: () => void;
     onDeleteSelected: () => void;
+    onOpenTrash: () => void;
+    trashCount: number;
     onClose?: () => void;
     onTogglePin: (log: GenerationLog) => void | Promise<void>;
     onPreviewSession: (session: WorkbenchSession) => void;
@@ -1374,6 +1550,9 @@ function LogPanel({
                     </Button>
                     <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedLogIds.length} onClick={onDeleteSelected}>
                         删除
+                    </Button>
+                    <Button size="small" icon={<Trash2 className="size-3.5" />} onClick={onOpenTrash}>
+                        回收站{trashCount ? ` ${trashCount}` : ""}
                     </Button>
                 </div>
             </div>
@@ -1558,7 +1737,7 @@ function LogCard({
                                 {actualFailureCount}
                             </HistoryPill>
                         ) : null}
-                        <HistoryPill tone="info" label="耗时">
+                        <HistoryPill tone="info" label="总耗时">
                             {formatDuration(log.durationMs)}
                         </HistoryPill>
                         <HistoryPill label="时间">{log.time}</HistoryPill>
@@ -1689,8 +1868,10 @@ async function readStoredLogs() {
 
 function normalizeLogMetadata(log: Partial<GenerationLog>): GenerationLog {
     const config = normalizeLogConfig(log);
-    const images = (log.images || []).map(normalizeGeneratedImageMetadata);
-    const failures = normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0);
+    const references = (log.references || []).map(normalizeReferenceMetadata);
+    const fallbackRequest = imageLogRequestSnapshot(log, config, references);
+    const images = (log.images || []).map((item, index) => normalizeGeneratedImageMetadata(item, index, fallbackRequest));
+    const failures = normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0, fallbackRequest);
     const hasImageList = Array.isArray(log.images);
     return {
         id: log.id || nanoid(),
@@ -1703,7 +1884,7 @@ function normalizeLogMetadata(log: Partial<GenerationLog>): GenerationLog {
         time: log.time || new Date().toLocaleString("zh-CN", { hour12: false }),
         model: log.model || config.imageModel || "",
         config,
-        references: (log.references || []).map(normalizeReferenceMetadata),
+        references,
         durationMs: log.durationMs || 0,
         successCount: hasImageList ? images.length : (log.successCount ?? log.imageCount ?? 0),
         failCount: failures.length,
@@ -1724,14 +1905,16 @@ async function hydrateLogMedia(log: Partial<GenerationLog>): Promise<GenerationL
             dataUrl: await resolveImageUrl(item.storageKey, item.dataUrl),
         })),
     );
+    const config = normalizeLogConfig(log);
+    const fallbackRequest = imageLogRequestSnapshot(log, config, references);
     const images = await Promise.all(
-        (log.images || []).map(async (item) => ({
-            ...item,
+        (log.images || []).map(async (item, index) => ({
+            ...normalizeGeneratedImageMetadata(item, index, fallbackRequest),
             dataUrl: await resolveImageUrl(item.storageKey, item.dataUrl),
+            request: await hydrateImageRequestSnapshot(normalizeImageRequestSnapshot(item.request, fallbackRequest)),
         })),
     );
-    const config = normalizeLogConfig(log);
-    const failures = normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0);
+    const failures = await Promise.all(normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0, fallbackRequest).map(async (failure) => ({ ...failure, request: await hydrateImageRequestSnapshot(failure.request || fallbackRequest) })));
     const hasImageList = Array.isArray(log.images);
     return {
         id: log.id || nanoid(),
@@ -1762,8 +1945,8 @@ function serializeLog(log: GenerationLog): GenerationLog {
     return {
         ...log,
         references: log.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
-        images: log.images.map((image) => ({ ...image, dataUrl: image.storageKey ? "" : image.dataUrl })),
-        failures: normalizeGeneratedFailures(log.failures),
+        images: log.images.map((image) => ({ ...image, dataUrl: image.storageKey ? "" : image.dataUrl, request: serializeImageRequestSnapshot(image.request) })),
+        failures: normalizeGeneratedFailures(log.failures).map((failure) => ({ ...failure, request: serializeImageRequestSnapshot(failure.request) })),
         thumbnails: normalizeLogThumbnails(log.thumbnails),
     };
 }
@@ -1779,7 +1962,51 @@ function normalizeReferenceMetadata(item: Partial<ReferenceImage>, index: number
     };
 }
 
-function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: number): GeneratedImage {
+function imageLogRequestSnapshot(log: Partial<GenerationLog>, config: GenerationLogConfig, references: ReferenceImage[]): GenerationRequestSnapshot {
+    return {
+        prompt: log.prompt || log.title || "",
+        model: log.model || config.imageModel || config.model || "",
+        config,
+        references,
+        createdAt: log.createdAt || Date.now(),
+    };
+}
+
+function normalizeImageRequestSnapshot(value: Partial<GenerationRequestSnapshot> | undefined, fallback: GenerationRequestSnapshot): GenerationRequestSnapshot {
+    const config = {
+        ...fallback.config,
+        ...(value?.config || {}),
+    };
+    return {
+        prompt: value?.prompt || fallback.prompt,
+        model: value?.model || fallback.model || config.imageModel || config.model || "",
+        config,
+        references: (value?.references?.length ? value.references : fallback.references).map(normalizeReferenceMetadata).slice(0, IMAGE_REFERENCE_LIMIT),
+        createdAt: value?.createdAt || fallback.createdAt || Date.now(),
+    };
+}
+
+function serializeImageRequestSnapshot(request?: GenerationRequestSnapshot) {
+    if (!request) return undefined;
+    return {
+        ...request,
+        references: request.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
+    };
+}
+
+async function hydrateImageRequestSnapshot(request: GenerationRequestSnapshot): Promise<GenerationRequestSnapshot> {
+    return {
+        ...request,
+        references: await Promise.all(
+            request.references.map(async (item) => ({
+                ...item,
+                dataUrl: await resolveImageUrl(item.storageKey, item.dataUrl),
+            })),
+        ),
+    };
+}
+
+function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: number, fallbackRequest: GenerationRequestSnapshot): GeneratedImage {
     return {
         id: item.id || nanoid(),
         dataUrl: item.storageKey ? "" : item.dataUrl || "",
@@ -1789,15 +2016,17 @@ function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: n
         height: item.height || 0,
         bytes: item.bytes || 0,
         mimeType: item.mimeType,
+        request: normalizeImageRequestSnapshot(item.request, fallbackRequest),
     };
 }
 
-function normalizeGeneratedFailures(failures?: Partial<GeneratedFailure>[], fallbackCount = 0) {
-    const items = failures?.length ? failures : Array.from({ length: Math.max(0, fallbackCount) }, (_, index) => ({ id: `legacy-failure-${index + 1}`, error: "生成失败", durationMs: 0 }));
+function normalizeGeneratedFailures(failures?: Partial<GeneratedFailure>[], fallbackCount = 0, fallbackRequest?: GenerationRequestSnapshot) {
+    const items: Partial<GeneratedFailure>[] = failures?.length ? failures : Array.from({ length: Math.max(0, fallbackCount) }, (_, index) => ({ id: `legacy-failure-${index + 1}`, error: "生成失败", durationMs: 0 }));
     return items.map((item) => ({
         id: item.id || nanoid(),
         error: item.error || "生成失败",
         durationMs: item.durationMs || 0,
+        request: fallbackRequest ? normalizeImageRequestSnapshot(item.request, fallbackRequest) : item.request,
     }));
 }
 
@@ -1883,7 +2112,9 @@ async function deleteResultFromLog(logId: string, result: GenerationResult) {
     const nextImages = log.images.filter((image) => !resultIds.has(image.id));
     const nextFailures = log.failures.filter((failure) => !resultIds.has(failure.id));
     const removedKeys = removedImages.map((image) => image.storageKey).filter((key): key is string => Boolean(key));
-    if (removedKeys.length) await deleteStoredImages(removedKeys);
+    if (removedImages.length || nextFailures.length !== log.failures.length) {
+        await moveLogToWorkbenchTrash("image-workbench", serializeLog(log), { purgeStorageKeys: removedKeys });
+    }
     if (!nextImages.length && !nextFailures.length) {
         await logStore.removeItem(logId);
         return null;

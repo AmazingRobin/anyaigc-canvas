@@ -53,7 +53,7 @@ const GENERATED_VIDEO_ARCHIVE_TIMEOUT_MS = 12000;
 const relayBasesPublicMediaUploads = new Map<string, Promise<string>>();
 
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
-export type VideoGenerationTask = { id: string; provider: "openai" | "seedance"; model: string; mode?: AiConfig["videoCallMode"] };
+export type VideoGenerationTask = { id: string; provider: "openai" | "seedance"; model: string; mode?: AiConfig["videoCallMode"]; startedAt?: number };
 export type VideoGenerationTaskState = { status: "pending" } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
 export type VideoGenerationPollConfig = { attempts: number; delayMs: number; timeoutMessage: string };
 

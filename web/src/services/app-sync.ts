@@ -104,6 +104,19 @@ export async function recordDeletedSyncIds(domain: AppSyncDomainKey, ids: string
     await writeDeletedSyncIds(domain, deleted);
 }
 
+export async function clearDeletedSyncIds(domain: AppSyncDomainKey, ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+    if (!uniqueIds.length) return;
+    const deleted = await readDeletedSyncIds(domain);
+    let changed = false;
+    uniqueIds.forEach((id) => {
+        if (!(id in deleted)) return;
+        delete deleted[id];
+        changed = true;
+    });
+    if (changed) await writeDeletedSyncIds(domain, deleted);
+}
+
 export async function syncAppDataToWebdav(config: WebdavSyncConfig, onProgress?: AppSyncProgress): Promise<AppSyncResult> {
     return syncAppDataToRemote(
         {
