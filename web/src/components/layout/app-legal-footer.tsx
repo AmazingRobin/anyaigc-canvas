@@ -3,7 +3,6 @@
 import { GithubOutlined } from "@ant-design/icons";
 
 import { GitHubLink } from "@/components/layout/github-link";
-import { VersionReleaseModal } from "@/components/layout/version-release-modal";
 
 const MODIFIED_SOURCE_URL = "https://github.com/gulullu/relaybases-canvas";
 const ORIGINAL_SOURCE_URL = "https://github.com/basketikun/infinite-canvas";
@@ -30,7 +29,6 @@ export function AppLegalFooter() {
                     </a>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                    <VersionReleaseModal className="text-[10px] font-medium text-stone-400 transition hover:text-stone-700 dark:text-stone-500 dark:hover:text-stone-300" />
                     <GitHubLink href={MODIFIED_SOURCE_URL} title="修改版源码" className="size-5 bg-transparent text-xs text-stone-400 hover:bg-transparent hover:text-stone-700 dark:text-stone-500 dark:hover:bg-transparent dark:hover:text-stone-300" />
                 </div>
             </div>
