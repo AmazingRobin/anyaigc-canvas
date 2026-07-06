@@ -28,7 +28,18 @@ import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api
 import { clearDeletedSyncIds, recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredImages, getImageBlob, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { queueImageToVideoReferences } from "@/services/workbench-handoff";
-import { emptyWorkbenchTrash, formatTrashExpiry, moveLogToWorkbenchTrash, moveLogsToWorkbenchTrash, purgeExpiredWorkbenchTrash, readWorkbenchTrash, removeWorkbenchTrashEntry, restoreWorkbenchTrashEntry, WORKBENCH_TRASH_RETENTION_DAYS, type WorkbenchTrashEntry } from "@/services/workbench-trash";
+import {
+    emptyWorkbenchTrash,
+    formatTrashExpiry,
+    moveLogToWorkbenchTrash,
+    moveLogsToWorkbenchTrash,
+    purgeExpiredWorkbenchTrash,
+    readWorkbenchTrash,
+    removeWorkbenchTrashEntry,
+    restoreWorkbenchTrashEntry,
+    WORKBENCH_TRASH_RETENTION_DAYS,
+    type WorkbenchTrashEntry,
+} from "@/services/workbench-trash";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
 
@@ -128,11 +139,14 @@ const LOG_THUMBNAIL_QUALITY = 0.84;
 
 const LOG_STORE_KEY = "infinite-canvas:image_generation_logs";
 const IMAGE_WORKBENCH_DRAFT_KEY = "relaybases-canvas:image-workbench-draft";
-const RESULT_OVERLAY_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-transparent !p-0 !text-white !shadow-none hover:!bg-white/16 hover:!text-white disabled:!bg-transparent disabled:!text-white/45 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
+const RESULT_OVERLAY_ICON_BUTTON_CLASS =
+    "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-transparent !p-0 !text-white !shadow-none hover:!bg-white/16 hover:!text-white disabled:!bg-transparent disabled:!text-white/45 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
 const RESULT_OVERLAY_DANGER_BUTTON_CLASS = `${RESULT_OVERLAY_ICON_BUTTON_CLASS} hover:!bg-rose-500/45`;
-const RESULT_FAILED_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-red-100/70 !p-0 !text-red-600 !shadow-none hover:!bg-red-200/80 dark:!bg-red-950/60 dark:!text-red-200 dark:hover:!bg-red-900/80 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
+const RESULT_FAILED_ICON_BUTTON_CLASS =
+    "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-red-100/70 !p-0 !text-red-600 !shadow-none hover:!bg-red-200/80 dark:!bg-red-950/60 dark:!text-red-200 dark:hover:!bg-red-900/80 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
 const COMPOSER_CONTROL_CLASS = "h-8 rounded-full border border-input bg-transparent px-3 text-sm font-normal shadow-sm transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-900/70";
-const HISTORY_SEARCH_INPUT_CLASS = "mb-3 !rounded-lg !border-stone-200 !bg-background !shadow-none transition-colors hover:!border-stone-300 focus-within:!border-stone-300 focus-within:!shadow-none [&.ant-input-affix-wrapper-focused]:!border-stone-300 [&.ant-input-affix-wrapper-focused]:!shadow-none [&_input]:!outline-none dark:!border-stone-800 dark:hover:!border-stone-700 dark:focus-within:!border-stone-700 dark:[&.ant-input-affix-wrapper-focused]:!border-stone-700";
+const HISTORY_SEARCH_INPUT_CLASS =
+    "mb-3 !rounded-lg !border-stone-200 !bg-background !shadow-none transition-colors hover:!border-stone-300 focus-within:!border-stone-300 focus-within:!shadow-none [&.ant-input-affix-wrapper-focused]:!border-stone-300 [&.ant-input-affix-wrapper-focused]:!shadow-none [&_input]:!outline-none dark:!border-stone-800 dark:hover:!border-stone-700 dark:focus-within:!border-stone-700 dark:[&.ant-input-affix-wrapper-focused]:!border-stone-700";
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });
 
 export default function ImagePage() {
@@ -413,12 +427,16 @@ export default function ImagePage() {
         const requestCount = Math.max(1, Math.min(15, Math.floor(countOverride || generationCount)));
         const requestSnapshot = buildImageRequestSnapshot(snapshot, model, { count: String(requestCount) });
         if (!logIdFromSession(sessionId)) {
-            rememberWorkbenchSession(sessionId, {
-                prompt: text,
-                model,
-                config: { ...snapshot.config, count: String(requestCount) },
-                references: snapshot.references,
-            }, requestCount);
+            rememberWorkbenchSession(
+                sessionId,
+                {
+                    prompt: text,
+                    model,
+                    config: { ...snapshot.config, count: String(requestCount) },
+                    references: snapshot.references,
+                },
+                requestCount,
+            );
         }
         if (!runningBySession[sessionId]) setElapsedMs(0);
         if (!logIdFromSession(sessionId)) setPreviewLog(null);
@@ -470,12 +488,10 @@ export default function ImagePage() {
         const durationMs = performance.now() - batchStartedAt;
         finishSessionRun(sessionId);
         successCount ? message.success("图片已生成") : message.error(failed?.error || "生成失败");
-        notifyWorkbenchTask(
-            effectiveConfig.notifyOnGenerationComplete === "true",
-            successCount ? "图片生成完成" : "图片生成失败",
-            successCount ? `成功 ${successCount} 张${failCount ? `，失败 ${failCount} 张` : ""}` : failed?.error || "生成失败",
-            { tag: `relaybases-image-${sessionId}`, requireInteraction: true },
-        );
+        notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", successCount ? "图片生成完成" : "图片生成失败", successCount ? `成功 ${successCount} 张${failCount ? `，失败 ${failCount} 张` : ""}` : failed?.error || "生成失败", {
+            tag: `relaybases-image-${sessionId}`,
+            requireInteraction: true,
+        });
 
         void (async () => {
             const logImages = await Promise.all(
@@ -849,20 +865,127 @@ export default function ImagePage() {
         }
     };
 
+    const findRetryLogId = async (sessionId: string) => logIdFromSession(sessionId) || (await findLogIdForSession(sessionId));
+
+    const persistRetriedImageResult = async (sessionId: string, resultId: string, replacedIds: string[], image: GeneratedImage, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }, requestSnapshot: GenerationRequestSnapshot) => {
+        const stored = await uploadImage(image.dataUrl);
+        const storedImage: GeneratedImage = {
+            ...image,
+            dataUrl: stored.url,
+            storageKey: stored.storageKey,
+            width: stored.width,
+            height: stored.height,
+            bytes: stored.bytes,
+            mimeType: stored.mimeType,
+            request: requestSnapshot,
+        };
+        updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "success", image: storedImage, error: undefined, request: requestSnapshot }));
+
+        const logId = await findRetryLogId(sessionId);
+        if (!logId) {
+            await saveBatchLog({
+                sessionId,
+                prompt: snapshot.text,
+                model,
+                config: { ...snapshot.config, count: "1" },
+                references: snapshot.references,
+                durationMs: storedImage.durationMs,
+                successCount: 1,
+                failCount: 0,
+                status: "成功",
+                images: [storedImage],
+                failures: [],
+                thumbnails: await createLogThumbnails([storedImage]),
+            });
+            return;
+        }
+
+        const storedLog = await logStore.getItem<GenerationLog>(logId);
+        if (!storedLog) return;
+        const existing = normalizeLogMetadata(storedLog);
+        const resultIds = new Set([...replacedIds, image.id, storedImage.id].filter(Boolean));
+        let replacedImage = false;
+        const nextImages = existing.images
+            .map((item) => {
+                if (!resultIds.has(item.id)) return item;
+                replacedImage = true;
+                return storedImage;
+            })
+            .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index);
+        if (!replacedImage) nextImages.push(storedImage);
+        const nextFailures = existing.failures.filter((failure) => !resultIds.has(failure.id));
+        const nextLog = recalculateLogCounts({
+            ...existing,
+            durationMs: existing.durationMs + (storedImage.durationMs || 0),
+            images: nextImages,
+            failures: nextFailures,
+            thumbnails: normalizeLogThumbnails([...existing.thumbnails, ...(await createLogThumbnails([storedImage]))]),
+        });
+        await logStore.setItem(logId, serializeLog(nextLog));
+        if (logIdFromSession(sessionId) === logId || previewLog?.id === logId) setPreviewLog(nextLog);
+        await refreshLogs();
+    };
+
+    const persistRetriedFailureResult = async (sessionId: string, resultId: string, replacedIds: string[], error: unknown, durationMs: number, requestSnapshot: GenerationRequestSnapshot) => {
+        const messageText = error instanceof Error ? error.message : "生成失败";
+        const logId = await findRetryLogId(sessionId);
+        if (!logId) return;
+        const storedLog = await logStore.getItem<GenerationLog>(logId);
+        if (!storedLog) return;
+        const existing = normalizeLogMetadata(storedLog);
+        const resultIds = new Set([...replacedIds, resultId].filter(Boolean));
+        const failure: GeneratedFailure = { id: resultId, error: messageText, durationMs, request: requestSnapshot };
+        let replacedFailure = false;
+        const nextFailures = existing.failures.map((item) => {
+            if (!resultIds.has(item.id)) return item;
+            replacedFailure = true;
+            return failure;
+        });
+        if (!replacedFailure) nextFailures.push(failure);
+        const nextLog = recalculateLogCounts({
+            ...existing,
+            durationMs: existing.durationMs + durationMs,
+            images: existing.images.filter((image) => !resultIds.has(image.id)),
+            failures: nextFailures,
+        });
+        await logStore.setItem(logId, serializeLog(nextLog));
+        if (logIdFromSession(sessionId) === logId || previewLog?.id === logId) setPreviewLog(nextLog);
+        await refreshLogs();
+    };
+
     const retryResult = (index: number) => {
         const snapshot = buildRequestSnapshot();
         if (!snapshot) return;
         const sessionId = activeSessionId;
         if (!logIdFromSession(sessionId)) setPreviewLog(null);
-        const resultId = results[index]?.id;
+        const currentResult = results[index];
+        const resultId = currentResult?.id;
         if (!resultId) return;
+        const replacedIds = [resultId, currentResult.image?.id].filter((id): id is string => Boolean(id));
         const requestSnapshot = buildImageRequestSnapshot(snapshot, model, { count: "1" });
         if (!runningBySession[sessionId]) setElapsedMs(0);
         if (sessionsById[sessionId]) setSessionsById((value) => ({ ...value, [sessionId]: { ...value[sessionId], requestCount: (value[sessionId].requestCount || 0) + 1 } }));
         updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "pending", error: undefined, image: undefined, request: requestSnapshot }));
-        startSessionRun(sessionId, performance.now());
+        const retryStartedAt = performance.now();
+        startSessionRun(sessionId, retryStartedAt);
         void runGenerationSlot(sessionId, resultId, snapshot, requestSnapshot)
-            .catch(() => {})
+            .then(
+                async (image) => {
+                    try {
+                        await persistRetriedImageResult(sessionId, resultId, replacedIds, image, snapshot, requestSnapshot);
+                    } catch (error) {
+                        console.warn("Failed to persist retried image result", error);
+                        message.warning("重试结果已生成，但本地保存失败，刷新后可能不会保留");
+                    }
+                },
+                async (error) => {
+                    try {
+                        await persistRetriedFailureResult(sessionId, resultId, replacedIds, error, performance.now() - retryStartedAt, requestSnapshot);
+                    } catch (persistError) {
+                        console.warn("Failed to persist retried image failure", persistError);
+                    }
+                },
+            )
             .finally(() => finishSessionRun(sessionId));
     };
 
@@ -928,11 +1051,38 @@ export default function ImagePage() {
                                     <div className="grid justify-center gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 200px))" }}>
                                         {results.map((result, index) =>
                                             result.status === "success" && result.image ? (
-                                                <ResultImageCard key={result.id} image={result.image} index={index} selected={selectedResultIds.includes(result.id)} savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onReuse={() => reuseImageRequest(result.image?.request || result.request)} onEdit={addResultToReferences} onGenerateVideo={generateVideoFromImage} onRegenerate={() => generate(1)} onDownload={downloadImage} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
+                                                <ResultImageCard
+                                                    key={result.id}
+                                                    image={result.image}
+                                                    index={index}
+                                                    selected={selectedResultIds.includes(result.id)}
+                                                    savedToAsset={Boolean(findGeneratedImageAsset(result.image, assets))}
+                                                    onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))}
+                                                    onReuse={() => reuseImageRequest(result.image?.request || result.request)}
+                                                    onEdit={addResultToReferences}
+                                                    onGenerateVideo={generateVideoFromImage}
+                                                    onRegenerate={() => generate(1)}
+                                                    onDownload={downloadImage}
+                                                    onSaveAsset={saveResultToAssets}
+                                                    onDelete={() => requestDeleteResults([result])}
+                                                />
                                             ) : result.status === "failed" ? (
-                                                <FailedImageCard key={result.id} error={result.error || "生成失败"} request={result.request} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} onReuse={() => reuseImageRequest(result.request)} onRetry={() => retryResult(index)} onDelete={() => requestDeleteResults([result])} />
+                                                <FailedImageCard
+                                                    key={result.id}
+                                                    error={result.error || "生成失败"}
+                                                    request={result.request}
+                                                    selected={selectedResultIds.includes(result.id)}
+                                                    onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))}
+                                                    onReuse={() => reuseImageRequest(result.request)}
+                                                    onRetry={() => retryResult(index)}
+                                                    onDelete={() => requestDeleteResults([result])}
+                                                />
                                             ) : (
-                                                <PendingImageCard key={result.id} selected={selectedResultIds.includes(result.id)} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))} />
+                                                <PendingImageCard
+                                                    key={result.id}
+                                                    selected={selectedResultIds.includes(result.id)}
+                                                    onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? [...ids, result.id] : ids.filter((id) => id !== result.id)))}
+                                                />
                                             ),
                                         )}
                                     </div>
@@ -958,7 +1108,12 @@ export default function ImagePage() {
                                     </button>
                                     <div className="flex flex-wrap gap-2">
                                         <Tooltip title="使用文本模型优化和丰富提示词">
-                                            <Button size="small" icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} disabled={!prompt.trim() || promptOptimizing} onClick={() => void optimizePrompt()}>
+                                            <Button
+                                                size="small"
+                                                icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                                                disabled={!prompt.trim() || promptOptimizing}
+                                                onClick={() => void optimizePrompt()}
+                                            >
                                                 AI 优化
                                             </Button>
                                         </Tooltip>
@@ -988,32 +1143,32 @@ export default function ImagePage() {
                                     <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">参考图</span>
                                     <Image.PreviewGroup>
                                         <div
-                                        className="hide-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
-                                        onWheel={(event) => {
-                                            if (event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return;
-                                            event.preventDefault();
-                                            event.currentTarget.scrollLeft += event.deltaY;
-                                        }}
-                                    >
-                                        {references.map((item, index) => (
-                                            <div key={item.id} className="group relative size-16 shrink-0 overflow-hidden rounded-lg bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
-                                                <Image src={item.dataUrl} alt={item.name} className="!size-16 object-cover" preview={{ mask: null }} />
-                                                <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{imageReferenceLabel(index)}</span>
-                                                <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
-                                                <button
-                                                    type="button"
-                                                    className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/58 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        setReferences((value) => value.filter((ref) => ref.id !== item.id));
-                                                    }}
-                                                    aria-label="移除参考图"
-                                                >
-                                                    <X className="size-3.5" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                        {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">PNG/JPG · 最多 5 张 · 单张≤50MB</span> : null}
+                                            className="hide-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
+                                            onWheel={(event) => {
+                                                if (event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return;
+                                                event.preventDefault();
+                                                event.currentTarget.scrollLeft += event.deltaY;
+                                            }}
+                                        >
+                                            {references.map((item, index) => (
+                                                <div key={item.id} className="group relative size-16 shrink-0 overflow-hidden rounded-lg bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
+                                                    <Image src={item.dataUrl} alt={item.name} className="!size-16 object-cover" preview={{ mask: null }} />
+                                                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{imageReferenceLabel(index)}</span>
+                                                    <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
+                                                    <button
+                                                        type="button"
+                                                        className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/58 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            setReferences((value) => value.filter((ref) => ref.id !== item.id));
+                                                        }}
+                                                        aria-label="移除参考图"
+                                                    >
+                                                        <X className="size-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">PNG/JPG · 最多 5 张 · 单张≤50MB</span> : null}
                                         </div>
                                     </Image.PreviewGroup>
                                     <div className="flex shrink-0 gap-2">
@@ -1028,11 +1183,21 @@ export default function ImagePage() {
 
                                 <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
                                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                        <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("imageModel", value)} capability="image" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
+                                        <ModelPicker
+                                            config={effectiveConfig}
+                                            value={model}
+                                            onChange={(value) => updateConfig("imageModel", value)}
+                                            capability="image"
+                                            className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`}
+                                            onMissingConfig={() => openConfigDialog(false)}
+                                        />
                                         <div ref={sizePopoverRef} className="relative">
                                             <ComposerMetric label="尺寸" value={imageSizeName(effectiveConfig.size || "auto")} onClick={() => setSizePopoverOpen((open) => !open)} />
                                             {sizePopoverOpen ? (
-                                                <div ref={sizePopoverDesktopPanelRef} className="absolute bottom-full left-0 z-[3000] mb-3 hidden max-h-[min(68vh,560px)] w-[384px] max-w-[calc(100vw-40px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.42)] dark:ring-stone-800/90 sm:block">
+                                                <div
+                                                    ref={sizePopoverDesktopPanelRef}
+                                                    className="absolute bottom-full left-0 z-[3000] mb-3 hidden max-h-[min(68vh,560px)] w-[384px] max-w-[calc(100vw-40px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_18px_44px_rgba(0,0,0,0.42)] dark:ring-stone-800/90 sm:block"
+                                                >
                                                     <ImageSettingsPanel
                                                         config={effectiveConfig}
                                                         onConfigChange={(key, value) => updateConfig(key, value)}
@@ -1075,16 +1240,7 @@ export default function ImagePage() {
                           className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] z-[3000] max-h-[min(54dvh,500px)] isolate overflow-y-auto rounded-[18px] bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.22)] ring-1 ring-stone-200/90 dark:bg-stone-950 dark:shadow-[0_24px_70px_rgba(0,0,0,0.48)] dark:ring-stone-800/90 sm:hidden"
                           onMouseDown={(event) => event.stopPropagation()}
                       >
-                          <ImageSettingsPanel
-                              config={effectiveConfig}
-                              onConfigChange={(key, value) => updateConfig(key, value)}
-                              theme={theme}
-                              showTitle={false}
-                              showQuality={false}
-                              showCount={false}
-                              className="space-y-4"
-                              quickCount={0}
-                          />
+                          <ImageSettingsPanel config={effectiveConfig} onConfigChange={(key, value) => updateConfig(key, value)} theme={theme} showTitle={false} showQuality={false} showCount={false} className="space-y-4" quickCount={0} />
                       </div>,
                       document.body,
                   )
@@ -1253,8 +1409,16 @@ function TrashPanel({
                     const selected = selectedIds.includes(entry.id);
                     const expirePercent = trashRemainingPercent(entry);
                     return (
-                        <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
-                            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={(checked) => setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, entry.id])) : ids.filter((id) => id !== entry.id)))} ariaLabel="选择回收站记录" />
+                        <div
+                            key={entry.id}
+                            className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}
+                        >
+                            <SelectionBubble
+                                className="absolute right-3 top-3 z-10"
+                                selected={selected}
+                                onSelectedChange={(checked) => setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, entry.id])) : ids.filter((id) => id !== entry.id)))}
+                                ariaLabel="选择回收站记录"
+                            />
                             <div className="flex gap-3 pr-8">
                                 <TrashImageThumbnail log={entry.log} />
                                 <div className="min-w-0 flex-1">
@@ -1265,7 +1429,9 @@ function TrashPanel({
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="删除">{formatTrashDate(entry.deletedAt)}</HistoryPill>
-                                        <HistoryPill tone="danger" label="清理">{formatTrashExpiry(entry.expiresAt)}</HistoryPill>
+                                        <HistoryPill tone="danger" label="清理">
+                                            {formatTrashExpiry(entry.expiresAt)}
+                                        </HistoryPill>
                                     </div>
                                 </div>
                             </div>
@@ -1297,9 +1463,10 @@ function TrashImageThumbnail({ log }: { log: GenerationLog }) {
         let cancelled = false;
         const fallback = trashImageThumbnail(log);
         setThumbnail(fallback);
-        if (fallback || !image?.storageKey) return () => {
-            cancelled = true;
-        };
+        if (fallback || !image?.storageKey)
+            return () => {
+                cancelled = true;
+            };
         void resolveImageUrl(image.storageKey, image.dataUrl).then((url) => {
             if (!cancelled) setThumbnail(url);
         });
@@ -1310,7 +1477,13 @@ function TrashImageThumbnail({ log }: { log: GenerationLog }) {
 
     return (
         <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
-            {thumbnail ? <img src={thumbnail} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(47,125,225,.14),rgba(233,76,137,.10))] text-stone-400"><ImagePlus className="size-5" /></div>}
+            {thumbnail ? (
+                <img src={thumbnail} alt="" className="size-full object-cover" />
+            ) : (
+                <div className="grid size-full place-items-center bg-[linear-gradient(135deg,rgba(47,125,225,.14),rgba(233,76,137,.10))] text-stone-400">
+                    <ImagePlus className="size-5" />
+                </div>
+            )}
         </div>
     );
 }
@@ -1338,36 +1511,31 @@ function ComposerMetric({ label, value, onClick }: { label: string; value: strin
     );
     if (onClick) {
         return (
-            <button
-                type="button"
-                className={`inline-flex max-w-[180px] cursor-pointer items-center gap-1 overflow-hidden ${COMPOSER_CONTROL_CLASS}`}
-                onClick={onClick}
-            >
+            <button type="button" className={`inline-flex max-w-[180px] cursor-pointer items-center gap-1 overflow-hidden ${COMPOSER_CONTROL_CLASS}`} onClick={onClick}>
                 {content}
             </button>
         );
     }
-    return (
-        <span className={`inline-flex max-w-[180px] items-center gap-1 overflow-hidden ${COMPOSER_CONTROL_CLASS}`}>
-            {content}
-        </span>
-    );
+    return <span className={`inline-flex max-w-[180px] items-center gap-1 overflow-hidden ${COMPOSER_CONTROL_CLASS}`}>{content}</span>;
 }
 
 function ComposerQualitySelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
     const selected = IMAGE_QUALITY_OPTIONS.find((item) => item.value === (value || "auto")) || IMAGE_QUALITY_OPTIONS[0];
     return (
         <Select value={value || "auto"} onValueChange={onChange}>
-            <SelectTrigger
-                className={`w-auto max-w-[9rem] justify-start gap-1.5 ${COMPOSER_CONTROL_CLASS}`}
-                aria-label="选择生成质量"
-                onMouseDown={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-            >
+            <SelectTrigger className={`w-auto max-w-[9rem] justify-start gap-1.5 ${COMPOSER_CONTROL_CLASS}`} aria-label="选择生成质量" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                 <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">质量</span>
                 <span className="min-w-0 shrink-0 truncate text-left text-stone-700 dark:text-stone-200">{selected.label}</span>
             </SelectTrigger>
-            <SelectContent className="z-[3000] min-w-[8rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+            <SelectContent
+                className="z-[3000] min-w-[8rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950"
+                position="popper"
+                align="start"
+                side="bottom"
+                sideOffset={6}
+                onPointerDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+            >
                 {IMAGE_QUALITY_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                         {item.label}
@@ -1470,7 +1638,14 @@ function ResultImageCard({
                         </div>
                         <div className="pointer-events-auto flex items-center justify-end gap-1">
                             <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
-                                <Button type="text" aria-label={savedToAsset ? "取消加入素材" : "添加到素材"} className={`${RESULT_OVERLAY_ICON_BUTTON_CLASS} ${savedToAsset ? "!bg-emerald-500/40 !text-white hover:!bg-emerald-500/55" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(displayImage, index)} />
+                                <Button
+                                    type="text"
+                                    aria-label={savedToAsset ? "取消加入素材" : "添加到素材"}
+                                    className={`${RESULT_OVERLAY_ICON_BUTTON_CLASS} ${savedToAsset ? "!bg-emerald-500/40 !text-white hover:!bg-emerald-500/55" : ""}`}
+                                    size="small"
+                                    icon={<FolderPlus className="size-3.5" />}
+                                    onClick={() => void onSaveAsset(displayImage, index)}
+                                />
                             </Tooltip>
                             <Tooltip title="复用提示词和配置">
                                 <Button type="text" aria-label="复用提示词和配置" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onReuse} />
@@ -1525,7 +1700,23 @@ function PendingImageCard({ selected, onSelectedChange }: { selected: boolean; o
     );
 }
 
-function FailedImageCard({ error, request, selected, onSelectedChange, onReuse, onRetry, onDelete }: { error: string; request?: GenerationRequestSnapshot; selected: boolean; onSelectedChange: (checked: boolean) => void; onReuse: () => void; onRetry: () => void; onDelete: () => void }) {
+function FailedImageCard({
+    error,
+    request,
+    selected,
+    onSelectedChange,
+    onReuse,
+    onRetry,
+    onDelete,
+}: {
+    error: string;
+    request?: GenerationRequestSnapshot;
+    selected: boolean;
+    onSelectedChange: (checked: boolean) => void;
+    onReuse: () => void;
+    onRetry: () => void;
+    onDelete: () => void;
+}) {
     const promptPreview = request?.prompt || "";
     return (
         <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
@@ -1751,9 +1942,7 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
                                 {session.failCount}
                             </HistoryPill>
                         ) : null}
-                        {session.running && session.running.count > 1 ? (
-                            <HistoryPill label="并发">{session.running.count} 批</HistoryPill>
-                        ) : null}
+                        {session.running && session.running.count > 1 ? <HistoryPill label="并发">{session.running.count} 批</HistoryPill> : null}
                         <HistoryPill label="时间">{formatSessionTime(session.createdAt)}</HistoryPill>
                     </div>
                 </div>
@@ -1776,21 +1965,7 @@ function SessionCover({ image, pending, count, ratioLabel, sizeLabel }: { image?
     );
 }
 
-function LogCard({
-    log,
-    selected,
-    active,
-    onSelectedChange,
-    onTogglePin,
-    onClick,
-}: {
-    log: GenerationLog;
-    selected: boolean;
-    active: boolean;
-    onSelectedChange: (checked: boolean) => void;
-    onTogglePin: () => void;
-    onClick: () => void;
-}) {
+function LogCard({ log, selected, active, onSelectedChange, onTogglePin, onClick }: { log: GenerationLog; selected: boolean; active: boolean; onSelectedChange: (checked: boolean) => void; onTogglePin: () => void; onClick: () => void }) {
     const thumbnail = normalizeLogThumbnails(log.thumbnails)[0] || "";
     const actualImageCount = actualLogImageCount(log);
     const actualFailureCount = actualLogFailureCount(log);
@@ -1820,7 +1995,9 @@ function LogCard({
                     aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
                     className={`!absolute !right-3 !top-12 z-10 !inline-grid !size-7 !place-items-center !rounded-full !border !p-0 !shadow-[0_2px_7px_rgba(15,23,42,0.06)] !backdrop-blur-md [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!border-stone-300/60 !bg-white/80 !text-stone-700 dark:!border-stone-600/60 dark:!bg-stone-950/75 dark:!text-stone-200" : "!border-stone-200/60 !bg-white/40 !text-stone-400 !opacity-[0.68] hover:!bg-white/70 hover:!text-stone-700 dark:!border-white/10 dark:!bg-stone-950/40 dark:!text-stone-500 dark:hover:!bg-stone-950/70 dark:hover:!text-stone-200"}`}
                     icon={
-                        <span className={`grid size-3.5 place-items-center rounded-[4px] border transition ${log.pinnedAt ? "border-stone-400/50 bg-stone-200/70 text-stone-700 dark:border-stone-500/50 dark:bg-stone-700/60 dark:text-stone-100" : "border-current/35 bg-transparent"}`}>
+                        <span
+                            className={`grid size-3.5 place-items-center rounded-[4px] border transition ${log.pinnedAt ? "border-stone-400/50 bg-stone-200/70 text-stone-700 dark:border-stone-500/50 dark:bg-stone-700/60 dark:text-stone-100" : "border-current/35 bg-transparent"}`}
+                        >
                             <Pin className={`size-2.5 ${log.pinnedAt ? "fill-current" : ""}`} />
                         </span>
                     }
@@ -2031,7 +2208,9 @@ async function hydrateLogMedia(log: Partial<GenerationLog>): Promise<GenerationL
             request: await hydrateImageRequestSnapshot(normalizeImageRequestSnapshot(item.request, fallbackRequest)),
         })),
     );
-    const failures = await Promise.all(normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0, fallbackRequest).map(async (failure) => ({ ...failure, request: await hydrateImageRequestSnapshot(failure.request || fallbackRequest) })));
+    const failures = await Promise.all(
+        normalizeGeneratedFailures(log.failures, Array.isArray(log.failures) ? 0 : log.failCount || 0, fallbackRequest).map(async (failure) => ({ ...failure, request: await hydrateImageRequestSnapshot(failure.request || fallbackRequest) })),
+    );
     const hasImageList = Array.isArray(log.images);
     return {
         id: log.id || nanoid(),
@@ -2303,7 +2482,10 @@ function recalculateLogCounts(log: GenerationLog): GenerationLog {
 }
 
 function compactLogTitle(value: string) {
-    const text = value.replace(/\s+/g, " ").replace(/^[,.;:，。；：、\s]+/, "").trim();
+    const text = value
+        .replace(/\s+/g, " ")
+        .replace(/^[,.;:，。；：、\s]+/, "")
+        .trim();
     if (!text) return "未命名";
     const sentence = text.split(/[。！？!?]/, 1)[0]?.trim() || text;
     if (sentence.length <= 30) return sentence;

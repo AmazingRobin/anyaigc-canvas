@@ -1714,8 +1714,16 @@ function InfiniteCanvasPage() {
             setSplitNodeId(null);
             const pieces = await splitDataUrl(node.metadata.content, params);
             const gap = 16;
-            const cellWidth = node.width / params.columns;
-            const cellHeight = node.height / params.rows;
+            const columns = Math.max(1, ...pieces.map((piece) => piece.column + 1));
+            const rows = Math.max(1, ...pieces.map((piece) => piece.row + 1));
+            const sourceColumnWidths = Array.from({ length: columns }, (_, column) => pieces.find((piece) => piece.column === column)?.width || 1);
+            const sourceRowHeights = Array.from({ length: rows }, (_, row) => pieces.find((piece) => piece.row === row)?.height || 1);
+            const sourceWidth = sourceColumnWidths.reduce((sum, width) => sum + width, 0) || 1;
+            const sourceHeight = sourceRowHeights.reduce((sum, height) => sum + height, 0) || 1;
+            const cellWidths = sourceColumnWidths.map((width) => (width / sourceWidth) * node.width);
+            const cellHeights = sourceRowHeights.map((height) => (height / sourceHeight) * node.height);
+            const columnOffsets = cellWidths.map((_, column) => cellWidths.slice(0, column).reduce((sum, width) => sum + width, 0) + column * gap);
+            const rowOffsets = cellHeights.map((_, row) => cellHeights.slice(0, row).reduce((sum, height) => sum + height, 0) + row * gap);
             const startX = node.position.x + node.width + 96;
             const startY = node.position.y;
             const childNodes = await Promise.all(
@@ -1726,9 +1734,9 @@ function InfiniteCanvasPage() {
                         id,
                         type: CanvasNodeType.Image,
                         title: `${node.title || "图片"} ${piece.row + 1}-${piece.column + 1}`,
-                        position: { x: startX + piece.column * (cellWidth + gap), y: startY + piece.row * (cellHeight + gap) },
-                        width: cellWidth,
-                        height: cellHeight,
+                        position: { x: startX + columnOffsets[piece.column], y: startY + rowOffsets[piece.row] },
+                        width: cellWidths[piece.column],
+                        height: cellHeights[piece.row],
                         metadata: {
                             ...imageMetadata(image),
                             prompt: node.metadata?.prompt,

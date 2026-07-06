@@ -2,8 +2,6 @@
 
 import { GithubOutlined } from "@ant-design/icons";
 
-import { GitHubLink } from "@/components/layout/github-link";
-
 const MODIFIED_SOURCE_URL = "https://github.com/gulullu/relaybases-canvas";
 const ORIGINAL_SOURCE_URL = "https://github.com/basketikun/infinite-canvas";
 const LICENSE_URL = `${MODIFIED_SOURCE_URL}/blob/main/LICENSE`;
@@ -27,9 +25,6 @@ export function AppLegalFooter() {
                     <a href={LICENSE_URL} target="_blank" rel="noreferrer" className="transition hover:text-stone-700 dark:hover:text-stone-300">
                         AGPL-3.0
                     </a>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                    <GitHubLink href={MODIFIED_SOURCE_URL} title="修改版源码" className="size-5 bg-transparent text-xs text-stone-400 hover:bg-transparent hover:text-stone-700 dark:text-stone-500 dark:hover:bg-transparent dark:hover:text-stone-300" />
                 </div>
             </div>
         </footer>

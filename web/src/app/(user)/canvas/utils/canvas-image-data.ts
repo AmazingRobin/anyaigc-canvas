@@ -26,11 +26,15 @@ export type ImageUpscaleParams = {
 export type ImageSplitParams = {
     rows: number;
     columns: number;
+    horizontalLines?: number[];
+    verticalLines?: number[];
 };
 
 export type ImageSplitPiece = {
     row: number;
     column: number;
+    width: number;
+    height: number;
     dataUrl: string;
 };
 
@@ -47,21 +51,38 @@ export async function cropDataUrl(dataUrl: string, crop?: ImageCropRect) {
 
 export async function splitDataUrl(dataUrl: string, params: ImageSplitParams): Promise<ImageSplitPiece[]> {
     const image = await loadImage(dataUrl);
-    const rows = Math.max(1, Math.floor(params.rows));
-    const columns = Math.max(1, Math.floor(params.columns));
+    const xCuts = buildSplitCuts(params.verticalLines, image.width, params.columns);
+    const yCuts = buildSplitCuts(params.horizontalLines, image.height, params.rows);
     const pieces: ImageSplitPiece[] = [];
 
-    for (let row = 0; row < rows; row += 1) {
-        const sy = Math.floor((row * image.height) / rows);
-        const sh = Math.floor(((row + 1) * image.height) / rows) - sy;
-        for (let column = 0; column < columns; column += 1) {
-            const sx = Math.floor((column * image.width) / columns);
-            const sw = Math.floor(((column + 1) * image.width) / columns) - sx;
-            pieces.push({ row, column, dataUrl: drawCrop(image, sx, sy, sw, sh) });
+    for (let row = 0; row < yCuts.length - 1; row += 1) {
+        const sy = yCuts[row];
+        const sh = yCuts[row + 1] - sy;
+        for (let column = 0; column < xCuts.length - 1; column += 1) {
+            const sx = xCuts[column];
+            const sw = xCuts[column + 1] - sx;
+            pieces.push({ row, column, width: sw, height: sh, dataUrl: drawCrop(image, sx, sy, sw, sh) });
         }
     }
 
     return pieces;
+}
+
+function buildSplitCuts(lines: number[] | undefined, size: number, count: number) {
+    const fallbackCount = Math.max(1, Math.floor(count));
+    if (lines?.length) {
+        const cuts = [0];
+        const innerCuts = lines
+            .map((line) => Math.round(Math.max(0, Math.min(1, line)) * size))
+            .filter((cut) => cut > 0 && cut < size)
+            .sort((a, b) => a - b);
+        for (const cut of innerCuts) {
+            if (cut > cuts[cuts.length - 1]) cuts.push(cut);
+        }
+        if (cuts[cuts.length - 1] !== size) cuts.push(size);
+        if (cuts.length > 1) return cuts;
+    }
+    return Array.from({ length: fallbackCount + 1 }, (_, index) => Math.floor((index * size) / fallbackCount));
 }
 
 export async function transformAngleDataUrl(dataUrl: string, params: ImageAngleTransform) {
