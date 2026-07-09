@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { App } from "antd";
 
 import { useConfigStore } from "@/stores/use-config-store";
-import { normalizeLanguage, useLanguageStore } from "@/stores/use-language-store";
+import { LANGUAGE_STORE_NAME, normalizeLanguage, useLanguageStore } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 
 export function ClientRootInit({ children }: { children: ReactNode }) {
@@ -22,7 +22,17 @@ export function ClientRootInit({ children }: { children: ReactNode }) {
         const theme = searchParams.get("theme");
         if (theme === "light" || theme === "dark") setTheme(theme);
         const language = normalizeLanguage(searchParams.get("lang") || searchParams.get("language") || searchParams.get("locale"));
-        if (language) setLanguage(language);
+        if (language) {
+            setLanguage(language);
+        } else {
+            // URL 未带语言参数时:仅首访(本地无持久化语言偏好)按浏览器语言环境自动切换
+            try {
+                if (!window.localStorage.getItem(LANGUAGE_STORE_NAME)) {
+                    const detected = normalizeLanguage(navigator.language);
+                    if (detected) setLanguage(detected);
+                }
+            } catch {}
+        }
         const hasBaseUrlParam = searchParams.has("baseUrl") || searchParams.has("baseurl");
         const mediaApiKey = searchParams.get("mediaApiKey") || searchParams.get("mediaapikey") || searchParams.get("apiKey") || searchParams.get("apikey");
         const textApiKey = searchParams.get("textApiKey") || searchParams.get("textapikey");
