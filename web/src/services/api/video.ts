@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { getDataUrlByteSize } from "@/lib/image-utils";
 import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
-import { copyRelayBasesPublicMedia, uploadRelayBasesPublicMedia } from "@/services/cloud-sync";
+import { copyRelayBasesPublicMedia, isRelayBasesCanvasPublicMediaUrl, uploadRelayBasesPublicMedia } from "@/services/cloud-sync";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { getImageBlob, imageToDataUrl } from "@/services/image-storage";
 import { boolConfig, buildSeedancePromptText, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceVideoReferenceError, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
@@ -156,7 +156,8 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 
 async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions) {
     const modelName = modelOptionName(model);
-    const images = uniqueReferenceUrls(await Promise.all(references.map((image) => resolveRelayBasesImageUrl(config, image, options))));
+    const compressVeoImages = modelName.startsWith("veo-");
+    const images = uniqueReferenceUrls(await Promise.all(references.map((image) => resolveRelayBasesImageUrl(config, image, compressVeoImages, options))));
     const videos = uniqueReferenceUrls(await Promise.all(videoReferences.map((video) => resolveRelayBasesVideoReferenceUrl(config, video, options))));
     const audios = uniqueReferenceUrls(await Promise.all(audioReferences.map((audio) => resolveRelayBasesAudioReferenceUrl(config, audio, options))));
     const payload: Record<string, unknown> = {
@@ -205,11 +206,18 @@ function uniqueReferenceUrls(values: string[]) {
     });
 }
 
-async function resolveRelayBasesImageUrl(config: AiConfig, image: ReferenceImage, options?: RequestOptions) {
+async function resolveRelayBasesImageUrl(config: AiConfig, image: ReferenceImage, compressForVeo: boolean, options?: RequestOptions) {
     const directUrl = image.url || image.dataUrl || "";
-    if (isPublicMediaUrl(directUrl) || directUrl.startsWith("asset://")) return directUrl;
-    const blob = await readRelayBasesImageBlob(image, directUrl);
-    return uploadRelayBasesReferenceBlob(config, blob, relayBasesReferenceCacheKey("image", image.storageKey, directUrl, blob), image.name || "reference.png", image.type || blob.type || "image/png", options);
+    const relayBasesPublicUrl = isRelayBasesCanvasPublicMediaUrl(directUrl);
+    if (directUrl.startsWith("asset://")) return directUrl;
+    if (isPublicMediaUrl(directUrl) && (!compressForVeo || !relayBasesPublicUrl)) return directUrl;
+
+    const sourceBlob = relayBasesPublicUrl ? await (await fetch(directUrl)).blob() : await readRelayBasesImageBlob(image, directUrl);
+    if (relayBasesPublicUrl && sourceBlob.size <= RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) return directUrl;
+
+    const blob = compressForVeo ? await compressRelayBasesImageBlob(sourceBlob, image.type) : sourceBlob;
+    const cacheKind = compressForVeo ? "image:veo-500kb-v1" : "image";
+    return uploadRelayBasesReferenceBlob(config, blob, relayBasesReferenceCacheKey(cacheKind, image.storageKey, directUrl, blob), relayBasesImageFileName(image.name, blob.type), blob.type || image.type || "image/png", options);
 }
 
 async function resolveRelayBasesVideoReferenceUrl(config: AiConfig, video: ReferenceVideo, options?: RequestOptions) {
@@ -235,6 +243,21 @@ async function readRelayBasesImageBlob(image: ReferenceImage, directUrl: string)
     const dataUrl = await imageToDataUrl(image);
     if (!dataUrl) throw new Error("参考图读取失败，请换一张图片或重新上传");
     return (await fetch(dataUrl)).blob();
+}
+
+async function compressRelayBasesImageBlob(blob: Blob, fallbackType: string) {
+    if (blob.size <= RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) return blob;
+    const source = blob.type.startsWith("image/") ? blob : new Blob([blob], { type: fallbackType.startsWith("image/") ? fallbackType : "image/png" });
+    const compressed = await compressRelayBasesImageDataUrl(await blobToDataUrl(source));
+    const compressedBlob = await (await fetch(compressed)).blob();
+    if (compressedBlob.size > RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) throw new Error("参考图自动压缩后仍超过 VEO 500KB 限制，请换一张更小的图片或降低图片分辨率");
+    return compressedBlob;
+}
+
+function relayBasesImageFileName(value: string, mimeType: string) {
+    const name = value || "reference.png";
+    if (mimeType !== "image/jpeg") return name;
+    return `${name.replace(/\.[^.]+$/, "") || "reference"}.jpg`;
 }
 
 async function readRelayBasesStoredMediaBlob(storageKey: string | undefined, directUrl: string, emptyMessage: string) {
@@ -287,7 +310,7 @@ async function compressRelayBasesImageDataUrl(dataUrl: string) {
     }
 
     if (getDataUrlByteSize(smallest) <= RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) return smallest;
-    throw new Error("参考图压缩后仍超过 VEO 500KB 限制，请换一张更小的图，或使用公网图片 URL");
+    throw new Error("参考图自动压缩后仍超过 VEO 500KB 限制，请换一张更小的图片或降低图片分辨率");
 }
 
 function normalizeRelayBasesDuration(value: string, model: string) {

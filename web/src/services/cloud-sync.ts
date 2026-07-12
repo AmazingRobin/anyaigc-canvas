@@ -231,7 +231,7 @@ function formatCloudSyncBytes(bytes: number) {
     return `${bytes}B`;
 }
 
-function isRelayBasesCanvasPublicMediaUrl(value: string) {
+export function isRelayBasesCanvasPublicMediaUrl(value: string) {
     try {
         const url = new URL(value);
         return url.origin === "https://relaybases.com" && url.pathname.startsWith("/api/canvas-sync/public/");
