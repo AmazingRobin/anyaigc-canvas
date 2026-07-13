@@ -16,6 +16,7 @@ import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
+import { grokImageModelCapability, grokImageRequestError } from "@/lib/relaybases-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
@@ -191,8 +192,10 @@ export default function ImagePage() {
     const [draftHydrated, setDraftHydrated] = useState(false);
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
+    const grokImageCapability = grokImageModelCapability(model);
+    const imageReferenceLimit = grokImageCapability?.maxReferenceImages || IMAGE_REFERENCE_LIMIT;
     const canGenerate = Boolean(prompt.trim());
-    const generationCount = Math.max(1, Math.min(15, Number(config.count) || 1));
+    const generationCount = Math.max(1, Math.min(grokImageCapability?.maxOutputs || 15, Number(config.count) || 1));
     const results = resultsBySession[activeSessionId] || [];
     const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
     const selectedSuccessResults = selectedResults.filter((result) => result.status === "success" && result.image);
@@ -337,7 +340,7 @@ export default function ImagePage() {
     const addReferences = async (files?: FileList | null) => {
         const imageFiles: File[] = [];
         for (const file of Array.from(files || [])) {
-            if (imageFiles.length >= Math.max(0, IMAGE_REFERENCE_LIMIT - references.length)) break;
+            if (imageFiles.length >= Math.max(0, imageReferenceLimit - references.length)) break;
             try {
                 await validateAzureImageEditFile(file, { index: imageFiles.length + references.length + 1 });
                 imageFiles.push(file);
@@ -351,7 +354,7 @@ export default function ImagePage() {
                 return { id: nanoid(), name: file.name, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey };
             }),
         );
-        setReferences((value) => [...value, ...nextReferences].slice(0, IMAGE_REFERENCE_LIMIT));
+        setReferences((value) => [...value, ...nextReferences].slice(0, imageReferenceLimit));
     };
 
     const addReferencesFromClipboard = async () => {
@@ -364,7 +367,7 @@ export default function ImagePage() {
             }
             const validBlobs: Blob[] = [];
             for (const blob of blobs) {
-                if (validBlobs.length >= Math.max(0, IMAGE_REFERENCE_LIMIT - references.length)) break;
+                if (validBlobs.length >= Math.max(0, imageReferenceLimit - references.length)) break;
                 try {
                     await validateAzureImageEditFile(blob, { index: validBlobs.length + references.length + 1 });
                     validBlobs.push(blob);
@@ -379,7 +382,7 @@ export default function ImagePage() {
                     return { id: nanoid(), name: `clipboard-${index + 1}.png`, type: image.mimeType, dataUrl: image.url, storageKey: image.storageKey };
                 }),
             );
-            setReferences((value) => [...value, ...nextReferences].slice(0, IMAGE_REFERENCE_LIMIT));
+            setReferences((value) => [...value, ...nextReferences].slice(0, imageReferenceLimit));
             message.success(`已读取 ${nextReferences.length} 张参考图`);
         } catch {
             message.error("剪切板里没有可读取的图片");
@@ -554,7 +557,7 @@ export default function ImagePage() {
         const stored = await uploadImage(image.dataUrl);
         const reference = { id: nanoid(), name: `result-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey };
         const applyReference = (mode: "append" | "replace") => {
-            setReferences((value) => (mode === "replace" ? [reference] : [reference, ...value]).slice(0, IMAGE_REFERENCE_LIMIT));
+            setReferences((value) => (mode === "replace" ? [reference] : [reference, ...value]).slice(0, imageReferenceLimit));
             message.success(mode === "replace" ? "已替换参考图" : "已加入参考图");
         };
         if (effectiveConfig.referenceEditMode === "ask" && references.length) {
@@ -604,7 +607,7 @@ export default function ImagePage() {
             setPrompt(payload.content);
         } else if (payload.kind === "image") {
             const stored = await uploadImage(payload.dataUrl);
-            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, IMAGE_REFERENCE_LIMIT));
+            setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, imageReferenceLimit));
         } else {
             message.warning("生图工作台只能使用文本或图片素材");
         }
@@ -829,6 +832,11 @@ export default function ImagePage() {
         if (!isAiConfigReady(effectiveConfig, model)) {
             message.warning("请先完成配置");
             openConfigDialog(true);
+            return null;
+        }
+        const grokRequestError = grokImageRequestError(model, references.length);
+        if (grokRequestError) {
+            message.error(grokRequestError);
             return null;
         }
         return { text, config: { ...effectiveConfig, model, count: "1" }, references: [...references] };
@@ -1168,7 +1176,7 @@ export default function ImagePage() {
                                                     </button>
                                                 </div>
                                             ))}
-                                            {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">PNG/JPG · 最多 5 张 · 单张≤50MB</span> : null}
+                                            {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">PNG/JPG · 最多 {imageReferenceLimit} 张 · 单张≤50MB</span> : null}
                                         </div>
                                     </Image.PreviewGroup>
                                     <div className="flex shrink-0 gap-2">

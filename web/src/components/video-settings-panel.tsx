@@ -17,6 +17,7 @@ import {
     seedanceResolutionOptions,
 } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
+import { GROK_VIDEO_ASPECT_RATIOS, GROK_VIDEO_RESOLUTIONS, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { isRelayBasesVideoModel, modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
 
@@ -25,6 +26,15 @@ const relayBasesAspectRatioOptions = [
     { value: "9:16", label: "竖屏", width: 9, height: 16 },
     { value: "1:1", label: "方形", width: 1, height: 1 },
 ];
+
+const grokVideoAspectRatioOptions = GROK_VIDEO_ASPECT_RATIOS.map((value) => ({
+    value,
+    label: value,
+    width: Number(value.split(":")[0]),
+    height: Number(value.split(":")[1]),
+}));
+
+const grokVideoResolutionOptions = GROK_VIDEO_RESOLUTIONS.map((value) => ({ value, label: value }));
 
 const relayBasesVideoResolutionLabels: Record<string, string> = {
     "video-fast-480p": "480p",
@@ -51,10 +61,13 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
     }
 
     const selectedModel = modelOptionName(config.videoModel || config.model);
+    const grokVideo = isGrokImagineVideoModel(selectedModel);
     const timing = relayBasesVideoTiming(selectedModel);
     const seconds = String(normalizeRelayBasesVideoDuration(config.videoSeconds, selectedModel));
-    const aspectRatio = normalizeRelayBasesVideoAspectRatio(config.size);
+    const aspectRatioOptions = grokVideo ? grokVideoAspectRatioOptions : relayBasesAspectRatioOptions;
+    const aspectRatio = grokVideo ? normalizeGrokVideoAspectRatio(config.size) : normalizeRelayBasesVideoAspectRatio(config.size);
     const resolutionLabel = relayBasesVideoResolutionLabel(selectedModel);
+    const resolution = normalizeGrokVideoResolution(config.vquality);
     const videoCallMode = normalizeVideoCallMode(config.videoCallMode);
     const showCallMode = isRelayBasesVideoModel(config.videoModel || config.model);
     const isPresetSecond = timing.options.some((value) => seconds === String(value));
@@ -63,7 +76,13 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
                 {showTitle ? <div className="text-lg font-semibold">视频设置</div> : null}
-                {showCallMode ? (
+                {grokVideo ? (
+                    <SettingGroup title="调用方式" color={theme.node.muted}>
+                        <div className="rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
+                            异步任务 · 不加收 4 倍费用
+                        </div>
+                    </SettingGroup>
+                ) : showCallMode ? (
                     <SettingGroup title="调用方式" color={theme.node.muted}>
                         <div className="grid grid-cols-2 gap-2.5">
                             <OptionPill selected={videoCallMode === "sync"} theme={theme} onClick={() => onConfigChange("videoCallMode", "sync")}>
@@ -76,16 +95,26 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     </SettingGroup>
                 ) : null}
                 <SettingGroup title="输出规格" color={theme.node.muted}>
-                    <div className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
-                        <span className="opacity-65">清晰度由模型固定</span>
-                        <span className="rounded-full px-2 py-1 font-semibold" style={{ background: theme.node.fill }}>
-                            {resolutionLabel}
-                        </span>
-                    </div>
+                    {grokVideo ? (
+                        <div className="grid grid-cols-3 gap-2.5">
+                            {grokVideoResolutionOptions.map((item) => (
+                                <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>
+                                    {item.label}
+                                </OptionPill>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
+                            <span className="opacity-65">清晰度由模型固定</span>
+                            <span className="rounded-full px-2 py-1 font-semibold" style={{ background: theme.node.fill }}>
+                                {resolutionLabel}
+                            </span>
+                        </div>
+                    )}
                 </SettingGroup>
                 <SettingGroup title="画面比例" color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
-                        {relayBasesAspectRatioOptions.map((item) => (
+                        {aspectRatioOptions.map((item) => (
                             <button
                                 key={item.value}
                                 type="button"
@@ -183,11 +212,13 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
 }
 
 export function videoResolutionLabel(value: string, model?: string) {
+    if (model && isGrokImagineVideoModel(model)) return normalizeGrokVideoResolution(value);
     if (model && isRelayBasesVideoModel(model)) return relayBasesVideoResolutionLabel(modelOptionName(model));
     return `${normalizeVideoResolutionValue(value)}p`;
 }
 
 export function videoSizeLabel(value: string, model?: string) {
+    if (model && isGrokImagineVideoModel(model)) return normalizeGrokVideoAspectRatio(value);
     if (model && isRelayBasesVideoModel(model)) return relayBasesAspectRatioLabel(value);
     const ratio = normalizeSeedanceRatio(value);
     if (value === "adaptive" || value === "auto") return "自适应";

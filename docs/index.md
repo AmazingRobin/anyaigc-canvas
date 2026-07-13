@@ -33,6 +33,7 @@
 ## 项目进度
 
 - [更新日志](/docs/progress/changelog)
+- [Grok Imagine 媒体模型接入开发计划](/docs/progress/grok-media-integration-plan)
 - [待测试](/docs/progress/pending-test)
 - [TODO](/docs/progress/todo)
 

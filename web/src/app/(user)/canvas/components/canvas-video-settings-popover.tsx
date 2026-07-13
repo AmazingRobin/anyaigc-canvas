@@ -7,8 +7,9 @@ import { Button } from "antd";
 
 import { VideoSettingsPanel, videoResolutionLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { isGrokImagineVideoModel } from "@/lib/relaybases-media-models";
 import { useThemeStore } from "@/stores/use-theme-store";
-import { normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
+import { modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
 
 type CanvasVideoSettingsPopoverProps = {
     config: AiConfig;
@@ -23,7 +24,8 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClass
     const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
-    const callModeLabel = normalizeVideoCallMode(config.videoCallMode) === "async" ? "异步·4倍扣费" : "同步";
+    const selectedModel = modelOptionName(config.videoModel || config.model);
+    const callModeLabel = isGrokImagineVideoModel(selectedModel) ? "异步" : normalizeVideoCallMode(config.videoCallMode) === "async" ? "异步·4倍扣费" : "同步";
 
     useEffect(() => {
         if (!open) return;

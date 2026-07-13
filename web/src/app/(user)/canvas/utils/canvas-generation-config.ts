@@ -1,8 +1,14 @@
+import { isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
 import { defaultConfig, normalizeModelOptionValue, normalizeVideoCallMode, selectableModelsByCapability, type AiConfig } from "@/stores/use-config-store";
 import type { CanvasGenerationMode, CanvasNodeData } from "../types";
 
 export function buildCanvasGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasGenerationMode): AiConfig {
     const selectedModel = resolveModeModel(config, node?.metadata?.model, mode);
+    const grokVideo = mode === "video" && isGrokImagineVideoModel(selectedModel);
+    const storedSize = node?.metadata?.size || config.size || defaultConfig.size;
+    const storedSeconds = node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds;
+    const storedResolution = node?.metadata?.vquality || config.vquality || defaultConfig.vquality;
     return {
         ...config,
         model: selectedModel,
@@ -11,10 +17,10 @@ export function buildCanvasGenerationConfig(config: AiConfig, node: CanvasNodeDa
         textModel: mode === "text" ? selectedModel : config.textModel,
         audioModel: mode === "audio" ? selectedModel : config.audioModel,
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
-        size: node?.metadata?.size || config.size || defaultConfig.size,
-        videoSeconds: node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds,
-        videoCallMode: normalizeVideoCallMode(node?.metadata?.videoCallMode || config.videoCallMode),
-        vquality: node?.metadata?.vquality || config.vquality || defaultConfig.vquality,
+        size: grokVideo ? normalizeGrokVideoAspectRatio(storedSize) : storedSize,
+        videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(storedSeconds, selectedModel)) : storedSeconds,
+        videoCallMode: grokVideo ? "async" : normalizeVideoCallMode(node?.metadata?.videoCallMode || config.videoCallMode),
+        vquality: grokVideo ? normalizeGrokVideoResolution(storedResolution) : storedResolution,
         videoGenerateAudio: node?.metadata?.generateAudio || config.videoGenerateAudio || defaultConfig.videoGenerateAudio,
         videoWatermark: node?.metadata?.watermark || config.videoWatermark || defaultConfig.videoWatermark,
         audioVoice: node?.metadata?.audioVoice || config.audioVoice || defaultConfig.audioVoice,

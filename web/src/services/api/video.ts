@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { getDataUrlByteSize } from "@/lib/image-utils";
+import { grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
 import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
 import { copyRelayBasesPublicMedia, isRelayBasesCanvasPublicMediaUrl, uploadRelayBasesPublicMedia } from "@/services/cloud-sync";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
@@ -143,8 +144,9 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
     const body = await buildRelayBasesVideoPayload(config, model, prompt, references, videoReferences, audioReferences, options);
     try {
         const isRelayBasesVideo = isRelayBasesVideoModel(model);
-        const mode = isRelayBasesVideo ? config.videoCallMode || "sync" : undefined;
-        const path = isRelayBasesVideo && mode !== "async" ? "/video/generations" : "/videos";
+        const grokVideo = isGrokImagineVideoModel(model);
+        const mode = grokVideo ? "async" : isRelayBasesVideo ? config.videoCallMode || "sync" : undefined;
+        const path = grokVideo || !isRelayBasesVideo || mode === "async" ? "/videos" : "/video/generations";
         const created = unwrapVideoResponse((await axios.post<ApiVideoResponse>(aiApiUrl(config, path), body, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data);
         const id = created.task_id || created.id;
         if (!id) throw new Error("视频接口没有返回任务 ID");
@@ -156,6 +158,8 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 
 async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions) {
     const modelName = modelOptionName(model);
+    const grokRequestError = grokVideoRequestError(modelName, references.length, videoReferences.length, audioReferences.length);
+    if (grokRequestError) throw new Error(grokRequestError);
     const compressVeoImages = modelName.startsWith("veo-");
     const images = uniqueReferenceUrls(await Promise.all(references.map((image) => resolveRelayBasesImageUrl(config, image, compressVeoImages, options))));
     const videos = uniqueReferenceUrls(await Promise.all(videoReferences.map((video) => resolveRelayBasesVideoReferenceUrl(config, video, options))));
@@ -181,6 +185,14 @@ async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prom
 
     if (modelName === "veo-3-1") {
         if (images.length) payload.images = images.slice(0, 2);
+        return payload;
+    }
+
+    if (isGrokImagineVideoModel(modelName)) {
+        if (images.length !== 1) throw new Error("grok-imagine-video-1.5 的参考图读取失败，请重新添加 1 张有效图片");
+        payload.images = [images[0]];
+        payload.aspect_ratio = normalizeGrokVideoAspectRatio(config.size);
+        payload.resolution = normalizeGrokVideoResolution(config.vquality);
         return payload;
     }
 
@@ -340,9 +352,7 @@ function readRelayBasesResultUrl(video: VideoResponse) {
 }
 
 function videoTaskStatuses(video: VideoResponse) {
-    return [video.task_status, video.status, video.state]
-        .map((value) => (typeof value === "string" ? value.trim().toLowerCase() : ""))
-        .filter(Boolean);
+    return [video.task_status, video.status, video.state].map((value) => (typeof value === "string" ? value.trim().toLowerCase() : "")).filter(Boolean);
 }
 
 function isOpenAIVideoTaskCompleted(video: VideoResponse) {
@@ -377,16 +387,29 @@ function readOpenAIVideoTaskError(video: VideoResponse) {
 
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     try {
-        const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${task.id}`), { headers: aiHeaders(config), signal: options?.signal })).data);
+        const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${encodeURIComponent(task.id)}`), { headers: aiHeaders(config), signal: options?.signal })).data);
         if (isOpenAIVideoTaskCompleted(video)) {
             const url = readRelayBasesResultUrl(video);
-            if (!url) return { status: "failed", error: "视频任务完成但没有返回结果 URL" };
-            return { status: "completed", result: await videoResultFromUrl(url, options) };
+            return { status: "completed", result: url ? await videoResultFromUrl(url, options) : await videoResultFromContent(config, task.id, options) };
         }
         if (isOpenAIVideoTaskFailed(video)) return { status: "failed", error: readOpenAIVideoTaskError(video) };
         return { status: "pending" };
     } catch (error) {
         throw new Error(readAxiosError(error, "视频任务查询失败"));
+    }
+}
+
+async function videoResultFromContent(config: AiConfig, taskId: string, options?: RequestOptions): Promise<VideoGenerationResult> {
+    try {
+        const response = await axios.get<Blob>(aiApiUrl(config, `/videos/${encodeURIComponent(taskId)}/content`), {
+            headers: aiHeaders(config),
+            responseType: "blob",
+            signal: options?.signal,
+        });
+        await assertVideoBlob(response.data);
+        return { blob: response.data };
+    } catch (error) {
+        throw new Error(readAxiosError(error, "视频任务完成但结果下载失败"));
     }
 }
 

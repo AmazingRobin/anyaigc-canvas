@@ -17,6 +17,7 @@ import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolution
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
+import { GROK_VIDEO_ASPECT_RATIOS, GROK_VIDEO_RESOLUTIONS, grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { createZip } from "@/lib/zip";
@@ -123,6 +124,8 @@ const RELAYBASES_VIDEO_RATIO_OPTIONS = [
     { value: "9:16", label: "竖屏" },
     { value: "1:1", label: "方形" },
 ];
+const GROK_VIDEO_RATIO_OPTIONS = GROK_VIDEO_ASPECT_RATIOS.map((value) => ({ value, label: value }));
+const GROK_VIDEO_RESOLUTION_OPTIONS = GROK_VIDEO_RESOLUTIONS.map((value) => ({ value, label: value }));
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
@@ -170,12 +173,13 @@ export default function VideoPage() {
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const modelName = modelOptionName(model);
     const seedanceVideo = isSeedanceVideoConfig({ ...effectiveConfig, model });
+    const grokVideo = isGrokImagineVideoModel(modelName);
     const referenceLimits = videoReferenceLimits(seedanceVideo, modelName);
     const relayBasesVideo = isRelayBasesVideoModel(model);
-    const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
-    const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : "fixed";
+    const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : grokVideo ? normalizeGrokVideoAspectRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
+    const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : grokVideo ? normalizeGrokVideoResolution(effectiveConfig.vquality) : "fixed";
     const secondsValue = seedanceVideo ? String(normalizeSeedanceDuration(effectiveConfig.videoSeconds)) : String(normalizeRelayBasesVideoDuration(effectiveConfig.videoSeconds, modelName));
-    const ratioOptions = videoRatioOptions(seedanceVideo);
+    const ratioOptions = videoRatioOptions(seedanceVideo, modelName);
     const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, videoResolutionLabel(effectiveConfig.vquality, model));
     const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, secondsValue);
     const secondsTiming = seedanceVideo ? { min: 4, max: 15, defaultValue: 5, fixed: false } : relayBasesVideoTiming(modelName);
@@ -497,6 +501,11 @@ export default function VideoPage() {
                 message.error(`${videoReferenceError}。${seedanceVideoReferenceHint}`);
                 return null;
             }
+        }
+        const grokRequestError = grokVideoRequestError(modelName, references.length, videoReferences.length, audioReferences.length);
+        if (grokRequestError) {
+            message.error(grokRequestError);
+            return null;
         }
         return {
             text,
@@ -1072,7 +1081,7 @@ export default function VideoPage() {
                                 <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
                                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                                         <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
-                                        {relayBasesVideo ? <VideoComposerSelect label="模式" value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
+                                        {grokVideo ? <VideoComposerMetric label="模式" value="异步" /> : relayBasesVideo ? <VideoComposerSelect label="模式" value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
                                         <VideoComposerSelect label="比例" value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
                                         {resolutionOptions.length > 1 ? <VideoComposerSelect label="清晰度" value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label="清晰度" value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model)} />}
                                         {secondsTiming.fixed ? (
@@ -1327,6 +1336,7 @@ function videoReferenceLimits(seedance: boolean, model: string): VideoReferenceL
         audioMaxBytes: SEEDANCE_REFERENCE_LIMITS.audioMaxBytes,
     };
     if (seedance) return { ...SEEDANCE_REFERENCE_LIMITS };
+    if (isGrokImagineVideoModel(value)) return { ...base, images: 1, videos: 0, audios: 0 };
     if (value === "veo-omni-flash-video-edit") return { ...base, images: 5, videos: 1, audios: 0 };
     if (value === "veo-omni-flash") return { ...base, images: 5, videos: 0, audios: 0 };
     if (value === "veo-3-1") return { ...base, images: 2, videos: 0, audios: 0 };
@@ -1357,6 +1367,13 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
             image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
             video: `MP4/MOV · 2-15s · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
             audio: `MP3/WAV · 2-15s · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
+        };
+    }
+    if (isGrokImagineVideoModel(value)) {
+        return {
+            image: `必须且只能使用 1 张 PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: "不支持",
+            audio: "不支持",
         };
     }
     if (value === "veo-omni-flash-video-edit") {
@@ -1550,12 +1567,14 @@ function VideoReferenceStrip({ title, detail, empty, children }: { title: string
     );
 }
 
-function videoRatioOptions(seedance: boolean) {
+function videoRatioOptions(seedance: boolean, model: string) {
+    if (isGrokImagineVideoModel(model)) return GROK_VIDEO_RATIO_OPTIONS;
     if (!seedance) return RELAYBASES_VIDEO_RATIO_OPTIONS;
     return seedanceRatioOptions.map((item) => ({ value: item.value, label: item.value === "adaptive" ? item.label : `${item.label} ${item.value}` }));
 }
 
 function videoResolutionOptions(seedance: boolean, model: string, fixedLabel: string) {
+    if (isGrokImagineVideoModel(model)) return GROK_VIDEO_RESOLUTION_OPTIONS;
     if (!seedance) return [{ value: "fixed", label: fixedLabel }];
     return seedanceResolutionOptions.map((item) => ({ value: item.value, label: item.label, disabled: item.value === "1080p" && isSeedanceFastModel(model) }));
 }
@@ -2224,7 +2243,7 @@ function LogCard({
                         <HistoryPill label="模型" className="max-w-full">
                             {log.model || "默认"}
                         </HistoryPill>
-                        <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode)}</HistoryPill>
+                        <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode, log.model)}</HistoryPill>
                         <HistoryPill label="比例">{sizeLabel}</HistoryPill>
                         <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
                     </div>
@@ -2923,14 +2942,15 @@ function dedupeVideos(videos: GeneratedVideo[]) {
 
 function buildVideoConfig(config: AiConfig, model: string): AiConfig {
     const seedance = isSeedanceVideoConfig({ ...config, model });
+    const grokVideo = isGrokImagineVideoModel(modelOptionName(model));
     return {
         ...config,
         model,
         videoModel: model,
-        videoCallMode: normalizeVideoCallMode(config.videoCallMode),
-        size: seedance ? normalizeSeedanceRatio(config.size) : normalizeVideoSize(config.size),
-        videoSeconds: normalizeVideoSeconds(config.videoSeconds),
-        vquality: normalizeResolution(config.vquality),
+        videoCallMode: grokVideo ? "async" : normalizeVideoCallMode(config.videoCallMode),
+        size: seedance ? normalizeSeedanceRatio(config.size) : grokVideo ? normalizeGrokVideoAspectRatio(config.size) : normalizeVideoSize(config.size),
+        videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(config.videoSeconds, modelOptionName(model))) : normalizeVideoSeconds(config.videoSeconds),
+        vquality: grokVideo ? normalizeGrokVideoResolution(config.vquality) : normalizeResolution(config.vquality),
         videoGenerateAudio: String(boolConfig(config.videoGenerateAudio, true)),
         videoWatermark: String(boolConfig(config.videoWatermark, false)),
     };
@@ -3008,7 +3028,8 @@ function updateVideoResultById(results: GenerationResult[], id: string, next: Pa
     return matched ? updated : [...updated, { id, status: next.status || "pending", ...next } as GenerationResult];
 }
 
-function videoModeLabel(value: AiConfig["videoCallMode"] | undefined) {
+function videoModeLabel(value: AiConfig["videoCallMode"] | undefined, model = "") {
+    if (isGrokImagineVideoModel(modelOptionName(model))) return "异步";
     return normalizeVideoCallMode(value) === "async" ? "异步·4倍扣费" : "同步";
 }
 
