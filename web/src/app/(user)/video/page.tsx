@@ -19,7 +19,7 @@ import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedan
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
 import { GROK_VIDEO_RESOLUTIONS, grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
 import { useI18n } from "@/lib/i18n";
-import { workbenchErrorText, workbenchFormatDate, workbenchText, workbenchTrashExpiry, type WorkbenchLanguage } from "@/lib/i18n-workbench";
+import { workbenchErrorText, workbenchFormatDate, workbenchPinLabel, workbenchText, workbenchTrashExpiry, workbenchTrashLabel, type WorkbenchLanguage } from "@/lib/i18n-workbench";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { createZip } from "@/lib/zip";
@@ -1936,6 +1936,7 @@ function LogPanel({
     onTogglePin: (log: GenerationLog) => void | Promise<void>;
     onPreviewLog: (log: GenerationLog) => void;
 }) {
+    const { language } = useI18n();
     const [searchQuery, setSearchQuery] = useState("");
     const filteredLogs = sortWorkbenchHistoryItems(logs.filter((log) => matchesWorkbenchPromptSearch(log.prompt || log.title || "", searchQuery)));
     const filteredLogIds = filteredLogs.map((log) => log.id);
@@ -1995,7 +1996,7 @@ function LogPanel({
                         删除
                     </Button>
                     <Button size="small" icon={<Trash2 className="size-3.5" />} onClick={onOpenTrash}>
-                        回收站{trashCount ? ` ${trashCount}` : ""}
+                        {workbenchTrashLabel(trashCount, language)}
                     </Button>
                 </div>
             </div>
@@ -2008,6 +2009,7 @@ function LogPanel({
                             log={log}
                             selected={selectedLogIds.includes(log.id)}
                             active={activeLogId === log.id}
+                            language={language}
                             onSelectedChange={(checked) => onSelectedLogIdsChange(checked ? [...selectedLogIds, log.id] : selectedLogIds.filter((id) => id !== log.id))}
                             onTogglePin={() => void onTogglePin(log)}
                             onClick={() => onPreviewLog(log)}
@@ -2201,6 +2203,7 @@ function LogCard({
     log,
     selected,
     active,
+    language,
     onSelectedChange,
     onTogglePin,
     onClick,
@@ -2208,6 +2211,7 @@ function LogCard({
     log: GenerationLog;
     selected: boolean;
     active: boolean;
+    language: WorkbenchLanguage;
     onSelectedChange: (checked: boolean) => void;
     onTogglePin: () => void;
     onClick: () => void;
@@ -2222,6 +2226,7 @@ function LogCard({
     const pendingCount = log.status === "生成中" ? 1 : 0;
     const requestCount = Math.max(1, videos.length + failCount + pendingCount);
     const coverVideo = log.video || videos[videos.length - 1];
+    const pinLabel = workbenchPinLabel(Boolean(log.pinnedAt), language);
 
     return (
         <div
@@ -2235,11 +2240,11 @@ function LogCard({
                 onClick();
             }}
         >
-            <Tooltip title={workbenchText(log.pinnedAt ? "取消置顶" : "置顶")}>
+            <Tooltip title={pinLabel}>
                 <Button
                     type="text"
                     size="small"
-                    aria-label={workbenchText(log.pinnedAt ? "取消置顶" : "置顶")}
+                    aria-label={pinLabel}
                     className={`!absolute !right-3 !top-12 z-10 !inline-grid !size-7 !place-items-center !rounded-full !border !p-0 !shadow-[0_2px_7px_rgba(15,23,42,0.06)] !backdrop-blur-md [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!border-stone-300/60 !bg-white/80 !text-stone-700 dark:!border-stone-600/60 dark:!bg-stone-950/75 dark:!text-stone-200" : "!border-stone-200/60 !bg-white/40 !text-stone-400 !opacity-[0.68] hover:!bg-white/70 hover:!text-stone-700 dark:!border-white/10 dark:!bg-stone-950/40 dark:!text-stone-500 dark:hover:!bg-stone-950/70 dark:hover:!text-stone-200"}`}
                     icon={
                         <span className={`grid size-3.5 place-items-center rounded-[4px] border transition ${log.pinnedAt ? "border-stone-400/50 bg-stone-200/70 text-stone-700 dark:border-stone-500/50 dark:bg-stone-700/60 dark:text-stone-100" : "border-current/35 bg-transparent"}`}>

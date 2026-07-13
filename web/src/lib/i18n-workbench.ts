@@ -15,6 +15,8 @@ export const workbenchZhToEn = {
     "删除选中": "Delete selected",
     "下载选中": "Download selected",
     "回收站": "Trash",
+    "置顶": "Pin",
+    "取消置顶": "Unpin",
     "当前会话": "Current session",
     "历史记录": "History",
     "默认": "Default",
@@ -231,6 +233,17 @@ function currentLanguage(language?: WorkbenchLanguage): WorkbenchLanguage {
 export function workbenchText(zh: string, en?: string, language?: WorkbenchLanguage): string {
     if (currentLanguage(language) !== "en") return zh;
     return en ?? workbenchZhToEn[zh as keyof typeof workbenchZhToEn] ?? zh;
+}
+
+/** Formats the persisted-history trash button, whose count makes it a dynamic string. */
+export function workbenchTrashLabel(count: number, language?: WorkbenchLanguage): string {
+    const label = workbenchText("回收站", "Trash", language);
+    return count > 0 ? `${label} ${count}` : label;
+}
+
+/** Keeps the visible tooltip and accessibility label in the active language. */
+export function workbenchPinLabel(pinned: boolean, language?: WorkbenchLanguage): string {
+    return pinned ? workbenchText("取消置顶", "Unpin", language) : workbenchText("置顶", "Pin", language);
 }
 
 function localizedKnownWorkbenchBase(value: string, language: WorkbenchLanguage) {
