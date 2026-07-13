@@ -276,13 +276,13 @@ export function AppConfigModal() {
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="grid content-start gap-3">
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
-                                            <Form.Item label="媒体 API Key" extra={`用于图片和视频生成。请在主站选择 ${RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP} 分组创建媒体 Key；普通异步图片和异步视频任务按 4 倍扣费，Grok 视频仅支持异步且不加收 4 倍费用。`} className="mb-3">
+                                            <Form.Item label="媒体 API Key" extra={language === "en" ? `Used for image and video generation. Create the media key from the ${RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP} group on RelayBases. Regular async image and video tasks cost x4; Grok video is async-only with no x4 surcharge.` : `用于图片和视频生成。请在主站选择 ${RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP} 分组创建媒体 Key；普通异步图片和异步视频任务按 4 倍扣费，Grok 视频仅支持异步且不加收 4 倍费用。`} className="mb-3">
                                                 <Input.Password value={config.mediaApiKey} allowClear autoComplete="new-password" onChange={(event) => updateConfig("mediaApiKey", event.target.value)} placeholder="sk-..." />
                                             </Form.Item>
                                             <div className="flex flex-wrap gap-2 text-xs">
                                                 <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-100">生图使用 media 分组</span>
                                                 <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">同步图默认 gpt-image-2</span>
-                                                <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">普通异步任务·4倍；Grok 视频除外</span>
+                                                <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">{language === "en" ? "Regular async tasks cost x4; Grok video excluded" : "普通异步任务·4倍；Grok 视频除外"}</span>
                                             </div>
                                         </div>
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
@@ -305,7 +305,7 @@ export function AppConfigModal() {
                                         </div>
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
                                             <div className="font-semibold">视频模型</div>
-                                            <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">普通视频模型默认同步调用，也可切换异步·4 倍扣费；grok-imagine-video-1.5 固定异步且不加收 4 倍费用。</div>
+                                            <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">{language === "en" ? "Regular video models use sync calls by default and can switch to async at x4 cost. grok-imagine-video-1.5 is fixed to async with no x4 surcharge." : "普通视频模型默认同步调用，也可切换异步·4 倍扣费；grok-imagine-video-1.5 固定异步且不加收 4 倍费用。"}</div>
                                             <div className="mt-2 flex flex-wrap gap-1.5">
                                                 {RELAYBASES_VIDEO_MODELS.map((model) => (
                                                     <span key={model} className="rounded-md bg-stone-100 px-2 py-1 font-mono text-xs dark:bg-stone-900">
@@ -364,7 +364,7 @@ export function AppConfigModal() {
                             <Form layout="vertical" requiredMark={false}>
                                 <div className="mb-4 rounded-lg border border-stone-200 p-3 dark:border-stone-800">
                                     <div className="text-sm font-semibold">默认模型</div>
-                                    <div className="mt-1 text-xs leading-5 text-stone-500">生图默认使用同步接口；普通视频模型默认同步，按需可切换异步·4倍扣费；Grok 视频固定异步且不加收 4 倍费用。</div>
+                                    <div className="mt-1 text-xs leading-5 text-stone-500">{language === "en" ? "Image generation uses sync endpoints by default. Regular video models default to sync and can switch to async at x4 cost. Grok video is fixed to async with no x4 surcharge." : "生图默认使用同步接口；普通视频模型默认同步，按需可切换异步·4倍扣费；Grok 视频固定异步且不加收 4 倍费用。"}</div>
                                 </div>
                                 <div className="grid gap-4 md:grid-cols-3">
                                     {modelGroups.map((group) => (
@@ -375,7 +375,7 @@ export function AppConfigModal() {
                                 </div>
                                 <Form.Item label="默认视频调用方式" className="mt-4 mb-0">
                                     {grokVideoSelected ? (
-                                        <div className="text-sm text-stone-600 dark:text-stone-300">异步任务 · 不加收 4 倍费用</div>
+                                        <div className="text-sm text-stone-600 dark:text-stone-300">{language === "en" ? "Async Task · no x4 surcharge" : "异步任务 · 不加收 4 倍费用"}</div>
                                     ) : (
                                         <Segmented
                                             value={config.videoCallMode}

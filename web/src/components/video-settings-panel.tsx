@@ -17,7 +17,7 @@ import {
     seedanceResolutionOptions,
 } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
-import { GROK_VIDEO_ASPECT_RATIOS, GROK_VIDEO_RESOLUTIONS, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import { GROK_VIDEO_RESOLUTIONS, isGrokImagineVideoModel, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { isRelayBasesVideoModel, modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
 
@@ -26,13 +26,6 @@ const relayBasesAspectRatioOptions = [
     { value: "9:16", label: "竖屏", width: 9, height: 16 },
     { value: "1:1", label: "方形", width: 1, height: 1 },
 ];
-
-const grokVideoAspectRatioOptions = GROK_VIDEO_ASPECT_RATIOS.map((value) => ({
-    value,
-    label: value,
-    width: Number(value.split(":")[0]),
-    height: Number(value.split(":")[1]),
-}));
 
 const grokVideoResolutionOptions = GROK_VIDEO_RESOLUTIONS.map((value) => ({ value, label: value }));
 
@@ -64,8 +57,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const grokVideo = isGrokImagineVideoModel(selectedModel);
     const timing = relayBasesVideoTiming(selectedModel);
     const seconds = String(normalizeRelayBasesVideoDuration(config.videoSeconds, selectedModel));
-    const aspectRatioOptions = grokVideo ? grokVideoAspectRatioOptions : relayBasesAspectRatioOptions;
-    const aspectRatio = grokVideo ? normalizeGrokVideoAspectRatio(config.size) : normalizeRelayBasesVideoAspectRatio(config.size);
+    const aspectRatio = normalizeRelayBasesVideoAspectRatio(config.size);
     const resolutionLabel = relayBasesVideoResolutionLabel(selectedModel);
     const resolution = normalizeGrokVideoResolution(config.vquality);
     const videoCallMode = normalizeVideoCallMode(config.videoCallMode);
@@ -114,7 +106,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 </SettingGroup>
                 <SettingGroup title="画面比例" color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
-                        {aspectRatioOptions.map((item) => (
+                        {relayBasesAspectRatioOptions.map((item) => (
                             <button
                                 key={item.value}
                                 type="button"
@@ -218,7 +210,7 @@ export function videoResolutionLabel(value: string, model?: string) {
 }
 
 export function videoSizeLabel(value: string, model?: string) {
-    if (model && isGrokImagineVideoModel(model)) return normalizeGrokVideoAspectRatio(value);
+    if (model && isGrokImagineVideoModel(model)) return relayBasesAspectRatioLabel(value);
     if (model && isRelayBasesVideoModel(model)) return relayBasesAspectRatioLabel(value);
     const ratio = normalizeSeedanceRatio(value);
     if (value === "adaptive" || value === "auto") return "自适应";

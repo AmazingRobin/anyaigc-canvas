@@ -17,7 +17,8 @@ import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolution
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
-import { GROK_VIDEO_ASPECT_RATIOS, GROK_VIDEO_RESOLUTIONS, grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import { GROK_VIDEO_RESOLUTIONS, grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import { useI18n } from "@/lib/i18n";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { createZip } from "@/lib/zip";
@@ -124,12 +125,12 @@ const RELAYBASES_VIDEO_RATIO_OPTIONS = [
     { value: "9:16", label: "竖屏" },
     { value: "1:1", label: "方形" },
 ];
-const GROK_VIDEO_RATIO_OPTIONS = GROK_VIDEO_ASPECT_RATIOS.map((value) => ({ value, label: value }));
 const GROK_VIDEO_RESOLUTION_OPTIONS = GROK_VIDEO_RESOLUTIONS.map((value) => ({ value, label: value }));
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
     const { message, modal } = App.useApp();
+    const { language } = useI18n();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const referencePopoverRef = useRef<HTMLDivElement>(null);
     const referencePopoverDesktopPanelRef = useRef<HTMLDivElement>(null);
@@ -176,10 +177,10 @@ export default function VideoPage() {
     const grokVideo = isGrokImagineVideoModel(modelName);
     const referenceLimits = videoReferenceLimits(seedanceVideo, modelName);
     const relayBasesVideo = isRelayBasesVideoModel(model);
-    const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : grokVideo ? normalizeGrokVideoAspectRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
+    const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
     const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : grokVideo ? normalizeGrokVideoResolution(effectiveConfig.vquality) : "fixed";
     const secondsValue = seedanceVideo ? String(normalizeSeedanceDuration(effectiveConfig.videoSeconds)) : String(normalizeRelayBasesVideoDuration(effectiveConfig.videoSeconds, modelName));
-    const ratioOptions = videoRatioOptions(seedanceVideo, modelName);
+    const ratioOptions = videoRatioOptions(seedanceVideo);
     const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, videoResolutionLabel(effectiveConfig.vquality, model));
     const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, secondsValue);
     const secondsTiming = seedanceVideo ? { min: 4, max: 15, defaultValue: 5, fixed: false } : relayBasesVideoTiming(modelName);
@@ -502,7 +503,7 @@ export default function VideoPage() {
                 return null;
             }
         }
-        const grokRequestError = grokVideoRequestError(modelName, references.length, videoReferences.length, audioReferences.length);
+        const grokRequestError = grokVideoRequestError(modelName, references.length, videoReferences.length, audioReferences.length, language);
         if (grokRequestError) {
             message.error(grokRequestError);
             return null;
@@ -921,6 +922,7 @@ export default function VideoPage() {
 
     const renderReferencePanel = () => (
         <VideoReferencePanel
+            language={language}
             seedance={seedanceVideo}
             modelName={modelName}
             limits={referenceLimits}
@@ -1066,9 +1068,9 @@ export default function VideoPage() {
                                         aria-expanded={referencePopoverOpen}
                                     >
                                         <FolderPlus className="size-3.5 shrink-0 text-stone-500 dark:text-stone-400" />
-                                        <span className="shrink-0 text-stone-700 dark:text-stone-200">参考素材</span>
-                                        {videoReferenceSummary(references, videoReferences, audioReferences) ? (
-                                            <span className="min-w-0 truncate text-xs text-stone-500 dark:text-stone-400">{videoReferenceSummary(references, videoReferences, audioReferences)}</span>
+                                        <span className="shrink-0 text-stone-700 dark:text-stone-200">{language === "en" ? "References" : "参考素材"}</span>
+                                        {videoReferenceSummary(references, videoReferences, audioReferences, language) ? (
+                                            <span className="min-w-0 truncate text-xs text-stone-500 dark:text-stone-400">{videoReferenceSummary(references, videoReferences, audioReferences, language)}</span>
                                         ) : null}
                                     </button>
                                     {referencePopoverOpen ? (
@@ -1348,19 +1350,24 @@ function formatReferenceLimit(bytes: number) {
     return `${Math.round(bytes / 1024 / 1024)}MB`;
 }
 
-function videoReferenceSummary(images: ReferenceImage[], videos: ReferenceVideo[], audios: ReferenceAudio[]) {
+function videoReferenceSummary(images: ReferenceImage[], videos: ReferenceVideo[], audios: ReferenceAudio[], language: "zh" | "en" = "zh") {
     const total = images.length + videos.length + audios.length;
     if (!total) return "";
     return [
-        images.length ? `图 ${images.length}` : "",
-        videos.length ? `视频 ${videos.length}` : "",
-        audios.length ? `音频 ${audios.length}` : "",
+        images.length ? `${language === "en" ? "Images" : "图"} ${images.length}` : "",
+        videos.length ? `${language === "en" ? "Videos" : "视频"} ${videos.length}` : "",
+        audios.length ? `${language === "en" ? "Audio" : "音频"} ${audios.length}` : "",
     ]
         .filter(Boolean)
         .join(" · ");
 }
 
-function videoReferenceRequirements(seedance: boolean, model: string, limits: VideoReferenceLimits) {
+function videoReferenceLabel(kind: "image" | "video" | "audio", index: number, language: "zh" | "en") {
+    if (language === "zh") return seedanceReferenceLabel(kind, index);
+    return `${kind === "image" ? "Image" : kind === "video" ? "Video" : "Audio"} ${index + 1}`;
+}
+
+function videoReferenceRequirements(seedance: boolean, model: string, limits: VideoReferenceLimits, language: "zh" | "en" = "zh") {
     const value = model.toLowerCase();
     if (seedance) {
         return {
@@ -1371,9 +1378,9 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
     }
     if (isGrokImagineVideoModel(value)) {
         return {
-            image: `必须且只能使用 1 张 PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: "不支持",
-            audio: "不支持",
+            image: language === "en" ? `Exactly 1 PNG/JPG image is required · max ${formatReferenceLimit(limits.imageMaxBytes)}` : `必须且只能使用 1 张 PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: language === "en" ? "Not Supported" : "不支持",
+            audio: language === "en" ? "Not Supported" : "不支持",
         };
     }
     if (value === "veo-omni-flash-video-edit") {
@@ -1405,6 +1412,7 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
 }
 
 function VideoReferencePanel({
+    language,
     seedance,
     modelName,
     limits,
@@ -1421,6 +1429,7 @@ function VideoReferencePanel({
     onRemoveVideo,
     onRemoveAudio,
 }: {
+    language: "zh" | "en";
     seedance: boolean;
     modelName: string;
     limits: VideoReferenceLimits;
@@ -1437,44 +1446,44 @@ function VideoReferencePanel({
     onRemoveVideo: (id: string) => void;
     onRemoveAudio: (id: string) => void;
 }) {
-    const summary = videoReferenceSummary(references, videoReferences, audioReferences);
-    const requirements = videoReferenceRequirements(seedance, modelName, limits);
+    const summary = videoReferenceSummary(references, videoReferences, audioReferences, language);
+    const requirements = videoReferenceRequirements(seedance, modelName, limits, language);
 
     return (
         <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <div className="text-sm font-semibold text-stone-800 dark:text-stone-100">参考素材</div>
-                    {summary ? <div className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">已添加：{summary}</div> : null}
+                    <div className="text-sm font-semibold text-stone-800 dark:text-stone-100">{language === "en" ? "References" : "参考素材"}</div>
+                    {summary ? <div className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">{language === "en" ? `Added: ${summary}` : `已添加：${summary}`}</div> : null}
                 </div>
                 <div className="flex shrink-0 gap-1.5">
-                    <Tooltip title="从剪贴板读取参考图">
+                    <Tooltip title={language === "en" ? "Paste Reference Image" : "从剪贴板读取参考图"}>
                         <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onPasteImage} />
                     </Tooltip>
-                    <Tooltip title="上传参考素材">
+                    <Tooltip title={language === "en" ? "Upload References" : "上传参考素材"}>
                         <Button size="small" icon={<Upload className="size-3.5" />} onClick={onUpload} />
                     </Tooltip>
                 </div>
             </div>
 
-            <VideoReferenceStrip title={`图片 ${references.length}/${limits.images}`} detail={requirements.image} empty="未添加">
+            <VideoReferenceStrip title={`${language === "en" ? "Images" : "图片"} ${references.length}/${limits.images}`} detail={requirements.image} empty={language === "en" ? "None Added" : "未添加"}>
                 {references.map((item, index) => (
                     <div
                         key={item.id}
                         role="button"
                         tabIndex={0}
                         className="group relative size-16 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-stone-100 outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
-                        aria-label={`查看${seedanceReferenceLabel("image", index)}`}
-                        onClick={() => onPreview({ kind: "image", label: seedanceReferenceLabel("image", index), item })}
+                        aria-label={language === "en" ? `View ${videoReferenceLabel("image", index, language)}` : `查看${videoReferenceLabel("image", index, language)}`}
+                        onClick={() => onPreview({ kind: "image", label: videoReferenceLabel("image", index, language), item })}
                         onKeyDown={(event) => {
                             if (event.key !== "Enter" && event.key !== " ") return;
                             event.preventDefault();
-                            onPreview({ kind: "image", label: seedanceReferenceLabel("image", index), item });
+                            onPreview({ kind: "image", label: videoReferenceLabel("image", index, language), item });
                         }}
                     >
                         <img src={item.dataUrl} alt={item.name} className="size-full object-cover" />
                         <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10 group-focus-visible:bg-black/10" />
-                        <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("image", index)}</span>
+                        <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{videoReferenceLabel("image", index, language)}</span>
                         <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => onMoveImage(index, offset)} />
                         <button
                             type="button"
@@ -1499,17 +1508,17 @@ function VideoReferencePanel({
                             role="button"
                             tabIndex={0}
                             className="group relative h-16 w-24 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-black outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
-                            aria-label={`查看${seedanceReferenceLabel("video", index)}`}
-                            onClick={() => onPreview({ kind: "video", label: seedanceReferenceLabel("video", index), item })}
+                            aria-label={language === "en" ? `View ${videoReferenceLabel("video", index, language)}` : `查看${videoReferenceLabel("video", index, language)}`}
+                            onClick={() => onPreview({ kind: "video", label: videoReferenceLabel("video", index, language), item })}
                             onKeyDown={(event) => {
                                 if (event.key !== "Enter" && event.key !== " ") return;
                                 event.preventDefault();
-                                onPreview({ kind: "video", label: seedanceReferenceLabel("video", index), item });
+                                onPreview({ kind: "video", label: videoReferenceLabel("video", index, language), item });
                             }}
                         >
                             <video src={item.url} className="size-full object-cover" muted preload="metadata" />
                             <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/15 group-focus-visible:bg-black/15" />
-                            <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{seedanceReferenceLabel("video", index)}</span>
+                            <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{videoReferenceLabel("video", index, language)}</span>
                             <ReferenceOrderButtons index={index} total={videoReferences.length} onMove={(offset) => onMoveVideo(index, offset)} />
                             <button
                                 type="button"
@@ -1533,7 +1542,7 @@ function VideoReferencePanel({
                         <div key={item.id} className="group relative flex h-16 w-44 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-stone-50 px-2 ring-1 ring-stone-200/70 dark:bg-stone-900/55 dark:ring-stone-800/70">
                             <div className="flex min-w-0 items-center gap-2 pr-5 text-xs text-stone-500 dark:text-stone-400">
                                 <Music2 className="size-3.5 shrink-0" />
-                                <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{seedanceReferenceLabel("audio", index)}</span>
+                                <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{videoReferenceLabel("audio", index, language)}</span>
                                 <span className="truncate">{item.name}</span>
                             </div>
                             <audio src={item.url} controls className="h-7 w-full" preload="metadata" />
@@ -1567,8 +1576,7 @@ function VideoReferenceStrip({ title, detail, empty, children }: { title: string
     );
 }
 
-function videoRatioOptions(seedance: boolean, model: string) {
-    if (isGrokImagineVideoModel(model)) return GROK_VIDEO_RATIO_OPTIONS;
+function videoRatioOptions(seedance: boolean) {
     if (!seedance) return RELAYBASES_VIDEO_RATIO_OPTIONS;
     return seedanceRatioOptions.map((item) => ({ value: item.value, label: item.value === "adaptive" ? item.label : `${item.label} ${item.value}` }));
 }
@@ -2948,7 +2956,7 @@ function buildVideoConfig(config: AiConfig, model: string): AiConfig {
         model,
         videoModel: model,
         videoCallMode: grokVideo ? "async" : normalizeVideoCallMode(config.videoCallMode),
-        size: seedance ? normalizeSeedanceRatio(config.size) : grokVideo ? normalizeGrokVideoAspectRatio(config.size) : normalizeVideoSize(config.size),
+        size: seedance ? normalizeSeedanceRatio(config.size) : normalizeVideoSize(config.size),
         videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(config.videoSeconds, modelOptionName(model))) : normalizeVideoSeconds(config.videoSeconds),
         vquality: grokVideo ? normalizeGrokVideoResolution(config.vquality) : normalizeResolution(config.vquality),
         videoGenerateAudio: String(boolConfig(config.videoGenerateAudio, true)),

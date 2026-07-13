@@ -4,7 +4,7 @@ import { buildApiUrl, isRelayBasesAsyncImageModel, isRelayBasesSyncImageModel, m
 import { nanoid } from "nanoid";
 import { AZURE_IMAGE_MASK_MAX_BYTES, dataUrlToFile, validateAzureImageEditFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
-import { grokImageModelCapability, grokImageRequestError } from "@/lib/relaybases-media-models";
+import { grokImageModelCapability, grokImageRequestError, relayBasesMediaText } from "@/lib/relaybases-media-models";
 import { imageToDataUrl } from "@/services/image-storage";
 import type { ReferenceImage } from "@/types/image";
 
@@ -872,11 +872,11 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], mask?: ReferenceImage, options?: RequestOptions) {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
     const grokCapability = grokImageModelCapability(requestConfig.model);
-    if (grokCapability && !references.length) throw new Error("Grok 图片编辑需要添加 1-3 张参考图");
+    if (grokCapability && !references.length) throw new Error(relayBasesMediaText("Grok 图片编辑需要添加 1-3 张参考图", "Grok image editing requires 1-3 reference images."));
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const grokRequestError = grokImageRequestError(requestConfig.model, references.length, n);
     if (grokRequestError) throw new Error(grokRequestError);
-    if (grokCapability && mask) throw new Error("Grok Imagine 暂不支持蒙版编辑");
+    if (grokCapability && mask) throw new Error(relayBasesMediaText("Grok Imagine 暂不支持蒙版编辑", "Grok Imagine does not currently support mask editing."));
     const requestPrompt = buildImageReferencePromptText(prompt, references);
     if (requestConfig.apiFormat === "gemini") {
         if (mask) throw new Error("Gemini 调用格式暂不支持蒙版编辑");

@@ -16,6 +16,7 @@ import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
+import { useI18n } from "@/lib/i18n";
 import { grokImageModelCapability, grokImageRequestError } from "@/lib/relaybases-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
@@ -152,6 +153,7 @@ const logStore = localforage.createInstance({ name: "infinite-canvas", storeName
 
 export default function ImagePage() {
     const { message, modal } = App.useApp();
+    const { language } = useI18n();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sizePopoverRef = useRef<HTMLDivElement>(null);
@@ -834,7 +836,7 @@ export default function ImagePage() {
             openConfigDialog(true);
             return null;
         }
-        const grokRequestError = grokImageRequestError(model, references.length);
+        const grokRequestError = grokImageRequestError(model, references.length, 1, language);
         if (grokRequestError) {
             message.error(grokRequestError);
             return null;
@@ -1161,7 +1163,7 @@ export default function ImagePage() {
                                             {references.map((item, index) => (
                                                 <div key={item.id} className="group relative size-16 shrink-0 overflow-hidden rounded-lg bg-stone-100 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900 dark:ring-stone-800/70">
                                                     <Image src={item.dataUrl} alt={item.name} className="!size-16 object-cover" preview={{ mask: null }} />
-                                                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{imageReferenceLabel(index)}</span>
+                                                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{language === "en" ? `Image ${index + 1}` : imageReferenceLabel(index)}</span>
                                                     <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => setReferences((value) => moveListItem(value, index, offset))} />
                                                     <button
                                                         type="button"
@@ -1176,7 +1178,7 @@ export default function ImagePage() {
                                                     </button>
                                                 </div>
                                             ))}
-                                            {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">PNG/JPG · 最多 {imageReferenceLimit} 张 · 单张≤50MB</span> : null}
+                                            {!references.length ? <span className="flex h-9 items-center text-sm text-stone-400">{language === "en" ? `PNG/JPG · up to ${imageReferenceLimit} images · max 50MB each` : `PNG/JPG · 最多 ${imageReferenceLimit} 张 · 单张≤50MB`}</span> : null}
                                         </div>
                                     </Image.PreviewGroup>
                                     <div className="flex shrink-0 gap-2">

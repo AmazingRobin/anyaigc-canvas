@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import { getDataUrlByteSize } from "@/lib/image-utils";
-import { grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import { grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution, relayBasesMediaText } from "@/lib/relaybases-media-models";
 import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
 import { copyRelayBasesPublicMedia, isRelayBasesCanvasPublicMediaUrl, uploadRelayBasesPublicMedia } from "@/services/cloud-sync";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
@@ -189,7 +189,7 @@ async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prom
     }
 
     if (isGrokImagineVideoModel(modelName)) {
-        if (images.length !== 1) throw new Error("grok-imagine-video-1.5 的参考图读取失败，请重新添加 1 张有效图片");
+        if (images.length !== 1) throw new Error(relayBasesMediaText("grok-imagine-video-1.5 的参考图读取失败，请重新添加 1 张有效图片", "Failed to read the grok-imagine-video-1.5 reference image. Add 1 valid image again."));
         payload.images = [images[0]];
         payload.aspect_ratio = normalizeGrokVideoAspectRatio(config.size);
         payload.resolution = normalizeGrokVideoResolution(config.vquality);
@@ -409,7 +409,7 @@ async function videoResultFromContent(config: AiConfig, taskId: string, options?
         await assertVideoBlob(response.data);
         return { blob: response.data };
     } catch (error) {
-        throw new Error(readAxiosError(error, "视频任务完成但结果下载失败"));
+        throw new Error(readAxiosError(error, relayBasesMediaText("视频任务完成但结果下载失败", "The video task completed, but downloading the result failed.")));
     }
 }
 

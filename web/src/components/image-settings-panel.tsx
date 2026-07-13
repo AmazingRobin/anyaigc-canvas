@@ -4,13 +4,14 @@ import { type ReactNode, useState } from "react";
 import { ConfigProvider, Switch } from "antd";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
+import { useI18n } from "@/lib/i18n";
 import type { AiConfig } from "@/stores/use-config-store";
 
 export const IMAGE_QUALITY_OPTIONS = [
     { value: "auto", label: "自动" },
-    { value: "high", label: "高" },
-    { value: "medium", label: "中" },
-    { value: "low", label: "低" },
+    { value: "high", label: "高质量" },
+    { value: "medium", label: "中等质量" },
+    { value: "low", label: "低质量" },
 ];
 const qualityOptions = IMAGE_QUALITY_OPTIONS;
 const DIMENSION_STEP = 16;
@@ -46,6 +47,7 @@ type ImageSettingsPanelProps = {
 };
 
 export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, showQuality = true, showSize = true, showAspect = true, showCount = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 10 }: ImageSettingsPanelProps) {
+    const { language } = useI18n();
     const [snapDimensionToStep, setSnapDimensionToStep] = useState(true);
     const quality = config.quality || "auto";
     const count = Math.max(1, Math.min(maxCount, Math.floor(Math.abs(Number(config.count)) || 1)));
@@ -127,11 +129,11 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         {quickCount > 0
                             ? Array.from({ length: quickCount }, (_, index) => index + 1).map((value) => (
                                   <OptionPill key={value} selected={count === value} theme={theme} onClick={() => onConfigChange("count", String(value))}>
-                                      {value} 张
+                                      {language === "en" ? `${value} ${value === 1 ? "image" : "images"}` : `${value} 张`}
                                   </OptionPill>
                               ))
                             : null}
-                        <CountInput value={count} max={maxCount} theme={theme} wide={quickCount <= 0} onChange={(value) => onConfigChange("count", String(value || 1))} />
+                        <CountInput value={count} max={maxCount} theme={theme} wide={quickCount <= 0} unit={language === "en" ? (count === 1 ? "image" : "images") : "张"} onChange={(value) => onConfigChange("count", String(value || 1))} />
                     </div>
                 </div> : null}
             </div>
@@ -153,7 +155,7 @@ export function ImageSettingsTheme({ theme, children }: { theme: CanvasTheme; ch
 }
 
 export function imageQualityLabel(value: string) {
-    return ({ auto: "自动", high: "高", medium: "中", low: "低" } as Record<string, string>)[value] || value;
+    return IMAGE_QUALITY_OPTIONS.find((item) => item.value === value)?.label || value;
 }
 
 export function imageSizeLabel(size: string) {
@@ -219,7 +221,7 @@ function DimensionInput({ prefix, value, disabled, theme, alignToStep, onChange 
     );
 }
 
-function CountInput({ value, max, theme, wide, onChange }: { value: number; max: number; theme: CanvasTheme; wide?: boolean; onChange: (value: number | null) => void }) {
+function CountInput({ value, max, theme, wide, unit, onChange }: { value: number; max: number; theme: CanvasTheme; wide?: boolean; unit: string; onChange: (value: number | null) => void }) {
     return (
         <label className={`${wide ? "col-span-1" : "col-span-2"} flex h-9 overflow-hidden rounded-full border text-sm`} style={{ borderColor: mutedBorderColor(theme), color: theme.node.text }}>
             <input
@@ -232,8 +234,8 @@ function CountInput({ value, max, theme, wide, onChange }: { value: number; max:
                 onChange={(event) => onChange(Number(event.target.value) || null)}
                 onMouseDown={(event) => event.stopPropagation()}
             />
-            <span className="grid w-10 place-items-center border-l text-xs font-medium" style={{ borderColor: mutedBorderColor(theme), color: theme.node.muted }}>
-                张
+            <span className={`${unit === "张" ? "w-10" : "w-14"} grid place-items-center border-l px-1 text-xs font-medium`} style={{ borderColor: mutedBorderColor(theme), color: theme.node.muted }}>
+                {unit}
             </span>
         </label>
     );

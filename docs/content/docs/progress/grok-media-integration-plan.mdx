@@ -5,7 +5,7 @@ description: 在不修改 new-api 与 sub2api 源码的前提下，接入 Grok �
 
 # Grok Imagine 媒体模型接入开发计划
 
-> 状态：已完成并上线（2026-07-14，v0.4.13）。本文同时记录开发、测试、上线和回滚方案。
+> 状态：已完成并上线（2026-07-14，v0.4.14）。本文同时记录开发、测试、上线和回滚方案。
 
 ## 目标
 
@@ -383,7 +383,7 @@ node scripts/whitelist-audit/compare_whitelist.js <marketplace-snapshot>
 - 只调用 `POST /videos`，继续使用 `GET /videos/{id}` 轮询。
 - 参考素材限制为图片恰好 1 张、视频 0、音频 0；UI 与 API 层双重校验。
 - 发送 `resolution`，支持 480p、720p、1080p。
-- 支持 1–15 秒和官方 7 种视频比例。
+- 上游与适配器保留官方 7 种视频比例能力；Canvas 选择器与其他 RelayBases 视频模型保持一致，只展示横屏、竖屏、方形，并分别请求 `16:9`、`9:16`、`1:1`。旧 `4:3`/`3:2` 按横屏归一，旧 `3:4`/`2:3` 按竖屏归一。
 - 保持现有 `task_id/id`、`completed/failed`、`video_url` 归一化协议；不让 Canvas 直接理解 sub2/xAI 原始响应。
 - 视频工作台沿用现有任务持久化和刷新续跑。
 - 画布节点沿用现有生成、失败和重试机制；本次不顺带重构所有媒体任务恢复结构。
@@ -467,6 +467,7 @@ node scripts/whitelist-audit/compare_whitelist.js <marketplace-snapshot>
 - 正式路由只复用 #106 `grok` 和三个既有模型名；数据库无测试后缀渠道、能力、价格或 Token 残留。
 - Worker 语法检查、端点规则、价格/元数据覆盖、白名单断言和 Wrangler dry-run 通过；登录态模型广场只显示三个真实 Grok 模型。
 - Canvas TypeScript、生产构建、带渠道前缀时长归一化和 `git diff --check` 通过。
+- v0.4.14 复核中统一了 Grok 视频三档比例交互，修复英文质量 `Height` 误译，并补齐本轮 Grok 动态提示、配置说明和错误信息的中英文显示。
 
 ## 回滚
 
