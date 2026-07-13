@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Empty, Input, Modal, Pagination, Tag } from "antd";
 import { Search } from "lucide-react";
 
+import { assetDisplayTitle } from "@/lib/asset-display";
 import { cn } from "@/lib/utils";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
+import { useLanguageStore } from "@/stores/use-language-store";
 
 export type InsertAssetPayload =
     { kind: "text"; content: string; title: string } | { kind: "image"; dataUrl: string; title: string; storageKey?: string } | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number };
@@ -42,13 +44,13 @@ function PickerCard({ title, kind, cover, onClick }: { title: string; kind: stri
             onClick={onClick}
         >
             {cover ? (
-                <img src={cover} alt={title} className="aspect-[4/3] w-full object-cover" />
+                <img data-no-i18n="true" src={cover} alt={title} className="aspect-[4/3] w-full object-cover" />
             ) : (
-                <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-3 text-center text-xs leading-5 text-stone-500 dark:bg-stone-800 dark:text-stone-400">{title}</div>
+                <div data-no-i18n="true" className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-3 text-center text-xs leading-5 text-stone-500 dark:bg-stone-800 dark:text-stone-400">{title}</div>
             )}
             <div className="p-2.5">
                 <div className="flex items-center justify-between gap-2">
-                    <span className="line-clamp-1 text-xs font-medium text-stone-800 dark:text-stone-200">{title}</span>
+                    <span data-no-i18n="true" className="line-clamp-1 text-xs font-medium text-stone-800 dark:text-stone-200">{title}</span>
                     <Tag className="m-0 shrink-0 text-[10px]">{kind === "image" ? "图片" : kind === "video" ? "视频" : "文本"}</Tag>
                 </div>
             </div>
@@ -59,6 +61,7 @@ function PickerCard({ title, kind, cover, onClick }: { title: string; kind: stri
 
 function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => void }) {
     const assets = useAssetStore((state) => state.assets);
+    const language = useLanguageStore((state) => state.language);
     const [keyword, setKeyword] = useState("");
     const [kindFilter, setKindFilter] = useState("all");
     const [page, setPage] = useState(1);
@@ -68,8 +71,8 @@ function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => 
         return assets
             .filter((a) => a.kind === "text" || a.kind === "image" || a.kind === "video")
             .filter((a) => kindFilter === "all" || a.kind === kindFilter)
-            .filter((a) => !query || [a.title, ...(a.tags || [])].join(" ").toLowerCase().includes(query));
-    }, [assets, keyword, kindFilter]);
+            .filter((a) => !query || [a.title, assetDisplayTitle(a, language), ...(a.tags || [])].join(" ").toLowerCase().includes(query));
+    }, [assets, keyword, kindFilter, language]);
 
     const visible = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
 
@@ -79,13 +82,14 @@ function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => 
     }, [filtered.length]);
 
     const handleInsert = (asset: Asset) => {
+        const title = assetDisplayTitle(asset, language);
         if (asset.kind === "text") {
-            onInsert({ kind: "text", content: asset.data.content, title: asset.title });
+            onInsert({ kind: "text", content: asset.data.content, title });
         } else {
             onInsert(
                 asset.kind === "video"
-                    ? { kind: "video", url: asset.data.url, storageKey: asset.data.storageKey, title: asset.title, width: asset.data.width, height: asset.data.height }
-                    : { kind: "image", dataUrl: asset.data.dataUrl, storageKey: asset.data.storageKey, title: asset.title },
+                    ? { kind: "video", url: asset.data.url, storageKey: asset.data.storageKey, title, width: asset.data.width, height: asset.data.height }
+                    : { kind: "image", dataUrl: asset.data.dataUrl, storageKey: asset.data.storageKey, title },
             );
         }
     };
@@ -125,7 +129,7 @@ function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => 
             {visible.length ? (
                 <div className="grid grid-cols-4 gap-3">
                     {visible.map((asset) => (
-                        <PickerCard key={asset.id} title={asset.title} kind={asset.kind} cover={asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "")} onClick={() => handleInsert(asset)} />
+                        <PickerCard key={asset.id} title={assetDisplayTitle(asset, language)} kind={asset.kind} cover={asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "")} onClick={() => handleInsert(asset)} />
                     ))}
                 </div>
             ) : (

@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { Button, Input, Modal, Slider } from "antd";
 import { Brush, Eraser, RotateCcw, WandSparkles, X } from "lucide-react";
 
+import { canvasText } from "@/lib/i18n-canvas";
 import { readImageMeta } from "@/lib/image-utils";
+import { useLanguageStore } from "@/stores/use-language-store";
 
 export type CanvasImageMaskEditPayload = {
     prompt: string;
@@ -12,12 +14,14 @@ export type CanvasImageMaskEditPayload = {
 };
 
 type DrawMode = "paint" | "erase";
+type ValidationError = "prompt" | "mask" | null;
 
 const defaultBrushSize = 100;
 const maskFillColor = "rgba(37, 99, 235, .38)";
 const maskBorderColor = "rgba(255, 255, 255, .72)";
 
 export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: { dataUrl: string; open: boolean; onClose: () => void; onConfirm: (payload: CanvasImageMaskEditPayload) => void }) {
+    const language = useLanguageStore((state) => state.language);
     const maskCanvasRef = useRef<HTMLCanvasElement>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
     const drawingRef = useRef<{ active: boolean; last: { x: number; y: number } | null }>({ active: false, last: null });
@@ -25,14 +29,14 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
     const [prompt, setPrompt] = useState("");
     const [brushSize, setBrushSize] = useState(defaultBrushSize);
     const [mode, setMode] = useState<DrawMode>("paint");
-    const [error, setError] = useState("");
+    const [error, setError] = useState<ValidationError>(null);
 
     useEffect(() => {
         if (!open) return;
         setPrompt("");
         setBrushSize(defaultBrushSize);
         setMode("paint");
-        setError("");
+        setError(null);
         void readImageMeta(dataUrl).then(setImage);
     }, [dataUrl, open]);
 
@@ -60,7 +64,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         renderMaskPreview(maskCanvas, previewCanvasRef.current);
         drawingRef.current.last = point;
         if (mode === "paint") {
-            setError("");
+            setError(null);
         }
     };
 
@@ -88,15 +92,15 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
     const resetMask = () => {
         clearCanvas(maskCanvasRef.current);
         clearCanvas(previewCanvasRef.current);
-        setError("");
+        setError(null);
     };
 
     const submit = () => {
         const nextPrompt = prompt.trim();
         const canvas = maskCanvasRef.current;
-        if (!nextPrompt) return setError("请输入修改要求");
+        if (!nextPrompt) return setError("prompt");
         if (!canvas) return;
-        if (!canvasHasPaint(canvas)) return setError("请先涂抹局部区域");
+        if (!canvasHasPaint(canvas)) return setError("mask");
         onConfirm({ prompt: nextPrompt, maskDataUrl: buildEditMask(canvas) });
     };
 
@@ -156,10 +160,10 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                             placeholder="例如：把选中区域改成金属材质，保持原图光影"
                             onChange={(event) => {
                                 setPrompt(event.target.value);
-                                setError("");
+                                setError(null);
                             }}
                         />
-                        {error ? <div className="text-xs font-medium text-[#ef4444]">{error}</div> : null}
+                        {error ? <div className="text-xs font-medium text-[#ef4444]">{error === "prompt" ? canvasText("请输入修改要求", "Enter editing instructions.", language) : canvasText("请先涂抹局部区域", "Paint the area you want to edit first.", language)}</div> : null}
                     </div>
 
                     <div className="mt-auto flex items-center justify-between gap-2">

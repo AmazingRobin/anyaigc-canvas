@@ -17,6 +17,7 @@ import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/c
 import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { useI18n } from "@/lib/i18n";
+import { normalizeWorkbenchQuality, workbenchCount, workbenchErrorText, workbenchFormatDate, workbenchQualityLabel, workbenchText, workbenchTrashExpiry } from "@/lib/i18n-workbench";
 import { grokImageModelCapability, grokImageRequestError } from "@/lib/relaybases-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
@@ -32,7 +33,6 @@ import { deleteStoredImages, getImageBlob, resolveImageUrl, uploadImage } from "
 import { queueImageToVideoReferences } from "@/services/workbench-handoff";
 import {
     emptyWorkbenchTrash,
-    formatTrashExpiry,
     moveLogToWorkbenchTrash,
     moveLogsToWorkbenchTrash,
     purgeExpiredWorkbenchTrash,
@@ -347,7 +347,7 @@ export default function ImagePage() {
                 await validateAzureImageEditFile(file, { index: imageFiles.length + references.length + 1 });
                 imageFiles.push(file);
             } catch (error) {
-                message.warning(error instanceof Error ? error.message : "已忽略不支持的参考图");
+                message.warning(error instanceof Error ? error.message : workbenchText("已忽略不支持的参考图", undefined, language));
             }
         }
         const nextReferences = await Promise.all(
@@ -364,7 +364,7 @@ export default function ImagePage() {
             const items = await navigator.clipboard.read();
             const blobs = await Promise.all(items.flatMap((item) => item.types.filter((type) => type.startsWith("image/")).map((type) => item.getType(type))));
             if (!blobs.length) {
-                message.error("剪切板里没有可读取的图片");
+                message.error(workbenchText("剪切板里没有可读取的图片", undefined, language));
                 return;
             }
             const validBlobs: Blob[] = [];
@@ -374,7 +374,7 @@ export default function ImagePage() {
                     await validateAzureImageEditFile(blob, { index: validBlobs.length + references.length + 1 });
                     validBlobs.push(blob);
                 } catch (error) {
-                    message.warning(error instanceof Error ? error.message : "已忽略不支持的参考图");
+                    message.warning(error instanceof Error ? error.message : workbenchText("已忽略不支持的参考图", undefined, language));
                 }
             }
             if (!validBlobs.length) return;
@@ -385,29 +385,29 @@ export default function ImagePage() {
                 }),
             );
             setReferences((value) => [...value, ...nextReferences].slice(0, imageReferenceLimit));
-            message.success(`已读取 ${nextReferences.length} 张参考图`);
+            message.success(language === "en" ? `Read ${workbenchCount(nextReferences.length, "张参考图", "reference image", "reference images", language)}` : `已读取 ${workbenchCount(nextReferences.length, "张参考图", "reference image", "reference images", language)}`);
         } catch {
-            message.error("剪切板里没有可读取的图片");
+            message.error(workbenchText("剪切板里没有可读取的图片", undefined, language));
         }
     };
 
     const optimizePrompt = async () => {
         const text = prompt.trim();
         if (!text) {
-            message.warning("请先输入提示词梗概");
+            message.warning(workbenchText("请先输入提示词梗概", undefined, language));
             return;
         }
         if (!isPromptOptimizerReady(effectiveConfig)) {
-            message.warning("请先配置文本 API Key 并获取文本模型");
+            message.warning(workbenchText("请先配置文本 API Key 并获取文本模型", undefined, language));
             openConfigDialog(true, "channels");
             return;
         }
         setPromptOptimizing(true);
         try {
             setPrompt(await optimizeGenerationPrompt(effectiveConfig, "image", text));
-            message.success("提示词已优化");
+            message.success(workbenchText("提示词已优化", undefined, language));
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "提示词优化失败");
+            message.error(error instanceof Error ? workbenchErrorText(error.message, language) : workbenchText("提示词优化失败", undefined, language));
         } finally {
             setPromptOptimizing(false);
         }
@@ -416,11 +416,11 @@ export default function ImagePage() {
     const generate = (countOverride?: number) => {
         const text = prompt.trim();
         if (!text) {
-            message.error("请输入生图提示词");
+            message.error(workbenchText("请输入生图提示词", undefined, language));
             return;
         }
         if (!isAiConfigReady(effectiveConfig, model)) {
-            message.warning("请先完成配置");
+            message.warning(workbenchText("请先完成配置", undefined, language));
             openConfigDialog(true);
             return;
         }
@@ -490,10 +490,11 @@ export default function ImagePage() {
         const successCount = successImages.length;
         const failCount = failures.length;
         const failed = result.find((item): item is { resultId: string; status: "failed"; error: string } => item.status === "failed");
+        const failureMessage = workbenchErrorText(failed?.error || "生成失败", language);
         const durationMs = performance.now() - batchStartedAt;
         finishSessionRun(sessionId);
-        successCount ? message.success("图片已生成") : message.error(failed?.error || "生成失败");
-        notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", successCount ? "图片生成完成" : "图片生成失败", successCount ? `成功 ${successCount} 张${failCount ? `，失败 ${failCount} 张` : ""}` : failed?.error || "生成失败", {
+        successCount ? message.success(workbenchText("图片已生成", undefined, language)) : message.error(failureMessage);
+        notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", successCount ? workbenchText("图片生成完成", undefined, language) : workbenchText("图片生成失败", undefined, language), successCount ? (language === "en" ? `${workbenchCount(successCount, "张成功", "image succeeded", "images succeeded", language)}${failCount ? `, ${workbenchCount(failCount, "张失败", "image failed", "images failed", language)}` : ""}` : `成功 ${successCount} 张${failCount ? `，失败 ${failCount} 张` : ""}`) : failureMessage, {
             tag: `relaybases-image-${sessionId}`,
             requireInteraction: true,
         });
@@ -521,7 +522,7 @@ export default function ImagePage() {
                 failures,
                 thumbnails,
             });
-        })().catch(() => message.warning("生成记录保存失败"));
+        })().catch(() => message.warning(workbenchText("生成记录保存失败", undefined, language)));
     };
 
     const downloadImage = (image: GeneratedImage, index: number) => {
@@ -531,16 +532,16 @@ export default function ImagePage() {
     const downloadSelectedImages = async () => {
         const targets = selectedSuccessResults.map((result) => result.image).filter((image): image is GeneratedImage => Boolean(image));
         if (!targets.length) {
-            message.warning("请选择可下载的图片结果");
+            message.warning(workbenchText("请选择可下载的图片结果", undefined, language));
             return;
         }
         const messageKey = "image-workbench-download-zip";
-        message.loading({ key: messageKey, content: "正在打包图片", duration: 0 });
+        message.loading({ key: messageKey, content: workbenchText("正在打包图片", undefined, language), duration: 0 });
         try {
             const files = await Promise.all(
                 targets.map(async (image, index) => {
                     const blob = image.storageKey ? await getImageBlob(image.storageKey) : image.dataUrl ? await (await fetch(image.dataUrl)).blob() : null;
-                    if (!blob) throw new Error("图片文件缺失");
+                    if (!blob) throw new Error(workbenchText("图片文件缺失", undefined, language));
                     return {
                         name: `${String(index + 1).padStart(2, "0")}-${safeArchiveName(image.id)}.${fileExtensionFromMime(blob.type || image.mimeType, "png")}`,
                         data: blob,
@@ -549,9 +550,9 @@ export default function ImagePage() {
             );
             const zip = await createZip(files);
             saveAs(zip, `relaybases-images-${timestampForFileName()}.zip`);
-            message.success({ key: messageKey, content: `已打包 ${files.length} 张图片` });
+            message.success({ key: messageKey, content: language === "en" ? `Packaged ${workbenchCount(files.length, "张图片", "image", "images", language)}` : `已打包 ${workbenchCount(files.length, "张图片", "image", "images", language)}` });
         } catch (error) {
-            message.error({ key: messageKey, content: error instanceof Error ? error.message : "图片打包失败" });
+            message.error({ key: messageKey, content: error instanceof Error ? error.message : workbenchText("图片打包失败", undefined, language) });
         }
     };
 
@@ -560,14 +561,14 @@ export default function ImagePage() {
         const reference = { id: nanoid(), name: `result-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey };
         const applyReference = (mode: "append" | "replace") => {
             setReferences((value) => (mode === "replace" ? [reference] : [reference, ...value]).slice(0, imageReferenceLimit));
-            message.success(mode === "replace" ? "已替换参考图" : "已加入参考图");
+            message.success(workbenchText(mode === "replace" ? "已替换参考图" : "已加入参考图", undefined, language));
         };
         if (effectiveConfig.referenceEditMode === "ask" && references.length) {
             modal.confirm({
-                title: "处理参考图",
-                content: "将当前结果加入参考图，或替换已有参考图。",
-                okText: "替换",
-                cancelText: "追加",
+                title: workbenchText("处理参考图", undefined, language),
+                content: workbenchText("将当前结果加入参考图，或替换已有参考图。", "Add this result to the reference images, or replace the existing references.", language),
+                okText: workbenchText("替换", undefined, language),
+                cancelText: workbenchText("追加", undefined, language),
                 onOk: () => applyReference("replace"),
                 onCancel: () => applyReference("append"),
             });
@@ -579,7 +580,7 @@ export default function ImagePage() {
     const generateVideoFromImage = async (image: GeneratedImage, index: number) => {
         const stored = await uploadImage(image.dataUrl);
         queueImageToVideoReferences([{ id: nanoid(), name: `image-to-video-${index + 1}.png`, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }], prompt);
-        message.success("已带入视频工作台参考图");
+        message.success(workbenchText("已带入视频工作台参考图", undefined, language));
         router.push("/video");
     };
 
@@ -588,20 +589,20 @@ export default function ImagePage() {
         if (savedAsset) {
             replaceAssets(assets.filter((asset) => asset.id !== savedAsset.id));
             if (savedAsset.kind === "image" && savedAsset.data.storageKey && savedAsset.data.storageKey !== image.storageKey) await deleteStoredImages([savedAsset.data.storageKey]);
-            message.success("已取消加入素材");
+            message.success(workbenchText("已取消加入素材", undefined, language));
             return;
         }
         const stored = await uploadImage(image.dataUrl);
         addAsset({
             kind: "image",
-            title: `生成结果 ${index + 1}`,
+            title: workbenchText(`生成结果 ${index + 1}`, `Generated result ${index + 1}`, "zh"),
             coverUrl: stored.url,
             tags: [],
             source: "生图工作台",
             data: { dataUrl: stored.url, storageKey: stored.storageKey, width: stored.width, height: stored.height, bytes: stored.bytes, mimeType: stored.mimeType },
             metadata: { source: "image-page", prompt, sourceResultId: image.id, sourceStorageKey: image.storageKey || "" },
         });
-        message.success("已加入我的素材");
+        message.success(workbenchText("已加入我的素材", undefined, language));
     };
 
     const insertPickedAsset = async (payload: InsertAssetPayload) => {
@@ -611,7 +612,7 @@ export default function ImagePage() {
             const stored = await uploadImage(payload.dataUrl);
             setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, imageReferenceLimit));
         } else {
-            message.warning("生图工作台只能使用文本或图片素材");
+            message.warning(workbenchText("生图工作台只能使用文本或图片素材", undefined, language));
         }
         setAssetPickerOpen(false);
     };
@@ -737,7 +738,7 @@ export default function ImagePage() {
         );
         await Promise.all(restoredLogs.map((log) => logStore.setItem(log.id, serializeLog(log))));
         await Promise.all([refreshLogs(), refreshTrash()]);
-        message.success(restoredLogs.length === 1 ? "生成记录已恢复" : `已恢复 ${restoredLogs.length} 条生成记录`);
+        message.success(restoredLogs.length === 1 ? workbenchText("生成记录已恢复", undefined, language) : language === "en" ? `Restored ${workbenchCount(restoredLogs.length, "条生成记录", "history item", "history items", language)}` : `已恢复 ${workbenchCount(restoredLogs.length, "条生成记录", "history item", "history items", language)}`);
     };
 
     const restoreTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
@@ -749,7 +750,7 @@ export default function ImagePage() {
             await removeWorkbenchTrashEntry("image-workbench", entry.id);
         }
         await refreshTrash();
-        message.success(entries.length === 1 ? "已彻底删除" : `已彻底删除 ${entries.length} 条生成记录`);
+        message.success(entries.length === 1 ? workbenchText("已彻底删除", undefined, language) : language === "en" ? `Permanently deleted ${workbenchCount(entries.length, "条生成记录", "history item", "history items", language)}` : `已彻底删除 ${workbenchCount(entries.length, "条生成记录", "history item", "history items", language)}`);
     };
 
     const removeTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
@@ -759,7 +760,7 @@ export default function ImagePage() {
     const clearTrash = async () => {
         await emptyWorkbenchTrash("image-workbench");
         await refreshTrash();
-        message.success("回收站已清空");
+        message.success(workbenchText("回收站已清空", undefined, language));
     };
 
     const togglePinnedLog = async (log: GenerationLog) => {
@@ -813,7 +814,7 @@ export default function ImagePage() {
 
     const reuseImageRequest = (request?: GenerationRequestSnapshot) => {
         if (!request) {
-            message.warning("这条结果缺少可复用的生成配置");
+            message.warning(workbenchText("这条结果缺少可复用的生成配置", undefined, language));
             return;
         }
         setPrompt(request.prompt);
@@ -822,17 +823,17 @@ export default function ImagePage() {
         if (request.config.quality) updateConfig("quality", request.config.quality);
         if (request.config.size) updateConfig("size", request.config.size);
         if (request.config.count) updateConfig("count", request.config.count);
-        message.success("已复用生成配置");
+        message.success(workbenchText("已复用生成配置", undefined, language));
     };
 
     const buildRequestSnapshot = () => {
         const text = prompt.trim();
         if (!text) {
-            message.error("请输入生图提示词");
+            message.error(workbenchText("请输入生图提示词", undefined, language));
             return null;
         }
         if (!isAiConfigReady(effectiveConfig, model)) {
-            message.warning("请先完成配置");
+            message.warning(workbenchText("请先完成配置", undefined, language));
             openConfigDialog(true);
             return null;
         }
@@ -864,7 +865,7 @@ export default function ImagePage() {
         try {
             const result = snapshot.references.length ? await requestEdit(snapshot.config, snapshot.text, snapshot.references) : await requestGeneration(snapshot.config, snapshot.text);
             const image = result[0];
-            if (!image) throw new Error("接口没有返回图片");
+            if (!image) throw new Error(workbenchText("接口没有返回图片", undefined, language));
             const meta = await readImageMeta(image.dataUrl);
             const nextImage = { id: image.id, dataUrl: image.dataUrl, durationMs: performance.now() - itemStartedAt, width: meta.width, height: meta.height, bytes: getDataUrlByteSize(image.dataUrl), request: requestSnapshot };
             updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "success", image: nextImage }));
@@ -937,7 +938,7 @@ export default function ImagePage() {
     };
 
     const persistRetriedFailureResult = async (sessionId: string, resultId: string, replacedIds: string[], error: unknown, durationMs: number, requestSnapshot: GenerationRequestSnapshot) => {
-        const messageText = error instanceof Error ? error.message : "生成失败";
+        const messageText = error instanceof Error ? error.message : workbenchText("生成失败", undefined, language);
         const logId = await findRetryLogId(sessionId);
         if (!logId) return;
         const storedLog = await logStore.getItem<GenerationLog>(logId);
@@ -985,7 +986,7 @@ export default function ImagePage() {
                         await persistRetriedImageResult(sessionId, resultId, replacedIds, image, snapshot, requestSnapshot);
                     } catch (error) {
                         console.warn("Failed to persist retried image result", error);
-                        message.warning("重试结果已生成，但本地保存失败，刷新后可能不会保留");
+                        message.warning(workbenchText("重试结果已生成，但本地保存失败，刷新后可能不会保留", undefined, language));
                     }
                 },
                 async (error) => {
@@ -1042,7 +1043,7 @@ export default function ImagePage() {
                             {running ? (
                                 <HistoryPill tone="pending" label="生成中">
                                     {formatDuration(elapsedMs)}
-                                    {runningCount > 1 ? ` · ${runningCount} 批` : ""}
+                                    {runningCount > 1 ? (language === "en" ? ` · ${workbenchCount(runningCount, "批", "batch", "batches", language)}` : ` · ${runningCount} 批`) : ""}
                                 </HistoryPill>
                             ) : null}
                         </div>
@@ -1145,12 +1146,12 @@ export default function ImagePage() {
                                     }}
                                     rows={promptCollapsed ? 1 : 2}
                                     autoSize={promptCollapsed ? { minRows: 1, maxRows: 1 } : { minRows: 2, maxRows: 5 }}
-                                    placeholder="描述画面主体、风格、构图、光线和用途"
+                                    placeholder={workbenchText("描述画面主体、风格、构图、光线和用途", undefined, language)}
                                     className="!resize-none !rounded-none !border-0 !bg-transparent !px-0 !py-0 !text-base !shadow-none focus:!shadow-none"
                                 />
 
                                 <div className="flex min-w-0 items-center gap-2 pt-1">
-                                    <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">参考图</span>
+                                    <span className="shrink-0 text-xs font-semibold text-stone-500 dark:text-stone-400">{workbenchText("参考图", "Reference images", language)}</span>
                                     <Image.PreviewGroup>
                                         <div
                                             className="hide-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
@@ -1172,7 +1173,7 @@ export default function ImagePage() {
                                                             event.stopPropagation();
                                                             setReferences((value) => value.filter((ref) => ref.id !== item.id));
                                                         }}
-                                                        aria-label="移除参考图"
+                                                        aria-label={workbenchText("移除参考图", "Remove reference image", language)}
                                                     >
                                                         <X className="size-3.5" />
                                                     </button>
@@ -1182,10 +1183,10 @@ export default function ImagePage() {
                                         </div>
                                     </Image.PreviewGroup>
                                     <div className="flex shrink-0 gap-2">
-                                        <Tooltip title="从剪切板读取参考图">
+                                        <Tooltip title={workbenchText("从剪切板读取参考图", "Paste reference image", language)}>
                                             <Button size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={() => void addReferencesFromClipboard()} />
                                         </Tooltip>
-                                        <Tooltip title="上传参考图">
+                                        <Tooltip title={workbenchText("上传参考图", "Upload reference images", language)}>
                                             <Button size="small" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} />
                                         </Tooltip>
                                     </div>
@@ -1223,7 +1224,7 @@ export default function ImagePage() {
                                         </div>
                                         <ComposerQualitySelect value={effectiveConfig.quality || "auto"} onChange={(value) => updateConfig("quality", value)} />
                                         <label className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS} px-0`}>
-                                            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">张数</span>
+                                            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">{workbenchText("张数", "Count", language)}</span>
                                             <input
                                                 type="number"
                                                 min={1}
@@ -1235,7 +1236,7 @@ export default function ImagePage() {
                                         </label>
                                     </div>
                                     <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => generate()} className="xl:min-w-36">
-                                        生成 {generationCount} 张
+                                        {language === "en" ? `Generate ${workbenchCount(generationCount, "张", "image", "images", language)}` : `生成 ${generationCount} 张`}
                                     </Button>
                                 </div>
                             </div>
@@ -1298,38 +1299,38 @@ export default function ImagePage() {
                     }}
                 />
             </Drawer>
-            <Drawer title="回收站" placement="right" width="min(560px, 100vw)" open={trashOpen} onClose={() => setTrashOpen(false)} styles={{ body: { padding: 12 } }}>
+            <Drawer title={workbenchText("回收站", "Trash", language)} placement="right" width="min(560px, 100vw)" open={trashOpen} onClose={() => setTrashOpen(false)} styles={{ body: { padding: 12 } }}>
                 <TrashPanel
                     entries={trashItems}
                     onRestore={(entry) => void restoreTrashItem(entry)}
                     onRestoreSelected={(entries) => void restoreTrashItems(entries)}
                     onRemove={(entry) =>
                         modal.confirm({
-                            title: "彻底删除生成记录",
-                            content: "彻底删除后将无法从回收站恢复，相关本地媒体文件也会被清理。",
-                            okText: "彻底删除",
+                            title: workbenchText("彻底删除生成记录", undefined, language),
+                            content: workbenchText("彻底删除后将无法从回收站恢复，相关本地媒体文件也会被清理。", "Permanently deleted history cannot be restored, and related local media files will also be removed.", language),
+                            okText: workbenchText("彻底删除", undefined, language),
                             okButtonProps: { danger: true },
-                            cancelText: "取消",
+                            cancelText: workbenchText("取消", "Cancel", language),
                             onOk: () => removeTrashItem(entry),
                         })
                     }
                     onRemoveSelected={(entries) =>
                         modal.confirm({
-                            title: "彻底删除生成记录",
-                            content: `确定彻底删除选中的 ${entries.length} 条生成记录吗？相关本地媒体文件也会被清理。`,
-                            okText: "彻底删除",
+                            title: workbenchText("彻底删除生成记录", undefined, language),
+                            content: language === "en" ? `Permanently delete the selected ${workbenchCount(entries.length, "条生成记录", "history item", "history items", language)}? Related local media files will also be removed.` : `确定彻底删除选中的 ${entries.length} 条生成记录吗？相关本地媒体文件也会被清理。`,
+                            okText: workbenchText("彻底删除", undefined, language),
                             okButtonProps: { danger: true },
-                            cancelText: "取消",
+                            cancelText: workbenchText("取消", "Cancel", language),
                             onOk: () => removeTrashItems(entries),
                         })
                     }
                     onClear={() =>
                         modal.confirm({
-                            title: "清空回收站",
-                            content: "回收站内的生成记录和相关本地媒体文件会被彻底删除。",
-                            okText: "清空",
+                            title: workbenchText("清空回收站", undefined, language),
+                            content: workbenchText("回收站内的生成记录和相关本地媒体文件会被彻底删除。", "Generation history and related local media files in the trash will be permanently deleted.", language),
+                            okText: workbenchText("清空", "Empty", language),
                             okButtonProps: { danger: true },
-                            cancelText: "取消",
+                            cancelText: workbenchText("取消", "Cancel", language),
                             onOk: clearTrash,
                         })
                     }
@@ -1337,11 +1338,11 @@ export default function ImagePage() {
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
-            <Modal title="删除生成结果" open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
-                确定删除选中的 {resultDeleteTargets.length} 个生成结果吗？成功图片会同步删除本地媒体文件。
+            <Modal title={workbenchText("删除生成结果", undefined, language)} open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText={workbenchText("删除", "Delete", language)} okButtonProps={{ danger: true }} cancelText={workbenchText("取消", "Cancel", language)}>
+                {language === "en" ? `Delete the selected ${workbenchCount(resultDeleteTargets.length, "个生成结果", "generated result", "generated results", language)}? Successful images will also have their local media files removed.` : `确定删除选中的 ${resultDeleteTargets.length} 个生成结果吗？成功图片会同步删除本地媒体文件。`}
             </Modal>
-            <Modal title="删除生成记录" open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={() => void deleteSelectedLogs()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
-                确定删除选中的 {selectedLogIds.length} 条生成记录吗？
+            <Modal title={workbenchText("删除生成记录", undefined, language)} open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={() => void deleteSelectedLogs()} okText={workbenchText("删除", "Delete", language)} okButtonProps={{ danger: true }} cancelText={workbenchText("取消", "Cancel", language)}>
+                {language === "en" ? `Delete the selected ${workbenchCount(selectedLogIds.length, "条生成记录", "history item", "history items", language)}?` : `确定删除选中的 ${selectedLogIds.length} 条生成记录吗？`}
             </Modal>
         </div>
     );
@@ -1396,7 +1397,7 @@ function TrashPanel({
             <div className="mb-3 flex shrink-0 items-start justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 p-3 dark:border-stone-800 dark:bg-stone-900/40">
                 <div>
                     <div className="text-sm font-semibold text-stone-900 dark:text-stone-100">生成记录回收站</div>
-                    <div className="mt-1 text-xs leading-5 text-stone-500 dark:text-stone-400">删除后保留 {WORKBENCH_TRASH_RETENTION_DAYS} 天，每条记录按自己的到期时间自动清理。</div>
+                    <div className="mt-1 text-xs leading-5 text-stone-500 dark:text-stone-400">{workbenchText(`删除后保留 ${WORKBENCH_TRASH_RETENTION_DAYS} 天，每条记录按自己的到期时间自动清理。`, `Deleted items are kept for ${WORKBENCH_TRASH_RETENTION_DAYS} days and cleaned up individually when they expire.`)}</div>
                 </div>
                 <Button size="small" danger disabled={!entries.length} onClick={onClear}>
                     清空
@@ -1407,15 +1408,16 @@ function TrashPanel({
                     {allSelected ? "取消全选" : "全选"}
                 </Button>
                 <Button size="small" icon={<RefreshCw className="size-3.5" />} disabled={!selectedEntries.length} onClick={() => onRestoreSelected(selectedEntries)}>
-                    恢复选中{selectedEntries.length ? ` ${selectedEntries.length}` : ""}
+                    {workbenchText("恢复选中", "Restore selected")}{selectedEntries.length ? ` ${selectedEntries.length}` : ""}
                 </Button>
                 <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedEntries.length} onClick={() => onRemoveSelected(selectedEntries)}>
-                    彻底删除{selectedEntries.length ? ` ${selectedEntries.length}` : ""}
+                    {workbenchText("彻底删除", "Delete permanently")}{selectedEntries.length ? ` ${selectedEntries.length}` : ""}
                 </Button>
             </div>
             <div className="thin-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {entries.map((entry) => {
                     const promptPreview = entry.log.prompt || entry.log.title || "未命名";
+                    const displayPromptPreview = !entry.log.prompt && (!entry.log.title || entry.log.title === "未命名") ? workbenchText("未命名", "Untitled") : promptPreview;
                     const selected = selectedIds.includes(entry.id);
                     const expirePercent = trashRemainingPercent(entry);
                     return (
@@ -1432,7 +1434,7 @@ function TrashPanel({
                             <div className="flex gap-3 pr-8">
                                 <TrashImageThumbnail log={entry.log} />
                                 <div className="min-w-0 flex-1">
-                                    <div className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
+                                    <div data-no-i18n="true" className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{displayPromptPreview}</div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="模型">{entry.log.config?.imageModel || entry.log.model || "默认"}</HistoryPill>
                                         <HistoryPill label="尺寸">{imageSizeLabel(entry.log.config?.size || entry.log.size)}</HistoryPill>
@@ -1440,7 +1442,7 @@ function TrashPanel({
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="删除">{formatTrashDate(entry.deletedAt)}</HistoryPill>
                                         <HistoryPill tone="danger" label="清理">
-                                            {formatTrashExpiry(entry.expiresAt)}
+                                            {workbenchTrashExpiry(entry.expiresAt)}
                                         </HistoryPill>
                                     </div>
                                 </div>
@@ -1509,7 +1511,7 @@ function trashRemainingPercent(entry: WorkbenchTrashEntry<GenerationLog>) {
 }
 
 function formatTrashDate(value: number) {
-    return new Date(value).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return workbenchFormatDate(value, { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function ComposerMetric({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
@@ -1530,12 +1532,13 @@ function ComposerMetric({ label, value, onClick }: { label: string; value: strin
 }
 
 function ComposerQualitySelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-    const selected = IMAGE_QUALITY_OPTIONS.find((item) => item.value === (value || "auto")) || IMAGE_QUALITY_OPTIONS[0];
+    const normalizedValue = normalizeWorkbenchQuality(value);
+    const selected = IMAGE_QUALITY_OPTIONS.find((item) => item.value === normalizedValue) || IMAGE_QUALITY_OPTIONS[0];
     return (
-        <Select value={value || "auto"} onValueChange={onChange}>
-            <SelectTrigger className={`w-auto max-w-[9rem] justify-start gap-1.5 ${COMPOSER_CONTROL_CLASS}`} aria-label="选择生成质量" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">质量</span>
-                <span className="min-w-0 shrink-0 truncate text-left text-stone-700 dark:text-stone-200">{selected.label}</span>
+        <Select value={normalizedValue} onValueChange={onChange}>
+            <SelectTrigger className={`w-auto max-w-[9rem] justify-start gap-1.5 ${COMPOSER_CONTROL_CLASS}`} aria-label={workbenchText("选择生成质量", "Choose generation quality")} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">{workbenchText("质量", "Quality")}</span>
+                <span className="min-w-0 shrink-0 truncate text-left text-stone-700 dark:text-stone-200">{workbenchQualityLabel(selected.value)}</span>
             </SelectTrigger>
             <SelectContent
                 className="z-[3000] min-w-[8rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950"
@@ -1548,7 +1551,7 @@ function ComposerQualitySelect({ value, onChange }: { value: string; onChange: (
             >
                 {IMAGE_QUALITY_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {workbenchQualityLabel(item.value)}
                     </SelectItem>
                 ))}
             </SelectContent>
@@ -1569,7 +1572,7 @@ const HISTORY_PILL_TONE_CLASSES: Record<HistoryPillTone, string> = {
 function HistoryPill({ label, tone = "neutral", children, className = "" }: { label?: string; tone?: HistoryPillTone; children: ReactNode; className?: string }) {
     return (
         <span className={`inline-flex h-6 max-w-full items-center gap-1 overflow-hidden rounded-full border px-2 text-[11px] leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${HISTORY_PILL_TONE_CLASSES[tone]} ${className}`}>
-            {label ? <span className="shrink-0 font-medium opacity-65">{label}</span> : null}
+            {label ? <span className="shrink-0 font-medium opacity-65">{workbenchText(label)}</span> : null}
             <span className="min-w-0 truncate font-semibold">{children}</span>
         </span>
     );
@@ -1632,11 +1635,11 @@ function ResultImageCard({
             <SelectionBubble className="absolute right-3 top-3 z-20" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             {displayImage ? (
                 <>
-                    <Image src={displayImage.dataUrl} alt={`生成结果 ${index + 1}`} className="aspect-square object-cover" onError={() => setLoadFailed(true)} />
+                    <Image src={displayImage.dataUrl} alt={workbenchText(`生成结果 ${index + 1}`, `Generated result ${index + 1}`)} className="aspect-square object-cover" onError={() => setLoadFailed(true)} />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/75 via-black/45 to-transparent px-2.5 pb-2 pt-9 text-white">
                         {promptPreview ? (
-                            <Tooltip title={promptPreview}>
-                                <div className="pointer-events-auto mb-1 line-clamp-2 text-xs font-medium leading-4 text-white">{promptPreview}</div>
+                            <Tooltip title={<span data-no-i18n="true">{promptPreview}</span>}>
+                                <div data-no-i18n="true" className="pointer-events-auto mb-1 line-clamp-2 text-xs font-medium leading-4 text-white">{promptPreview}</div>
                             </Tooltip>
                         ) : null}
                         <div className="mb-1 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-[11px] leading-none text-white/78">
@@ -1681,7 +1684,7 @@ function ResultImageCard({
             ) : (
                 <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-stone-50 p-5 text-center text-sm text-stone-500 dark:bg-stone-900 dark:text-stone-400">
                     {loadFailed ? <ImagePlus className="size-8 opacity-70" /> : <LoaderCircle className="size-6 animate-spin opacity-60" />}
-                    <span>{loadFailed ? "图片文件缺失" : "正在读取图片"}</span>
+                    <span>{workbenchText(loadFailed ? "图片文件缺失" : "正在读取图片")}</span>
                     <Tooltip title="删除结果">
                         <Button type="text" aria-label="删除结果" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
                     </Tooltip>
@@ -1704,7 +1707,7 @@ function PendingImageCard({ selected, onSelectedChange }: { selected: boolean; o
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-stone-500 dark:text-stone-400">
                 <LoaderCircle className="size-6 animate-spin" />
-                <span>生成中</span>
+                <span>{workbenchText("生成中", "Generating")}</span>
             </div>
         </div>
     );
@@ -1732,16 +1735,16 @@ function FailedImageCard({
         <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
             <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
             <div className="flex aspect-square flex-col items-center justify-center gap-3 p-5 text-center">
-                <div className="text-sm font-medium text-red-600 dark:text-red-300">生成失败</div>
+                <div className="text-sm font-medium text-red-600 dark:text-red-300">{workbenchText("生成失败", "Generation failed")}</div>
                 {promptPreview ? (
-                    <Tooltip title={promptPreview}>
-                        <Typography.Paragraph ellipsis={{ rows: 3 }} className="!mb-0 !text-xs !font-medium !text-red-700 dark:!text-red-200">
+                    <Tooltip title={<span data-no-i18n="true">{promptPreview}</span>}>
+                        <Typography.Paragraph data-no-i18n="true" ellipsis={{ rows: 3 }} className="!mb-0 !text-xs !font-medium !text-red-700 dark:!text-red-200">
                             {promptPreview}
                         </Typography.Paragraph>
                     </Tooltip>
                 ) : null}
-                <Typography.Paragraph ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
-                    {error}
+                <Typography.Paragraph data-no-i18n="true" ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
+                    {workbenchErrorText(error)}
                 </Typography.Paragraph>
             </div>
             <div className="flex justify-end gap-1.5 px-2 pb-2">
@@ -1852,7 +1855,7 @@ function LogPanel({
                     allowClear
                     size="small"
                     prefix={<Search className="size-3.5 text-stone-400" />}
-                    placeholder="搜索提示词"
+                    placeholder={workbenchText("搜索提示词", "Search prompts")}
                     value={searchQuery}
                     onChange={(event) => {
                         setSearchQuery(event.target.value);
@@ -1924,17 +1927,16 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
             type="button"
             className={`block w-full rounded-lg border p-2 text-left transition ${active ? "border-stone-200 bg-stone-100/80 dark:border-stone-800 dark:bg-stone-900/80" : "border-stone-200 bg-background hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"}`}
             onClick={onClick}
-            title={promptPreview}
         >
             <div className="grid min-h-[112px] grid-cols-[112px_minmax(0,1fr)] gap-2 sm:min-h-[160px] sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-3">
                 <SessionCover image={session.firstImage} pending={Boolean(session.running || session.pendingCount)} count={session.successCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
                 <div className="flex min-w-0 flex-col py-1">
-                    <div className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-5">{promptPreview}</div>
+                    <div data-no-i18n="true" title={promptPreview} className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-5">{promptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
-                            {session.model || "默认"}
+                            <span data-no-i18n="true">{session.model || workbenchText("默认")}</span>
                         </HistoryPill>
-                        <HistoryPill label="质量">{session.config.quality || "默认"}</HistoryPill>
+                        <HistoryPill label="质量">{workbenchQualityLabel(session.config.quality)}</HistoryPill>
                         <HistoryPill label="尺寸">{sizeLabel}</HistoryPill>
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1 pt-2">
@@ -1952,7 +1954,7 @@ function SessionCard({ session, active, onClick }: { session: WorkbenchSessionVi
                                 {session.failCount}
                             </HistoryPill>
                         ) : null}
-                        {session.running && session.running.count > 1 ? <HistoryPill label="并发">{session.running.count} 批</HistoryPill> : null}
+                        {session.running && session.running.count > 1 ? <HistoryPill label="并发">{workbenchCount(session.running.count, workbenchText("批", "batch"), "batch", "batches")}</HistoryPill> : null}
                         <HistoryPill label="时间">{formatSessionTime(session.createdAt)}</HistoryPill>
                     </div>
                 </div>
@@ -1982,6 +1984,7 @@ function LogCard({ log, selected, active, onSelectedChange, onTogglePin, onClick
     const requestCount = requestedLogImageCount(log);
     const coverImage = log.images.find((image) => image.dataUrl || image.storageKey);
     const promptPreview = log.prompt || log.title || "";
+    const displayPromptPreview = !log.prompt && (!log.title || log.title === "未命名") ? workbenchText("未命名", "Untitled") : promptPreview;
     const ratioLabel = imageRatioLabel(log.config.size || log.size);
     const sizeLabel = imageSizeLabel(log.config.size || log.size);
 
@@ -1996,13 +1999,12 @@ function LogCard({ log, selected, active, onSelectedChange, onTogglePin, onClick
                 event.preventDefault();
                 onClick();
             }}
-            title={promptPreview}
         >
-            <Tooltip title={log.pinnedAt ? "取消置顶" : "置顶"}>
+            <Tooltip title={workbenchText(log.pinnedAt ? "取消置顶" : "置顶")}>
                 <Button
                     type="text"
                     size="small"
-                    aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
+                    aria-label={workbenchText(log.pinnedAt ? "取消置顶" : "置顶")}
                     className={`!absolute !right-3 !top-12 z-10 !inline-grid !size-7 !place-items-center !rounded-full !border !p-0 !shadow-[0_2px_7px_rgba(15,23,42,0.06)] !backdrop-blur-md [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!border-stone-300/60 !bg-white/80 !text-stone-700 dark:!border-stone-600/60 dark:!bg-stone-950/75 dark:!text-stone-200" : "!border-stone-200/60 !bg-white/40 !text-stone-400 !opacity-[0.68] hover:!bg-white/70 hover:!text-stone-700 dark:!border-white/10 dark:!bg-stone-950/40 dark:!text-stone-500 dark:hover:!bg-stone-950/70 dark:hover:!text-stone-200"}`}
                     icon={
                         <span
@@ -2023,12 +2025,12 @@ function LogCard({ log, selected, active, onSelectedChange, onTogglePin, onClick
                     <LogCover logId={log.id} image={thumbnail} source={coverImage} count={actualImageCount} ratioLabel={ratioLabel} sizeLabel={sizeLabel} />
                 </div>
                 <div className="flex min-w-0 flex-col py-1 pr-9">
-                    <div className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-5">{promptPreview}</div>
+                    <div data-no-i18n="true" title={displayPromptPreview} className="line-clamp-3 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-5">{displayPromptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
-                            {log.model || "默认"}
+                            <span data-no-i18n="true">{log.model || workbenchText("默认")}</span>
                         </HistoryPill>
-                        <HistoryPill label="质量">{log.quality || log.config.quality || "默认"}</HistoryPill>
+                        <HistoryPill label="质量">{workbenchQualityLabel(log.quality || log.config.quality)}</HistoryPill>
                         <HistoryPill label="尺寸">{sizeLabel}</HistoryPill>
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1 pt-2">
@@ -2044,7 +2046,7 @@ function LogCard({ log, selected, active, onSelectedChange, onTogglePin, onClick
                         <HistoryPill tone="info" label="总耗时">
                             {formatDuration(log.durationMs)}
                         </HistoryPill>
-                        <HistoryPill label="时间">{log.time}</HistoryPill>
+                        <HistoryPill label="时间">{workbenchFormatDate(log.createdAt, { hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</HistoryPill>
                     </div>
                 </div>
             </div>
@@ -2185,7 +2187,7 @@ function normalizeLogMetadata(log: Partial<GenerationLog>): GenerationLog {
         pinnedAt: log.pinnedAt,
         title: log.title || log.model || "未命名",
         prompt: log.prompt || log.title || "",
-        time: log.time || new Date().toLocaleString("zh-CN", { hour12: false }),
+        time: log.time || workbenchFormatDate(Date.now(), { hour12: false }),
         model: log.model || config.imageModel || "",
         config,
         references,
@@ -2230,7 +2232,7 @@ async function hydrateLogMedia(log: Partial<GenerationLog>): Promise<GenerationL
         pinnedAt: log.pinnedAt,
         title: log.title || log.model || "未命名",
         prompt: log.prompt || log.title || "",
-        time: log.time || new Date().toLocaleString("zh-CN", { hour12: false }),
+        time: log.time || workbenchFormatDate(Date.now(), { hour12: false }),
         model: log.model || config.imageModel || "",
         config,
         references,
@@ -2384,7 +2386,7 @@ function greatestCommonDivisor(a: number, b: number): number {
 }
 
 function formatSessionTime(value: number) {
-    return new Date(value).toLocaleTimeString("zh-CN", { hour12: false, hour: "2-digit", minute: "2-digit" });
+    return workbenchFormatDate(value, { hour12: false, hour: "2-digit", minute: "2-digit" });
 }
 
 async function cacheLogThumbnail(logId: string, thumbnail: string) {
@@ -2589,7 +2591,7 @@ function buildLog({
         updatedAt: Date.now(),
         title: prompt.slice(0, 12) || "未命名",
         prompt,
-        time: new Date().toLocaleString("zh-CN", { hour12: false }),
+        time: workbenchFormatDate(Date.now(), { hour12: false }),
         model,
         config: logConfig,
         references,

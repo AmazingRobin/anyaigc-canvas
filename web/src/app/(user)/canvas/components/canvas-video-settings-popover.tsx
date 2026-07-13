@@ -7,8 +7,10 @@ import { Button } from "antd";
 
 import { VideoSettingsPanel, videoResolutionLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasText } from "@/lib/i18n-canvas";
 import { isGrokImagineVideoModel } from "@/lib/relaybases-media-models";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
 
 type CanvasVideoSettingsPopoverProps = {
@@ -19,13 +21,18 @@ type CanvasVideoSettingsPopoverProps = {
 };
 
 export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClassName, placement = "topLeft" }: CanvasVideoSettingsPopoverProps) {
+    const language = useLanguageStore((state) => state.language);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
     const selectedModel = modelOptionName(config.videoModel || config.model);
-    const callModeLabel = isGrokImagineVideoModel(selectedModel) ? "异步" : normalizeVideoCallMode(config.videoCallMode) === "async" ? "异步·4倍扣费" : "同步";
+    const callModeLabel = isGrokImagineVideoModel(selectedModel)
+        ? canvasText("异步", "Async", language)
+        : normalizeVideoCallMode(config.videoCallMode) === "async"
+          ? canvasText("异步·4倍扣费", "Async · 4x billing", language)
+          : canvasText("同步", "Sync", language);
 
     useEffect(() => {
         if (!open) return;
@@ -55,7 +62,7 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClass
             <span ref={buttonRef} className="inline-flex min-w-0">
                 <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[170px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => setOpen((current) => !current)}>
                     <span className="truncate">
-                        {callModeLabel} · {videoResolutionLabel(config.vquality, config.videoModel || config.model)} · {videoSizeLabel(config.size, config.videoModel || config.model)} · {videoSecondsLabel(config.videoSeconds)}
+                        {callModeLabel} · {videoResolutionLabel(config.vquality, config.videoModel || config.model, language)} · {videoSizeLabel(config.size, config.videoModel || config.model, language)} · {videoSecondsLabel(config.videoSeconds, language)}
                     </span>
                 </Button>
             </span>

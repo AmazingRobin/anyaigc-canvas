@@ -48,7 +48,7 @@ export function AgentChatMessage({ item, theme, user, onRejectTool, onApproveToo
         <div className={`flex items-start gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
             {!isUser ? <AgentAvatar theme={theme} /> : null}
             <div className={`min-w-0 max-w-[82%] text-sm leading-6 ${isUser ? "text-right" : "text-left"}`} style={{ color }}>
-                <div className="whitespace-pre-wrap break-words text-left">{item.text}</div>
+                <div data-no-i18n={isUser || item.role === "assistant" || item.role === "error" ? "true" : undefined} className="whitespace-pre-wrap break-words text-left">{item.text}</div>
                 {item.attachments?.length ? <AgentMessageAttachments attachments={item.attachments} /> : null}
                 {item.meta ? <div className="mt-1 text-[11px] opacity-45">{item.meta}</div> : null}
             </div>
@@ -178,8 +178,8 @@ export function AgentChatComposer({
                 {attachments.length ? (
                     <div className="thin-scrollbar mb-2 flex gap-2 overflow-x-auto pb-1">
                         {attachments.map((item) => (
-                            <div key={item.id} className="group relative size-14 shrink-0 overflow-hidden rounded-xl border" style={{ borderColor: theme.node.stroke }} title={item.name}>
-                                <img src={item.url} alt={item.name} className="size-full object-cover" />
+                            <div data-no-i18n="true" key={item.id} className="group relative size-14 shrink-0 overflow-hidden rounded-xl border" style={{ borderColor: theme.node.stroke }} title={item.name}>
+                                <img data-no-i18n="true" src={item.url} alt={item.name} className="size-full object-cover" />
                                 {onRemoveAttachment ? (
                                     <button type="button" className="absolute right-1 top-1 grid size-5 place-items-center rounded-full border opacity-0 shadow-sm transition group-hover:opacity-100" style={{ background: theme.toolbar.panel, borderColor: theme.node.stroke, color: theme.node.text }} onClick={() => onRemoveAttachment(item.id)} aria-label="移除图片">
                                         <X className="size-3" />
@@ -262,7 +262,7 @@ export function AgentPanelTabs<T extends string>({ value, items, theme, right, o
 
 function AgentDetailBlock({ detail, theme }: { detail: unknown; theme: (typeof canvasThemes)[keyof typeof canvasThemes] }) {
     return (
-        <pre className="thin-scrollbar mt-3 max-h-64 overflow-auto rounded-lg border p-3 text-[11px] leading-4" style={{ borderColor: theme.node.stroke, background: theme.toolbar.panel, color: theme.node.muted }}>
+        <pre data-no-i18n="true" className="thin-scrollbar mt-3 max-h-64 overflow-auto rounded-lg border p-3 text-[11px] leading-4" style={{ borderColor: theme.node.stroke, background: theme.toolbar.panel, color: theme.node.muted }}>
             {JSON.stringify(detail, null, 2)}
         </pre>
     );
@@ -289,7 +289,7 @@ function AgentMessageAttachments({ attachments }: { attachments: CanvasAgentChat
     return (
         <div className="mt-2 grid grid-cols-3 gap-1.5">
             {attachments.map((item) => (
-                <img key={item.id} src={item.url} alt={item.name} className="aspect-square w-full rounded-lg object-cover" />
+                <img data-no-i18n="true" key={item.id} src={item.url} alt={item.name} className="aspect-square w-full rounded-lg object-cover" />
             ))}
         </div>
     );

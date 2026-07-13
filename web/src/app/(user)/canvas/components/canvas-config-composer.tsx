@@ -6,6 +6,8 @@ import { Button, Image } from "antd";
 import { FileText, Image as ImageIcon, Music2, Video, X } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasText } from "@/lib/i18n-canvas";
+import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { NodeGenerationInput } from "./canvas-node-generation";
 
@@ -27,6 +29,7 @@ type MentionState = {
 export const CONFIG_REFERENCE_PATTERN = /@\[node:([^\]]+)\]/g;
 
 export function CanvasConfigComposer({ value, inputs, onChange, onClose }: CanvasConfigComposerProps) {
+    const language = useLanguageStore((state) => state.language);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
@@ -39,8 +42,8 @@ export function CanvasConfigComposer({ value, inputs, onChange, onClose }: Canva
         if (!mention) return [];
         const query = (mention.query || "").trim().toLowerCase();
         if (!query) return inputs;
-        return inputs.filter((input) => `${resourceLabel(input, inputs)} ${input.title} ${input.text || ""}`.toLowerCase().includes(query));
-    }, [inputs, mention]);
+        return inputs.filter((input) => `${resourceLabel(input, inputs, language)} ${input.title} ${input.text || ""}`.toLowerCase().includes(query));
+    }, [inputs, language, mention]);
 
     useEffect(() => {
         if (document.activeElement === editorRef.current) return;
@@ -125,6 +128,7 @@ export function CanvasConfigComposer({ value, inputs, onChange, onClose }: Canva
             <div className="relative rounded-xl border" style={{ background: theme.node.fill, borderColor: theme.node.stroke }}>
                 {!value.trim() ? <div className="pointer-events-none absolute left-3 top-2 text-sm leading-7" style={{ color: theme.node.placeholder }}>输入提示词，按 @ 引用连接的图片或文本</div> : null}
                 <div
+                    data-no-i18n="true"
                     ref={editorRef}
                     contentEditable
                     suppressContentEditableWarning
@@ -173,15 +177,15 @@ export function CanvasConfigComposer({ value, inputs, onChange, onClose }: Canva
                     }}
                     onBlur={() => window.setTimeout(closeMention, 120)}
                 />
-                {mention && candidates.length ? <MentionMenu inputs={candidates} allInputs={inputs} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} onSelect={insertReference} /> : null}
+                {mention && candidates.length ? <MentionMenu inputs={candidates} allInputs={inputs} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} language={language} onSelect={insertReference} /> : null}
             </div>
-            {imagePreview ? <Image src={imagePreview} alt="引用图片预览" style={{ display: "none" }} preview={{ visible: true, src: imagePreview, onVisibleChange: (visible) => !visible && setImagePreview(null) }} /> : null}
+            {imagePreview ? <Image src={imagePreview} alt={canvasText("引用图片预览", "Referenced image preview", language)} style={{ display: "none" }} preview={{ visible: true, src: imagePreview, onVisibleChange: (visible) => !visible && setImagePreview(null) }} /> : null}
         </div>
     );
 
 }
 
-function MentionMenu({ inputs, allInputs, activeIndex, theme, onSelect }: { inputs: NodeGenerationInput[]; allInputs: NodeGenerationInput[]; activeIndex: number; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; onSelect: (input: NodeGenerationInput) => void }) {
+function MentionMenu({ inputs, allInputs, activeIndex, theme, language, onSelect }: { inputs: NodeGenerationInput[]; allInputs: NodeGenerationInput[]; activeIndex: number; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; language: LanguageName; onSelect: (input: NodeGenerationInput) => void }) {
     const selectedRef = useRef(false);
     const activeItemRef = useRef<HTMLButtonElement | null>(null);
 
@@ -212,8 +216,8 @@ function MentionMenu({ inputs, allInputs, activeIndex, theme, onSelect }: { inpu
                 >
                     <ResourcePreview input={input} />
                     <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{resourceLabel(input, allInputs)}</span>
-                        <span className="block truncate opacity-65">{input.text || input.title}</span>
+                        <span className="block font-medium">{resourceLabel(input, allInputs, language)}</span>
+                        <span data-no-i18n="true" className="block truncate opacity-65">{input.text || input.title}</span>
                     </span>
                 </button>
             ))}
@@ -234,6 +238,7 @@ function ResourcePreview({ input }: { input: NodeGenerationInput }) {
 
 function createReferenceChip(input: NodeGenerationInput, inputs: NodeGenerationInput[], theme: (typeof canvasThemes)[keyof typeof canvasThemes], onImagePreview: (url: string) => void) {
     const wrapper = document.createElement("span");
+    wrapper.dataset.noI18n = "true";
     wrapper.contentEditable = "false";
     wrapper.dataset.referenceNodeId = input.nodeId;
     wrapper.className = "mx-px inline-flex h-7 max-w-40 items-center justify-center overflow-hidden rounded-md border px-1 text-xs leading-none align-middle";
@@ -359,13 +364,13 @@ function parseComposerTokens(value: string): Token[] {
     return tokens;
 }
 
-function resourceLabel(input: NodeGenerationInput, inputs: NodeGenerationInput[]) {
+function resourceLabel(input: NodeGenerationInput, inputs: NodeGenerationInput[], language: LanguageName) {
     const sameTypeInputs = inputs.filter((item) => item.type === input.type);
     const index = Math.max(0, sameTypeInputs.findIndex((item) => item.nodeId === input.nodeId));
-    if (input.type === "image") return `图片${index + 1}`;
-    if (input.type === "video") return `视频${index + 1}`;
-    if (input.type === "audio") return `音频${index + 1}`;
-    return `文本${index + 1}`;
+    if (input.type === "image") return canvasText(`图片${index + 1}`, `Image ${index + 1}`, language);
+    if (input.type === "video") return canvasText(`视频${index + 1}`, `Video ${index + 1}`, language);
+    if (input.type === "audio") return canvasText(`音频${index + 1}`, `Audio ${index + 1}`, language);
+    return canvasText(`文本${index + 1}`, `Text ${index + 1}`, language);
 }
 
 function chipStyle(theme: (typeof canvasThemes)[keyof typeof canvasThemes]): CSSProperties {

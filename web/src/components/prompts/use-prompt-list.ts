@@ -12,7 +12,7 @@ export function usePromptList({ keyword, tags, category, enabled = true, pageSiz
     const language = useLanguageStore((state) => state.language);
     const query = useInfiniteQuery({
         queryKey: ["prompts", keyword, tags, category, language, pageSize],
-        queryFn: ({ pageParam }) => fetchPrompts({ keyword, tag: tags, category, page: pageParam, pageSize }),
+        queryFn: ({ pageParam }) => fetchPrompts({ keyword, tag: tags, category, page: pageParam, pageSize, language }),
         initialPageParam: 1,
         getNextPageParam: (lastPage, pages) => (pages.reduce((total, page) => total + page.items.length, 0) < lastPage.total ? pages.length + 1 : undefined),
         enabled,

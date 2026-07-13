@@ -19,6 +19,7 @@ import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedan
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
 import { GROK_VIDEO_RESOLUTIONS, grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
 import { useI18n } from "@/lib/i18n";
+import { workbenchErrorText, workbenchFormatDate, workbenchText, workbenchTrashExpiry, type WorkbenchLanguage } from "@/lib/i18n-workbench";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createVideoThumbnail, normalizeVideoThumbnail, VIDEO_THUMBNAIL_VERSION } from "@/lib/video-thumbnail";
 import { createZip } from "@/lib/zip";
@@ -29,7 +30,7 @@ import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api/prompt";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, videoGenerationPollConfig, type VideoGenerationTask } from "@/services/api/video";
 import { consumeImageToVideoReferences } from "@/services/workbench-handoff";
-import { emptyWorkbenchTrash, formatTrashExpiry, moveLogToWorkbenchTrash, moveLogsToWorkbenchTrash, purgeExpiredWorkbenchTrash, readWorkbenchTrash, removeWorkbenchTrashEntry, restoreWorkbenchTrashEntry, WORKBENCH_TRASH_RETENTION_DAYS, type WorkbenchTrashEntry } from "@/services/workbench-trash";
+import { emptyWorkbenchTrash, moveLogToWorkbenchTrash, moveLogsToWorkbenchTrash, purgeExpiredWorkbenchTrash, readWorkbenchTrash, removeWorkbenchTrashEntry, restoreWorkbenchTrashEntry, WORKBENCH_TRASH_RETENTION_DAYS, type WorkbenchTrashEntry } from "@/services/workbench-trash";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { isRelayBasesVideoModel, modelOptionName, normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
@@ -180,9 +181,9 @@ export default function VideoPage() {
     const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
     const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : grokVideo ? normalizeGrokVideoResolution(effectiveConfig.vquality) : "fixed";
     const secondsValue = seedanceVideo ? String(normalizeSeedanceDuration(effectiveConfig.videoSeconds)) : String(normalizeRelayBasesVideoDuration(effectiveConfig.videoSeconds, modelName));
-    const ratioOptions = videoRatioOptions(seedanceVideo);
-    const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, videoResolutionLabel(effectiveConfig.vquality, model));
-    const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, secondsValue);
+    const ratioOptions = videoRatioOptions(seedanceVideo, language);
+    const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, videoResolutionLabel(effectiveConfig.vquality, model, language), language);
+    const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, secondsValue, language);
     const secondsTiming = seedanceVideo ? { min: 4, max: 15, defaultValue: 5, fixed: false } : relayBasesVideoTiming(modelName);
     const canGenerate = Boolean(prompt.trim());
     const activeLogId = previewLog?.id || activeResultLogId;
@@ -248,7 +249,8 @@ export default function VideoPage() {
         const handoffLimits = videoReferenceLimits(seedanceVideo, modelName);
         setReferences((value) => mergeReferenceImages(handoff.references, value).slice(0, handoffLimits.images));
         if (handoff.prompt) setPrompt((value) => (value.trim() ? value : handoff.prompt || value));
-        message.success(`已带入 ${Math.min(handoff.references.length, handoffLimits.images)} 张参考图`);
+        const importedCount = Math.min(handoff.references.length, handoffLimits.images);
+        message.success(language === "en" ? `Imported ${importedCount} reference ${importedCount === 1 ? "image" : "images"}` : `已带入 ${importedCount} 张参考图`);
     }, [message, modelName, seedanceVideo]);
 
     useEffect(() => {
@@ -321,17 +323,17 @@ export default function VideoPage() {
         const remainingAudios = Math.max(0, referenceLimits.audios - audioReferences.length);
         const unsupported = selectedFiles.filter((file) => !file.type.startsWith("image/") && !file.type.startsWith("video/") && !isSupportedAudioFile(file));
         const unsupportedByModel = selectedFiles.filter((file) => (file.type.startsWith("image/") && referenceLimits.images <= 0) || (file.type.startsWith("video/") && referenceLimits.videos <= 0) || (isSupportedAudioFile(file) && referenceLimits.audios <= 0));
-        if (unsupported.length) message.warning("已忽略不支持的参考素材，请使用图片、mp4/mov 视频或 mp3/wav 音频");
-        if (unsupportedByModel.length) message.warning("已忽略当前模型不使用的参考素材");
-        if (referenceLimits.images > 0 && !remainingImages && selectedFiles.some((file) => file.type.startsWith("image/"))) message.warning("参考图数量已达到当前模型上限");
-        if (referenceLimits.videos > 0 && !remainingVideos && selectedFiles.some((file) => file.type.startsWith("video/"))) message.warning("参考视频数量已达到当前模型上限");
-        if (referenceLimits.audios > 0 && !remainingAudios && selectedFiles.some((file) => isSupportedAudioFile(file))) message.warning("参考音频数量已达到当前模型上限");
+        if (unsupported.length) message.warning(workbenchText("已忽略不支持的参考素材，请使用图片、mp4/mov 视频或 mp3/wav 音频", "Unsupported references were ignored. Use images, MP4/MOV video, or MP3/WAV audio.", language));
+        if (unsupportedByModel.length) message.warning(workbenchText("已忽略当前模型不使用的参考素材", "References unsupported by the current model were ignored.", language));
+        if (referenceLimits.images > 0 && !remainingImages && selectedFiles.some((file) => file.type.startsWith("image/"))) message.warning(workbenchText("参考图数量已达到当前模型上限", "The reference image limit for this model has been reached.", language));
+        if (referenceLimits.videos > 0 && !remainingVideos && selectedFiles.some((file) => file.type.startsWith("video/"))) message.warning(workbenchText("参考视频数量已达到当前模型上限", "The reference video limit for this model has been reached.", language));
+        if (referenceLimits.audios > 0 && !remainingAudios && selectedFiles.some((file) => isSupportedAudioFile(file))) message.warning(workbenchText("参考音频数量已达到当前模型上限", "The reference audio limit for this model has been reached.", language));
         const imageFiles = selectedFiles.filter((file) => referenceLimits.images > 0 && file.type.startsWith("image/") && file.size <= referenceLimits.imageMaxBytes).slice(0, remainingImages);
         const videoFiles = selectedFiles.filter((file) => referenceLimits.videos > 0 && file.type.startsWith("video/") && file.size <= referenceLimits.videoMaxBytes).slice(0, remainingVideos);
         const audioFiles = selectedFiles.filter((file) => referenceLimits.audios > 0 && isSupportedAudioFile(file) && file.size <= referenceLimits.audioMaxBytes).slice(0, remainingAudios);
-        if (selectedFiles.some((file) => file.type.startsWith("image/") && file.size > referenceLimits.imageMaxBytes)) message.warning(`已忽略超过 ${formatReferenceLimit(referenceLimits.imageMaxBytes)} 的参考图`);
-        if (selectedFiles.some((file) => file.type.startsWith("video/") && file.size > referenceLimits.videoMaxBytes)) message.warning(`已忽略超过 ${formatReferenceLimit(referenceLimits.videoMaxBytes)} 的参考视频`);
-        if (selectedFiles.some((file) => isSupportedAudioFile(file) && file.size > referenceLimits.audioMaxBytes)) message.warning(`已忽略超过 ${formatReferenceLimit(referenceLimits.audioMaxBytes)} 的参考音频`);
+        if (selectedFiles.some((file) => file.type.startsWith("image/") && file.size > referenceLimits.imageMaxBytes)) message.warning(language === "en" ? `Reference images larger than ${formatReferenceLimit(referenceLimits.imageMaxBytes)} were ignored` : `已忽略超过 ${formatReferenceLimit(referenceLimits.imageMaxBytes)} 的参考图`);
+        if (selectedFiles.some((file) => file.type.startsWith("video/") && file.size > referenceLimits.videoMaxBytes)) message.warning(language === "en" ? `Reference videos larger than ${formatReferenceLimit(referenceLimits.videoMaxBytes)} were ignored` : `已忽略超过 ${formatReferenceLimit(referenceLimits.videoMaxBytes)} 的参考视频`);
+        if (selectedFiles.some((file) => isSupportedAudioFile(file) && file.size > referenceLimits.audioMaxBytes)) message.warning(language === "en" ? `Reference audio larger than ${formatReferenceLimit(referenceLimits.audioMaxBytes)} was ignored` : `已忽略超过 ${formatReferenceLimit(referenceLimits.audioMaxBytes)} 的参考音频`);
         const nextReferences = await Promise.all(
             imageFiles.map(async (file) => {
                 const image = await uploadImage(file);
@@ -364,12 +366,12 @@ export default function VideoPage() {
             const items = await navigator.clipboard.read();
             const blobs = await Promise.all(items.flatMap((item) => item.types.filter((type) => type.startsWith("image/")).map((type) => item.getType(type))));
             if (!blobs.length) {
-                message.error("剪切板里没有可读取的图片");
+                message.error(workbenchText("剪切板里没有可读取的图片", "No readable image was found on the clipboard.", language));
                 return;
             }
             const remainingImages = Math.max(0, referenceLimits.images - references.length);
             if (!remainingImages) {
-                message.warning("参考图数量已达到当前模型上限");
+                message.warning(workbenchText("参考图数量已达到当前模型上限", "The reference image limit for this model has been reached.", language));
                 return;
             }
             const nextReferences = await Promise.all(
@@ -379,29 +381,29 @@ export default function VideoPage() {
                 }),
             );
             setReferences((value) => [...value, ...nextReferences].slice(0, referenceLimits.images));
-            message.success(`已读取 ${nextReferences.length} 张参考图`);
+            message.success(language === "en" ? `Read ${nextReferences.length} reference ${nextReferences.length === 1 ? "image" : "images"}` : `已读取 ${nextReferences.length} 张参考图`);
         } catch {
-            message.error("剪切板里没有可读取的图片");
+            message.error(workbenchText("剪切板里没有可读取的图片", "No readable image was found on the clipboard.", language));
         }
     };
 
     const optimizePrompt = async () => {
         const text = prompt.trim();
         if (!text) {
-            message.warning("请先输入提示词梗概");
+            message.warning(workbenchText("请先输入提示词梗概", "Enter a prompt outline first.", language));
             return;
         }
         if (!isPromptOptimizerReady(effectiveConfig)) {
-            message.warning("请先配置文本 API Key 并获取文本模型");
+            message.warning(workbenchText("请先配置文本 API Key 并获取文本模型", "Configure a text API key and load a text model first.", language));
             openConfigDialog(true, "channels");
             return;
         }
         setPromptOptimizing(true);
         try {
             setPrompt(await optimizeGenerationPrompt(effectiveConfig, "video", text));
-            message.success("提示词已优化");
+            message.success(workbenchText("提示词已优化", "Prompt optimized", language));
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "提示词优化失败");
+            message.error(error instanceof Error ? workbenchErrorText(error.message, language) : workbenchText("提示词优化失败", "Failed to optimize the prompt", language));
         } finally {
             setPromptOptimizing(false);
         }
@@ -452,7 +454,7 @@ export default function VideoPage() {
             }
             void pollGenerationLog(log, snapshot.config, { resultId, startedAtMs: taskStartedAt, runStarted: true, request: requestSnapshot });
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "生成失败";
+            const errorMessage = error instanceof Error ? error.message : workbenchText("生成失败", "Generation failed", language);
             updateLogResults(logId, (value) => updateVideoResultById(value, resultId, { status: "failed", error: errorMessage, request: requestSnapshot }));
             const failedLog = appendFailureToVideoLog(
                 buildLog({
@@ -475,8 +477,8 @@ export default function VideoPage() {
             );
             await saveLog(failedLog);
             if (targetLog) setPreviewLog(failedLog);
-            message.error(errorMessage);
-            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频任务创建失败", errorMessage, { tag: `relaybases-video-create-${resultId}`, requireInteraction: true });
+            message.error(workbenchErrorText(errorMessage, language));
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频任务创建失败", "Failed to create video task", language), workbenchErrorText(errorMessage, language), { tag: `relaybases-video-create-${resultId}`, requireInteraction: true });
             finishLogRun(logId);
         }
     };
@@ -484,22 +486,22 @@ export default function VideoPage() {
     const buildRequestSnapshot = () => {
         const text = prompt.trim();
         if (!text) {
-            message.error("请输入视频提示词");
+            message.error(workbenchText("请输入视频提示词", "Enter a video prompt.", language));
             return null;
         }
         if (!isAiConfigReady(effectiveConfig, model)) {
-            message.warning("请先完成配置");
+            message.warning(workbenchText("请先完成配置", "Complete the configuration first.", language));
             openConfigDialog(true);
             return null;
         }
         if (modelName.toLowerCase() === "veo-omni-flash-video-edit" && !videoReferences.length) {
-            message.error("当前模型需要 1 个参考视频");
+            message.error(workbenchText("当前模型需要 1 个参考视频", "The current model requires one reference video.", language));
             return null;
         }
         if (seedanceVideo) {
-            const videoReferenceError = seedanceVideoReferenceError(videoReferences);
+            const videoReferenceError = seedanceVideoReferenceError(videoReferences, language);
             if (videoReferenceError) {
-                message.error(`${videoReferenceError}。${seedanceVideoReferenceHint}`);
+                message.error(`${videoReferenceError}${language === "en" ? ". " : "。"}${seedanceVideoReferenceHint(language)}${language === "en" ? "." : "。"}`);
                 return null;
             }
         }
@@ -558,16 +560,16 @@ export default function VideoPage() {
     const downloadSelectedVideos = async () => {
         const targets = selectedSuccessResults.map((result) => result.video).filter((video): video is GeneratedVideo => Boolean(video));
         if (!targets.length) {
-            message.warning("请选择可下载的视频结果");
+            message.warning(workbenchText("请选择可下载的视频结果", "Select downloadable video results first.", language));
             return;
         }
         const messageKey = "video-workbench-download-zip";
-        message.loading({ key: messageKey, content: "正在打包视频", duration: 0 });
+        message.loading({ key: messageKey, content: workbenchText("正在打包视频", "Packaging videos", language), duration: 0 });
         try {
             const files = await Promise.all(
                 targets.map(async (video, index) => {
                     const blob = video.storageKey ? await getMediaBlob(video.storageKey) : video.url ? await (await fetch(video.url)).blob() : null;
-                    if (!blob) throw new Error("视频文件缺失");
+                    if (!blob) throw new Error(workbenchText("视频文件缺失", "Video file is missing", language));
                     return {
                         name: `${String(index + 1).padStart(2, "0")}-${safeArchiveName(video.id)}.${fileExtensionFromMime(blob.type || video.mimeType, "mp4")}`,
                         data: blob,
@@ -576,9 +578,9 @@ export default function VideoPage() {
             );
             const zip = await createZip(files);
             saveAs(zip, `relaybases-videos-${timestampForFileName()}.zip`);
-            message.success({ key: messageKey, content: `已打包 ${files.length} 个视频` });
+            message.success({ key: messageKey, content: language === "en" ? `Packaged ${files.length} ${files.length === 1 ? "video" : "videos"}` : `已打包 ${files.length} 个视频` });
         } catch (error) {
-            message.error({ key: messageKey, content: error instanceof Error ? error.message : "视频打包失败" });
+            message.error({ key: messageKey, content: error instanceof Error ? error.message : workbenchText("视频打包失败", "Failed to package videos", language) });
         }
     };
 
@@ -586,7 +588,7 @@ export default function VideoPage() {
         const savedAsset = findGeneratedVideoAsset(video, assets);
         if (savedAsset) {
             replaceAssets(assets.filter((asset) => asset.id !== savedAsset.id));
-            message.success("已取消加入素材");
+            message.success(workbenchText("已取消加入素材", "Removed from My Assets", language));
             return;
         }
         const coverUrl = normalizeVideoThumbnail(video.thumbnail) || (await createVideoThumbnail(video.url));
@@ -599,7 +601,7 @@ export default function VideoPage() {
             data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType },
             metadata: { source: "video-page", prompt, sourceResultId: video.id, sourceStorageKey: video.storageKey || "", sourceUrl: video.url || "", thumbnail: coverUrl, thumbnailVersion: VIDEO_THUMBNAIL_VERSION },
         });
-        message.success("已加入我的素材");
+        message.success(workbenchText("已加入我的素材", "Added to My Assets", language));
     };
 
     const editResultVideo = (video: GeneratedVideo) => {
@@ -607,14 +609,14 @@ export default function VideoPage() {
         const referenceKey = reference.storageKey || reference.url;
         const applyReference = (mode: "append" | "replace") => {
             setVideoReferences((value) => (mode === "replace" ? [reference] : [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)]).slice(0, referenceLimits.videos || SEEDANCE_REFERENCE_LIMITS.videos));
-            message.success(mode === "replace" ? "已替换参考视频" : "已加入参考视频");
+            message.success(workbenchText(mode === "replace" ? "已替换参考视频" : "已加入参考视频", mode === "replace" ? "Reference video replaced" : "Reference video added", language));
         };
         if (effectiveConfig.referenceEditMode === "ask" && videoReferences.length) {
             modal.confirm({
-                title: "处理参考视频",
-                content: "将当前结果加入参考视频，或替换已有参考视频。",
-                okText: "替换",
-                cancelText: "追加",
+                title: workbenchText("处理参考视频", "Handle reference video", language),
+                content: workbenchText("将当前结果加入参考视频，或替换已有参考视频。", "Add the current result as a reference video, or replace the existing reference video.", language),
+                okText: workbenchText("替换", "Replace", language),
+                cancelText: workbenchText("追加", "Add", language),
                 onOk: () => applyReference("replace"),
                 onCancel: () => applyReference("append"),
             });
@@ -662,7 +664,7 @@ export default function VideoPage() {
             setPrompt(payload.content);
         } else if (payload.kind === "image") {
             if (references.length >= referenceLimits.images) {
-                message.warning("参考图数量已达到当前模型上限");
+                message.warning(workbenchText("参考图数量已达到当前模型上限", "The reference image limit for this model has been reached.", language));
                 setAssetPickerOpen(false);
                 return;
             }
@@ -670,12 +672,12 @@ export default function VideoPage() {
             setReferences((value) => [...value, { id: nanoid(), name: payload.title, type: stored.mimeType, dataUrl: stored.url, storageKey: stored.storageKey }].slice(0, referenceLimits.images));
         } else if (payload.kind === "video") {
             if (referenceLimits.videos <= 0) {
-                message.warning("当前模型不使用参考视频");
+                message.warning(workbenchText("当前模型不使用参考视频", "The current model does not use reference videos.", language));
                 setAssetPickerOpen(false);
                 return;
             }
             if (videoReferences.length >= referenceLimits.videos) {
-                message.warning("参考视频数量已达到当前模型上限");
+                message.warning(workbenchText("参考视频数量已达到当前模型上限", "The reference video limit for this model has been reached.", language));
                 setAssetPickerOpen(false);
                 return;
             }
@@ -755,7 +757,7 @@ export default function VideoPage() {
         );
         await Promise.all(restoredLogs.map((log) => logStore.setItem(log.id, serializeLog(log))));
         await Promise.all([refreshLogs(), refreshTrash()]);
-        message.success(restoredLogs.length === 1 ? "生成记录已恢复" : `已恢复 ${restoredLogs.length} 条生成记录`);
+        message.success(language === "en" ? `${restoredLogs.length} generation ${restoredLogs.length === 1 ? "record" : "records"} restored` : restoredLogs.length === 1 ? "生成记录已恢复" : `已恢复 ${restoredLogs.length} 条生成记录`);
     };
 
     const restoreTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
@@ -767,7 +769,7 @@ export default function VideoPage() {
             await removeWorkbenchTrashEntry("video-workbench", entry.id);
         }
         await refreshTrash();
-        message.success(entries.length === 1 ? "已彻底删除" : `已彻底删除 ${entries.length} 条生成记录`);
+        message.success(language === "en" ? `${entries.length} generation ${entries.length === 1 ? "record" : "records"} permanently deleted` : entries.length === 1 ? "已彻底删除" : `已彻底删除 ${entries.length} 条生成记录`);
     };
 
     const removeTrashItem = async (entry: WorkbenchTrashEntry<GenerationLog>) => {
@@ -777,7 +779,7 @@ export default function VideoPage() {
     const clearTrash = async () => {
         await emptyWorkbenchTrash("video-workbench");
         await refreshTrash();
-        message.success("回收站已清空");
+        message.success(workbenchText("回收站已清空", "Trash emptied", language));
     };
 
     const togglePinnedLog = async (log: GenerationLog) => {
@@ -802,12 +804,12 @@ export default function VideoPage() {
 
     const pollGenerationLog = async (log: GenerationLog, configOverride?: AiConfig, options: PollGenerationOptions = {}) => {
         if (!log.task) {
-            if (options.notify) message.warning("找不到可恢复的视频任务记录");
+            if (options.notify) message.warning(workbenchText("找不到可恢复的视频任务记录", "No recoverable video task record was found.", language));
             return;
         }
         const resultId = options.resultId || log.id;
         if (activeLogIdsRef.current.has(resultId)) {
-            if (options.notify) message.info("该视频任务正在恢复中");
+            if (options.notify) message.info(workbenchText("该视频任务正在恢复中", "This video task is already being recovered.", language));
             return;
         }
         const logId = log.id;
@@ -817,7 +819,7 @@ export default function VideoPage() {
         const requestSnapshot = options.request || videoLogRequestSnapshot(log, normalizeLogConfig(log), log.references || [], log.videoReferences || [], log.audioReferences || []);
         if (!isAiConfigReady(requestConfig, log.task.model || log.model)) {
             if (options.notify) {
-                message.warning("请先完成媒体 API Key 配置后再恢复结果");
+                message.warning(workbenchText("请先完成媒体 API Key 配置后再恢复结果", "Configure the media API key before recovering the result.", language));
                 openConfigDialog(true);
             }
             return;
@@ -849,8 +851,9 @@ export default function VideoPage() {
                     updateLogResults(logId, (value) => updateVideoResultById(value, resultId, { status: "success", video: nextVideo, error: undefined }));
                     await saveLog(completedLog);
                     setPreviewLog((current) => (current?.id === completedLog.id ? completedLog : current));
-                    message.success("视频已生成");
-                    notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成完成", `${log.prompt || log.title || "视频任务"} 已完成`, { tag: `relaybases-video-${resultId}`, requireInteraction: true });
+                    message.success(workbenchText("视频已生成", "Video generated", language));
+                    const notificationName = log.prompt || log.title || workbenchText("视频任务", "Video task", language);
+                    notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频生成完成", "Video generation complete", language), language === "en" ? `${notificationName} completed` : `${notificationName} 已完成`, { tag: `relaybases-video-${resultId}`, requireInteraction: true });
                     void createVideoThumbnail(stored.url).then(async (thumbnail) => {
                         const normalized = normalizeVideoThumbnail(thumbnail);
                         if (!normalized) return;
@@ -865,13 +868,13 @@ export default function VideoPage() {
                 await delay(pollConfig.delayMs);
             }
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "生成失败";
+            const errorMessage = error instanceof Error ? error.message : workbenchText("生成失败", "Generation failed", language);
             const failedLog = appendFailureToVideoLog(log, { id: resultId, error: errorMessage, durationMs: Date.now() - requestStartedAtMs, request: requestSnapshot });
             updateLogResults(logId, (value) => updateVideoResultById(value, resultId, { status: "failed", error: errorMessage, video: undefined, request: requestSnapshot }));
             await saveLog(failedLog);
             setPreviewLog((current) => (current?.id === failedLog.id ? failedLog : current));
-            message.error(errorMessage);
-            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", "视频生成失败", errorMessage, { tag: `relaybases-video-${resultId}`, requireInteraction: true });
+            message.error(workbenchErrorText(errorMessage, language));
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频生成失败", "Video generation failed", language), workbenchErrorText(errorMessage, language), { tag: `relaybases-video-${resultId}`, requireInteraction: true });
         } finally {
             activeLogIdsRef.current.delete(resultId);
             finishLogRun(logId);
@@ -902,7 +905,7 @@ export default function VideoPage() {
 
     const reuseVideoRequest = (request?: GenerationRequestSnapshot) => {
         if (!request) {
-            message.warning("这条结果缺少可复用的生成配置");
+            message.warning(workbenchText("这条结果缺少可复用的生成配置", "This result has no reusable generation configuration.", language));
             return;
         }
         const limits = videoReferenceLimits(isSeedanceVideoConfig({ ...effectiveConfig, ...request.config, model: request.model }), modelOptionName(request.config.videoModel || request.model));
@@ -917,7 +920,7 @@ export default function VideoPage() {
         if (request.config.videoSeconds) updateConfig("videoSeconds", request.config.videoSeconds);
         if (request.config.videoGenerateAudio) updateConfig("videoGenerateAudio", request.config.videoGenerateAudio);
         if (request.config.videoWatermark) updateConfig("videoWatermark", request.config.videoWatermark);
-        message.success("已复用生成配置");
+        message.success(workbenchText("已复用生成配置", "Generation configuration reused", language));
     };
 
     const renderReferencePanel = () => (
@@ -963,25 +966,25 @@ export default function VideoPage() {
                     <div className="flex shrink-0 items-center justify-end gap-3 px-1 pb-2 lg:px-0">
                         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                             <Button className="max-lg:!inline-flex lg:!hidden" icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
-                                记录
+                                {workbenchText("记录", "History", language)}
                             </Button>
                             {results.length ? (
                                 <>
                                     <Button size="small" icon={<CheckSquare className="size-3.5" />} onClick={toggleAllResults}>
-                                        {allResultsSelected ? "取消" : "全选"}
+                                        {workbenchText(allResultsSelected ? "取消" : "全选", allResultsSelected ? "Cancel" : "Select all", language)}
                                     </Button>
                                     <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedResults.length} onClick={() => requestDeleteResults(selectedResults)}>
-                                        删除选中
+                                        {workbenchText("删除选中", "Delete selected", language)}
                                     </Button>
                                     <Button size="small" icon={<Download className="size-3.5" />} disabled={!selectedSuccessResults.length} onClick={() => void downloadSelectedVideos()}>
-                                        下载选中
+                                        {workbenchText("下载选中", "Download selected", language)}
                                     </Button>
                                 </>
                             ) : null}
                             {running ? (
                                 <HistoryPill tone="pending" label="生成中">
                                     {formatDuration(elapsedMs)}
-                                    {(activeRunning?.count || 0) > 1 ? ` · ${activeRunning?.count} 个任务` : ""}
+                                    {(activeRunning?.count || 0) > 1 ? videoRunningTaskCountLabel(activeRunning?.count || 0, language) : ""}
                                 </HistoryPill>
                             ) : null}
                         </div>
@@ -1001,7 +1004,7 @@ export default function VideoPage() {
                                         result.status === "success" && result.video ? (
                                             <ResultVideoCard key={resultIdentityKey(result)} video={result.video} previewSuspended={playerVideo?.id === result.video.id} selected={selectedResultIds.includes(resultIdentityKey(result))} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} onPlay={() => setPlayerVideo(result.video || null)} onReuse={() => reuseVideoRequest(result.video?.request || result.request)} onEdit={editResultVideo} onRegenerate={() => void generate()} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
-                                            <FailedVideoCard key={resultIdentityKey(result)} error={result.error || "生成失败"} request={result.request} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} retryLabel={findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试"} onReuse={() => reuseVideoRequest(result.request)} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
+                                            <FailedVideoCard key={resultIdentityKey(result)} error={result.error || workbenchText("生成失败", "Generation failed", language)} request={result.request} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} retryLabel={workbenchText(findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试", findRecoverableLogForResult(logs, result.id) ? "Recover result" : "Retry", language)} onReuse={() => reuseVideoRequest(result.request)} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
                                             <PendingVideoCard key={resultIdentityKey(result)} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} />
                                         ),
@@ -1023,20 +1026,20 @@ export default function VideoPage() {
                                         onClick={() => setPromptCollapsed((collapsed) => !collapsed)}
                                         aria-expanded={!promptCollapsed}
                                     >
-                                        <span>提示词</span>
+                                        <span>{workbenchText("提示词", "Prompt", language)}</span>
                                         <ChevronDown className={`size-4 text-stone-400 transition-transform ${promptCollapsed ? "-rotate-90" : ""}`} />
                                     </button>
                                     <div className="flex flex-wrap gap-2">
-                                        <Tooltip title="使用文本模型优化和丰富提示词">
+                                        <Tooltip title={workbenchText("使用文本模型优化和丰富提示词", "Use a text model to refine and enrich the prompt", language)}>
                                             <Button size="small" icon={promptOptimizing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} disabled={!prompt.trim() || promptOptimizing} onClick={() => void optimizePrompt()}>
-                                                AI 优化
+                                                {workbenchText("AI 优化", "AI Enhance", language)}
                                             </Button>
                                         </Tooltip>
                                         <Button size="small" icon={<BookOpen className="size-3.5" />} onClick={() => setPromptDialogOpen(true)}>
-                                            提示词库
+                                            {workbenchText("提示词库", "Prompt Library", language)}
                                         </Button>
                                         <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => setAssetPickerOpen(true)}>
-                                            我的素材
+                                            {workbenchText("我的素材", "My Assets", language)}
                                         </Button>
                                     </div>
                                 </div>
@@ -1050,7 +1053,7 @@ export default function VideoPage() {
                                     }}
                                     rows={promptCollapsed ? 1 : 2}
                                     autoSize={promptCollapsed ? { minRows: 1, maxRows: 1 } : { minRows: 2, maxRows: 5 }}
-                                    placeholder="描述镜头运动、主体动作、场景氛围和画面风格"
+                                    placeholder={workbenchText("描述镜头运动、主体动作、场景氛围和画面风格", "Describe camera movement, subject action, scene mood, and visual style", language)}
                                     className="!resize-none !rounded-none !border-0 !bg-transparent !px-0 !py-0 !text-base !shadow-none focus:!shadow-none"
                                 />
 
@@ -1083,23 +1086,23 @@ export default function VideoPage() {
                                 <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
                                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                                         <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
-                                        {grokVideo ? <VideoComposerMetric label="模式" value="异步" /> : relayBasesVideo ? <VideoComposerSelect label="模式" value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
-                                        <VideoComposerSelect label="比例" value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
-                                        {resolutionOptions.length > 1 ? <VideoComposerSelect label="清晰度" value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label="清晰度" value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model)} />}
+                                        {grokVideo ? <VideoComposerMetric label={workbenchText("模式", "Mode", language)} value={workbenchText("异步", "Async", language)} /> : relayBasesVideo ? <VideoComposerSelect label={workbenchText("模式", "Mode", language)} value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
+                                        <VideoComposerSelect label={workbenchText("比例", "Aspect Ratio", language)} value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
+                                        {resolutionOptions.length > 1 ? <VideoComposerSelect label={workbenchText("清晰度", "Resolution", language)} value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label={workbenchText("清晰度", "Resolution", language)} value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model, language)} />}
                                         {secondsTiming.fixed ? (
-                                            <VideoComposerMetric label="时长" value={secondsOptions[0]?.label || (secondsValue === "-1" ? "智能" : `${secondsValue}s`)} />
+                                            <VideoComposerMetric label={workbenchText("时长", "Duration", language)} value={secondsOptions[0]?.label || (secondsValue === "-1" ? workbenchText("智能", "Auto", language) : `${secondsValue}s`)} />
                                         ) : (
                                             <VideoComposerDurationControl value={secondsValue} options={secondsOptions} min={secondsTiming.min} max={secondsTiming.max} allowSmart={seedanceVideo} onChange={(value) => updateConfig("videoSeconds", value)} />
                                         )}
                                         {seedanceVideo ? (
                                             <>
-                                                <VideoToggleControl label="声音" checked={boolConfig(effectiveConfig.videoGenerateAudio, true)} onChange={(checked) => updateConfig("videoGenerateAudio", String(checked))} />
-                                                <VideoToggleControl label="水印" checked={boolConfig(effectiveConfig.videoWatermark, false)} onChange={(checked) => updateConfig("videoWatermark", String(checked))} />
+                                                <VideoToggleControl label={workbenchText("声音", "Audio", language)} checked={boolConfig(effectiveConfig.videoGenerateAudio, true)} onChange={(checked) => updateConfig("videoGenerateAudio", String(checked))} />
+                                                <VideoToggleControl label={workbenchText("水印", "Watermark", language)} checked={boolConfig(effectiveConfig.videoWatermark, false)} onChange={(checked) => updateConfig("videoWatermark", String(checked))} />
                                             </>
                                         ) : null}
                                     </div>
                                     <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => void generate()} className="xl:min-w-36">
-                                        开始生成
+                                        {workbenchText("开始生成", "Generate", language)}
                                     </Button>
                                 </div>
                             </div>
@@ -1156,38 +1159,38 @@ export default function VideoPage() {
                     }}
                 />
             </Drawer>
-            <Drawer title="回收站" placement="right" width="min(560px, 100vw)" open={trashOpen} onClose={() => setTrashOpen(false)} styles={{ body: { padding: 12 } }}>
+            <Drawer title={workbenchText("回收站", "Trash", language)} placement="right" width="min(560px, 100vw)" open={trashOpen} onClose={() => setTrashOpen(false)} styles={{ body: { padding: 12 } }}>
                 <TrashPanel
                     entries={trashItems}
                     onRestore={(entry) => void restoreTrashItem(entry)}
                     onRestoreSelected={(entries) => void restoreTrashItems(entries)}
                     onRemove={(entry) =>
                         modal.confirm({
-                            title: "彻底删除生成记录",
-                            content: "彻底删除后将无法从回收站恢复，相关本地媒体文件也会被清理。",
-                            okText: "彻底删除",
+                            title: workbenchText("彻底删除生成记录", "Permanently delete generation record", language),
+                            content: workbenchText("彻底删除后将无法从回收站恢复，相关本地媒体文件也会被清理。", "This record cannot be restored after permanent deletion. Related local media files will also be removed.", language),
+                            okText: workbenchText("彻底删除", "Delete permanently", language),
                             okButtonProps: { danger: true },
-                            cancelText: "取消",
+                            cancelText: workbenchText("取消", "Cancel", language),
                             onOk: () => removeTrashItem(entry),
                         })
                     }
                     onRemoveSelected={(entries) =>
                         modal.confirm({
-                            title: "彻底删除生成记录",
-                            content: `确定彻底删除选中的 ${entries.length} 条生成记录吗？相关本地媒体文件也会被清理。`,
-                            okText: "彻底删除",
+                            title: workbenchText("彻底删除生成记录", "Permanently delete generation records", language),
+                            content: language === "en" ? `Permanently delete the selected ${entries.length} generation ${entries.length === 1 ? "record" : "records"}? Related local media files will also be removed.` : `确定彻底删除选中的 ${entries.length} 条生成记录吗？相关本地媒体文件也会被清理。`,
+                            okText: workbenchText("彻底删除", "Delete permanently", language),
                             okButtonProps: { danger: true },
-                            cancelText: "取消",
+                            cancelText: workbenchText("取消", "Cancel", language),
                             onOk: () => removeTrashItems(entries),
                         })
                     }
                     onClear={() =>
                         modal.confirm({
-                            title: "清空回收站",
-                            content: "回收站内的生成记录和相关本地媒体文件会被彻底删除。",
-                            okText: "清空",
+                            title: workbenchText("清空回收站", "Empty Trash", language),
+                            content: workbenchText("回收站内的生成记录和相关本地媒体文件会被彻底删除。", "Generation records and related local media files in Trash will be permanently deleted.", language),
+                            okText: workbenchText("清空", "Empty", language),
                             okButtonProps: { danger: true },
-                            cancelText: "取消",
+                            cancelText: workbenchText("取消", "Cancel", language),
                             onOk: clearTrash,
                         })
                     }
@@ -1197,11 +1200,11 @@ export default function VideoPage() {
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
             <VideoPlayerModal video={playerVideo} onClose={() => setPlayerVideo(null)} onDownload={downloadVideo} />
             <ReferencePreviewModal preview={referencePreview} onClose={() => setReferencePreview(null)} />
-            <Modal title="删除生成结果" open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
-                确定删除选中的 {resultDeleteTargets.length} 个生成结果吗？成功视频会同步删除本地媒体文件。
+            <Modal title={workbenchText("删除生成结果", "Delete generation results", language)} open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText={workbenchText("删除", "Delete", language)} okButtonProps={{ danger: true }} cancelText={workbenchText("取消", "Cancel", language)}>
+                {language === "en" ? `Delete the selected ${resultDeleteTargets.length} generation ${resultDeleteTargets.length === 1 ? "result" : "results"}? Local media files for successful videos will also be deleted.` : `确定删除选中的 ${resultDeleteTargets.length} 个生成结果吗？成功视频会同步删除本地媒体文件。`}
             </Modal>
-            <Modal title="删除生成记录" open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={() => void deleteSelectedLogs()} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
-                确定删除选中的 {selectedLogIds.length} 条生成记录吗？
+            <Modal title={workbenchText("删除生成记录", "Delete generation records", language)} open={deleteConfirmOpen} onCancel={() => setDeleteConfirmOpen(false)} onOk={() => void deleteSelectedLogs()} okText={workbenchText("删除", "Delete", language)} okButtonProps={{ danger: true }} cancelText={workbenchText("取消", "Cancel", language)}>
+                {language === "en" ? `Delete the selected ${selectedLogIds.length} generation ${selectedLogIds.length === 1 ? "record" : "records"}?` : `确定删除选中的 ${selectedLogIds.length} 条生成记录吗？`}
             </Modal>
         </div>
     );
@@ -1210,7 +1213,7 @@ export default function VideoPage() {
 function VideoWorkbenchEmptyState() {
     return (
         <div className="grid min-h-[min(54dvh,560px)] place-items-center rounded-2xl bg-background/70 text-center dark:bg-background/70">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-sm text-stone-400">还没有生成视频</span>} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-sm text-stone-400">{workbenchText("还没有生成视频", "No videos generated yet")}</span>} />
         </div>
     );
 }
@@ -1230,7 +1233,7 @@ function VideoComposerSelect({ label, value, options, onChange }: { label: strin
         <Select value={selected?.value || value} onValueChange={onChange}>
             <SelectTrigger
                 className={`w-auto max-w-[11rem] justify-start gap-1.5 ${COMPOSER_CONTROL_CLASS}`}
-                aria-label={`选择${label}`}
+                aria-label={workbenchText("选择", "Select") + " " + label}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
@@ -1270,13 +1273,13 @@ function VideoComposerDurationControl({ value, options, min, max, allowSmart, on
 
     return (
         <div className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS} px-0`}>
-            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">时长</span>
+            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">{workbenchText("时长", "Duration")}</span>
             <input
                 type="number"
                 min={min}
                 max={max}
                 value={draft}
-                placeholder={allowSmart && value === "-1" ? "智能" : String(min)}
+                placeholder={allowSmart && value === "-1" ? workbenchText("智能", "Auto") : String(min)}
                 className="h-full w-10 bg-transparent px-1 text-center text-stone-700 outline-none placeholder:text-stone-400 [appearance:textfield] dark:text-stone-200 dark:placeholder:text-stone-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 onChange={(event) => setDraft(event.target.value.replace(/[^\d]/g, ""))}
                 onBlur={commit}
@@ -1287,11 +1290,11 @@ function VideoComposerDurationControl({ value, options, min, max, allowSmart, on
             />
             <span className="pr-1 text-xs text-stone-500 dark:text-stone-400">s</span>
             <Select value={selected?.value || customValue} onValueChange={(next) => next !== customValue && onChange(next)}>
-                <SelectTrigger className="h-7 w-7 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-stone-100/80 focus-visible:ring-0 dark:hover:bg-stone-800/70" aria-label="选择时长预设" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} />
+                <SelectTrigger className="h-7 w-7 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-stone-100/80 focus-visible:ring-0 dark:hover:bg-stone-800/70" aria-label={workbenchText("选择时长预设", "Select a duration preset")} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} />
                 <SelectContent className="z-[3000] min-w-[7rem] rounded-xl border border-border/70 bg-white p-1 shadow-xl dark:bg-stone-950" position="popper" align="start" side="bottom" sideOffset={6} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
                     {selected ? null : (
                         <SelectItem value={customValue} disabled>
-                            当前 {value === "-1" ? "智能" : `${value}s`}
+                            {workbenchText("当前", "Current")} {value === "-1" ? workbenchText("智能", "Auto") : `${value}s`}
                         </SelectItem>
                     )}
                     {options.map((item) => (
@@ -1314,7 +1317,7 @@ function VideoToggleControl({ label, checked, onChange }: { label: string; check
             aria-pressed={checked}
         >
             <span className="shrink-0 text-xs opacity-70">{label}</span>
-            <span className="min-w-0 truncate">{checked ? "开" : "关"}</span>
+            <span className="min-w-0 truncate">{workbenchText(checked ? "开" : "关", checked ? "On" : "Off")}</span>
         </button>
     );
 }
@@ -1362,6 +1365,15 @@ function videoReferenceSummary(images: ReferenceImage[], videos: ReferenceVideo[
         .join(" · ");
 }
 
+function videoRunningTaskCountLabel(count: number, language: WorkbenchLanguage) {
+    return language === "en" ? ` · ${count} ${count === 1 ? "task" : "tasks"}` : ` · ${count} 个任务`;
+}
+
+function videoReferenceCountLabel(kind: "image" | "video" | "audio", count: number, max: number, language: WorkbenchLanguage) {
+    const label = language === "en" ? (kind === "image" ? "Images" : kind === "video" ? "Videos" : "Audio") : kind === "image" ? "图片" : kind === "video" ? "视频" : "音频";
+    return max > 0 ? `${label} ${count}/${max}` : label;
+}
+
 function videoReferenceLabel(kind: "image" | "video" | "audio", index: number, language: "zh" | "en") {
     if (language === "zh") return seedanceReferenceLabel(kind, index);
     return `${kind === "image" ? "Image" : kind === "video" ? "Video" : "Audio"} ${index + 1}`;
@@ -1371,9 +1383,9 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
     const value = model.toLowerCase();
     if (seedance) {
         return {
-            image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: `MP4/MOV · 2-15s · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
-            audio: `MP3/WAV · 2-15s · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
+            image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: language === "en" ? `MP4/MOV · 2–15s · max ${formatReferenceLimit(limits.videoMaxBytes)} each` : `MP4/MOV · 2-15s · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
+            audio: language === "en" ? `MP3/WAV · 2–15s · max ${formatReferenceLimit(limits.audioMaxBytes)} each` : `MP3/WAV · 2-15s · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
         };
     }
     if (isGrokImagineVideoModel(value)) {
@@ -1385,29 +1397,29 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
     }
     if (value === "veo-omni-flash-video-edit") {
         return {
-            image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
-            audio: "不使用",
+            image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: language === "en" ? `MP4/MOV · max ${formatReferenceLimit(limits.videoMaxBytes)} each` : `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
+            audio: language === "en" ? "Not used" : "不使用",
         };
     }
     if (value === "veo-3-1") {
         return {
-            image: `首帧/尾帧 · 最多 2 张 · PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: "不使用",
-            audio: "不使用",
+            image: language === "en" ? `First/last frames · up to 2 PNG/JPG images · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `首帧/尾帧 · 最多 2 张 · PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: language === "en" ? "Not used" : "不使用",
+            audio: language === "en" ? "Not used" : "不使用",
         };
     }
     if (limits.videos || limits.audios) {
         return {
-            image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
-            audio: `MP3/WAV · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
+            image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+            video: language === "en" ? `MP4/MOV · max ${formatReferenceLimit(limits.videoMaxBytes)} each` : `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
+            audio: language === "en" ? `MP3/WAV · max ${formatReferenceLimit(limits.audioMaxBytes)} each` : `MP3/WAV · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
         };
     }
     return {
-        image: `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-        video: "不使用",
-        audio: "不使用",
+        image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
+        video: language === "en" ? "Not used" : "不使用",
+        audio: language === "en" ? "Not used" : "不使用",
     };
 }
 
@@ -1466,7 +1478,7 @@ function VideoReferencePanel({
                 </div>
             </div>
 
-            <VideoReferenceStrip title={`${language === "en" ? "Images" : "图片"} ${references.length}/${limits.images}`} detail={requirements.image} empty={language === "en" ? "None Added" : "未添加"}>
+            <VideoReferenceStrip title={videoReferenceCountLabel("image", references.length, limits.images, language)} detail={requirements.image} empty={language === "en" ? "None Added" : "未添加"}>
                 {references.map((item, index) => (
                     <div
                         key={item.id}
@@ -1492,7 +1504,7 @@ function VideoReferencePanel({
                                 event.stopPropagation();
                                 onRemoveImage(item.id);
                             }}
-                            aria-label="移除参考图"
+                            aria-label={language === "en" ? "Remove reference image" : "移除参考图"}
                         >
                             <X className="size-3.5" />
                         </button>
@@ -1501,7 +1513,7 @@ function VideoReferencePanel({
             </VideoReferenceStrip>
 
             {limits.videos > 0 || videoReferences.length ? (
-                <VideoReferenceStrip title={limits.videos > 0 ? `视频 ${videoReferences.length}/${limits.videos}` : "视频"} detail={requirements.video} empty={limits.videos > 0 ? "未添加" : "当前模型不使用"}>
+                <VideoReferenceStrip title={videoReferenceCountLabel("video", videoReferences.length, limits.videos, language)} detail={requirements.video} empty={limits.videos > 0 ? (language === "en" ? "None Added" : "未添加") : language === "en" ? "Not used by this model" : "当前模型不使用"}>
                     {videoReferences.map((item, index) => (
                         <div
                             key={item.id}
@@ -1527,7 +1539,7 @@ function VideoReferencePanel({
                                     event.stopPropagation();
                                     onRemoveVideo(item.id);
                                 }}
-                                aria-label="移除参考视频"
+                                aria-label={language === "en" ? "Remove reference video" : "移除参考视频"}
                             >
                                 <X className="size-3.5" />
                             </button>
@@ -1537,13 +1549,13 @@ function VideoReferencePanel({
             ) : null}
 
             {limits.audios > 0 || audioReferences.length ? (
-                <VideoReferenceStrip title={limits.audios > 0 ? `音频 ${audioReferences.length}/${limits.audios}` : "音频"} detail={requirements.audio} empty={limits.audios > 0 ? "未添加" : "当前模型不使用"}>
+                <VideoReferenceStrip title={videoReferenceCountLabel("audio", audioReferences.length, limits.audios, language)} detail={requirements.audio} empty={limits.audios > 0 ? (language === "en" ? "None Added" : "未添加") : language === "en" ? "Not used by this model" : "当前模型不使用"}>
                     {audioReferences.map((item, index) => (
                         <div key={item.id} className="group relative flex h-16 w-44 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-stone-50 px-2 ring-1 ring-stone-200/70 dark:bg-stone-900/55 dark:ring-stone-800/70">
                             <div className="flex min-w-0 items-center gap-2 pr-5 text-xs text-stone-500 dark:text-stone-400">
                                 <Music2 className="size-3.5 shrink-0" />
                                 <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{videoReferenceLabel("audio", index, language)}</span>
-                                <span className="truncate">{item.name}</span>
+                                <span data-no-i18n className="truncate">{item.name}</span>
                             </div>
                             <audio src={item.url} controls className="h-7 w-full" preload="metadata" />
                             <ReferenceOrderButtons index={index} total={audioReferences.length} onMove={(offset) => onMoveAudio(index, offset)} />
@@ -1551,7 +1563,7 @@ function VideoReferencePanel({
                                 type="button"
                                 className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/58 text-white shadow-sm transition hover:bg-[#ff4d4f] active:bg-[#d9363e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                                 onClick={() => onRemoveAudio(item.id)}
-                                aria-label="移除参考音频"
+                                aria-label={language === "en" ? "Remove reference audio" : "移除参考音频"}
                             >
                                 <X className="size-3.5" />
                             </button>
@@ -1576,20 +1588,20 @@ function VideoReferenceStrip({ title, detail, empty, children }: { title: string
     );
 }
 
-function videoRatioOptions(seedance: boolean) {
-    if (!seedance) return RELAYBASES_VIDEO_RATIO_OPTIONS;
-    return seedanceRatioOptions.map((item) => ({ value: item.value, label: item.value === "adaptive" ? item.label : `${item.label} ${item.value}` }));
+function videoRatioOptions(seedance: boolean, language?: WorkbenchLanguage) {
+    if (!seedance) return RELAYBASES_VIDEO_RATIO_OPTIONS.map((item) => ({ ...item, label: workbenchText(item.label, undefined, language) }));
+    return seedanceRatioOptions.map((item) => ({ value: item.value, label: item.value === "adaptive" ? workbenchText(item.label, "Adaptive", language) : `${workbenchText(item.label, undefined, language)} ${item.value}` }));
 }
 
-function videoResolutionOptions(seedance: boolean, model: string, fixedLabel: string) {
+function videoResolutionOptions(seedance: boolean, model: string, fixedLabel: string, language?: WorkbenchLanguage) {
     if (isGrokImagineVideoModel(model)) return GROK_VIDEO_RESOLUTION_OPTIONS;
     if (!seedance) return [{ value: "fixed", label: fixedLabel }];
-    return seedanceResolutionOptions.map((item) => ({ value: item.value, label: item.label, disabled: item.value === "1080p" && isSeedanceFastModel(model) }));
+    return seedanceResolutionOptions.map((item) => ({ value: item.value, label: workbenchText(item.label, undefined, language), disabled: item.value === "1080p" && isSeedanceFastModel(model) }));
 }
 
-function videoSecondsOptions(seedance: boolean, model: string, currentValue: string) {
-    const options = seedance ? seedanceDurationOptions.map((value) => ({ value: String(value), label: value === -1 ? "智能" : `${value}s` })) : relayBasesVideoTiming(model).options.map((value) => ({ value: String(value), label: `${value}s` }));
-    if (currentValue && !options.some((item) => item.value === currentValue)) options.push({ value: currentValue, label: currentValue === "-1" ? "智能" : `${currentValue}s` });
+function videoSecondsOptions(seedance: boolean, model: string, currentValue: string, language?: WorkbenchLanguage) {
+    const options = seedance ? seedanceDurationOptions.map((value) => ({ value: String(value), label: value === -1 ? workbenchText("智能", "Auto", language) : `${value}s` })) : relayBasesVideoTiming(model).options.map((value) => ({ value: String(value), label: `${value}s` }));
+    if (currentValue && !options.some((item) => item.value === currentValue)) options.push({ value: currentValue, label: currentValue === "-1" ? workbenchText("智能", "Auto", language) : `${currentValue}s` });
     return uniqueVideoOptions(options);
 }
 
@@ -1615,7 +1627,7 @@ const HISTORY_PILL_TONE_CLASSES: Record<HistoryPillTone, string> = {
 function HistoryPill({ label, tone = "neutral", children, className = "" }: { label?: string; tone?: HistoryPillTone; children: ReactNode; className?: string }) {
     return (
         <span className={`inline-flex h-6 max-w-full items-center gap-1 overflow-hidden rounded-full border px-2 text-[11px] leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] ${HISTORY_PILL_TONE_CLASSES[tone]} ${className}`}>
-            {label ? <span className="shrink-0 font-medium opacity-65">{label}</span> : null}
+            {label ? <span className="shrink-0 font-medium opacity-65">{workbenchText(label)}</span> : null}
             <span className="min-w-0 truncate font-semibold">{children}</span>
         </span>
     );
@@ -1652,7 +1664,7 @@ function ResultVideoCard({
     const promptPreview = video.request?.prompt || "";
     return (
         <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-black shadow-sm dark:border-stone-800">
-            <SelectionBubble className="absolute right-3 top-3 z-30" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
+            <SelectionBubble className="absolute right-3 top-3 z-30" selected={selected} onSelectedChange={onSelectedChange} ariaLabel={workbenchText("选择生成结果", "Select generation result")} />
             <div className="group relative aspect-square w-full overflow-hidden bg-black text-left">
                 {previewSuspended ? (
                     video.thumbnail ? (
@@ -1663,15 +1675,15 @@ function ResultVideoCard({
                 ) : (
                     <video src={video.url} poster={video.thumbnail || undefined} className="size-full object-cover" muted playsInline preload="metadata" />
                 )}
-                <button type="button" className="absolute inset-0 z-10 grid place-items-center bg-black/0 transition hover:bg-black/18" onClick={onPlay} aria-label="播放视频">
+                <button type="button" className="absolute inset-0 z-10 grid place-items-center bg-black/0 transition hover:bg-black/18" onClick={onPlay} aria-label={workbenchText("播放视频", "Play video")}>
                     <span className="grid size-12 place-items-center rounded-full bg-white/90 text-stone-950 shadow-lg transition hover:scale-105">
                         <Play className="ml-0.5 size-5 fill-current" />
                     </span>
                 </button>
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/75 via-black/45 to-transparent px-2.5 pb-2 pt-9 text-white">
                     {promptPreview ? (
-                        <Tooltip title={promptPreview}>
-                            <div className="pointer-events-auto mb-1 line-clamp-2 text-xs font-medium leading-4 text-white">{promptPreview}</div>
+                        <Tooltip title={<span data-no-i18n>{promptPreview}</span>}>
+                            <div data-no-i18n className="pointer-events-auto mb-1 line-clamp-2 text-xs font-medium leading-4 text-white">{promptPreview}</div>
                         </Tooltip>
                     ) : null}
                     <div className="mb-1 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-[11px] leading-none text-white/78">
@@ -1683,23 +1695,23 @@ function ResultVideoCard({
                         {durationLabel ? <span>{durationLabel}</span> : null}
                     </div>
                     <div className="pointer-events-auto flex items-center justify-end gap-1">
-                        <Tooltip title="作为参考视频继续编辑">
-                            <Button type="text" aria-label="作为参考视频继续编辑" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)} />
+                        <Tooltip title={workbenchText("作为参考视频继续编辑", "Continue editing with this reference video")}>
+                            <Button type="text" aria-label={workbenchText("作为参考视频继续编辑", "Continue editing with this reference video")} className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<PenLine className="size-3.5" />} onClick={() => onEdit(video)} />
                         </Tooltip>
-                        <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
-                            <Button type="text" aria-label={savedToAsset ? "取消加入素材" : "添加到素材"} className={`${RESULT_OVERLAY_ICON_BUTTON_CLASS} ${savedToAsset ? "!bg-emerald-500/40 !text-white hover:!bg-emerald-500/55" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(video)} />
+                        <Tooltip title={workbenchText(savedToAsset ? "已加入我的素材，点击取消" : "添加到素材", savedToAsset ? "Added to My Assets; click to remove" : "Add to My Assets")}>
+                            <Button type="text" aria-label={workbenchText(savedToAsset ? "取消加入素材" : "添加到素材", savedToAsset ? "Remove from My Assets" : "Add to My Assets")} className={`${RESULT_OVERLAY_ICON_BUTTON_CLASS} ${savedToAsset ? "!bg-emerald-500/40 !text-white hover:!bg-emerald-500/55" : ""}`} size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => void onSaveAsset(video)} />
                         </Tooltip>
-                        <Tooltip title="复用提示词和配置">
-                            <Button type="text" aria-label="复用提示词和配置" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onReuse} />
+                        <Tooltip title={workbenchText("复用提示词和配置", "Reuse prompt and settings")}>
+                            <Button type="text" aria-label={workbenchText("复用提示词和配置", "Reuse prompt and settings")} className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onReuse} />
                         </Tooltip>
-                        <Tooltip title="重新生成">
-                            <Button type="text" aria-label="重新生成" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<RotateCcw className="size-3.5" />} onClick={onRegenerate} />
+                        <Tooltip title={workbenchText("重新生成", "Regenerate")}>
+                            <Button type="text" aria-label={workbenchText("重新生成", "Regenerate")} className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<RotateCcw className="size-3.5" />} onClick={onRegenerate} />
                         </Tooltip>
-                        <Tooltip title="下载">
-                            <Button type="text" aria-label="下载视频" className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)} />
+                        <Tooltip title={workbenchText("下载", "Download")}>
+                            <Button type="text" aria-label={workbenchText("下载视频", "Download video")} className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)} />
                         </Tooltip>
-                        <Tooltip title="删除结果">
-                            <Button type="text" aria-label="删除结果" className={RESULT_OVERLAY_DANGER_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
+                        <Tooltip title={workbenchText("删除结果", "Delete result")}>
+                            <Button type="text" aria-label={workbenchText("删除结果", "Delete result")} className={RESULT_OVERLAY_DANGER_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
                         </Tooltip>
                     </div>
                 </div>
@@ -1711,10 +1723,10 @@ function ResultVideoCard({
 function PendingVideoCard({ selected, onSelectedChange }: { selected: boolean; onSelectedChange: (checked: boolean) => void }) {
     return (
         <div className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50 dark:border-stone-700 dark:bg-stone-900">
-            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
+            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel={workbenchText("选择生成结果", "Select generation result")} />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-stone-500 dark:text-stone-400">
                 <LoaderCircle className="size-6 animate-spin" />
-                <span>生成中</span>
+                <span>{workbenchText("生成中", "Generating")}</span>
             </div>
         </div>
     );
@@ -1724,29 +1736,29 @@ function FailedVideoCard({ error, request, selected, retryLabel = "重试", onSe
     const promptPreview = request?.prompt || "";
     return (
         <div className="relative overflow-hidden rounded-lg border border-red-200 bg-red-50 dark:border-red-950 dark:bg-red-950/20">
-            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成结果" />
+            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel={workbenchText("选择生成结果", "Select generation result")} />
             <div className="flex aspect-square flex-col items-center justify-center gap-3 p-5 text-center">
-                <div className="text-sm font-medium text-red-600 dark:text-red-300">生成失败</div>
+                <div className="text-sm font-medium text-red-600 dark:text-red-300">{workbenchText("生成失败", "Generation failed")}</div>
                 {promptPreview ? (
-                    <Tooltip title={promptPreview}>
-                        <Typography.Paragraph ellipsis={{ rows: 3 }} className="!mb-0 !text-xs !font-medium !text-red-700 dark:!text-red-200">
+                    <Tooltip title={<span data-no-i18n>{promptPreview}</span>}>
+                        <Typography.Paragraph data-no-i18n ellipsis={{ rows: 3 }} className="!mb-0 !text-xs !font-medium !text-red-700 dark:!text-red-200">
                             {promptPreview}
                         </Typography.Paragraph>
                     </Tooltip>
                 ) : null}
-                <Typography.Paragraph ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
-                    {error}
+                <Typography.Paragraph data-no-i18n ellipsis={{ rows: 4 }} className="!mb-0 !text-xs !text-red-500 dark:!text-red-300">
+                    {workbenchErrorText(error)}
                 </Typography.Paragraph>
             </div>
             <div className="flex justify-end gap-1.5 px-2 pb-2">
-                <Tooltip title="复用提示词和配置">
-                    <Button type="text" aria-label="复用提示词和配置" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onReuse} />
+                <Tooltip title={workbenchText("复用提示词和配置", "Reuse prompt and settings")}>
+                    <Button type="text" aria-label={workbenchText("复用提示词和配置", "Reuse prompt and settings")} className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<ClipboardPaste className="size-3.5" />} onClick={onReuse} />
                 </Tooltip>
                 <Tooltip title={retryLabel}>
                     <Button type="text" aria-label={retryLabel} className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<RotateCcw className="size-3.5" />} onClick={() => onRetry()} />
                 </Tooltip>
-                <Tooltip title="删除结果">
-                    <Button type="text" aria-label="删除结果" className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
+                <Tooltip title={workbenchText("删除结果", "Delete result")}>
+                    <Button type="text" aria-label={workbenchText("删除结果", "Delete result")} className={RESULT_FAILED_ICON_BUTTON_CLASS} size="small" icon={<Trash2 className="size-3.5" />} onClick={onDelete} />
                 </Tooltip>
             </div>
         </div>
@@ -1832,7 +1844,7 @@ function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVide
     const durationLabel = video ? videoDurationLabel(video) : "";
 
     return (
-        <Modal title="视频播放" open={Boolean(video)} width={960} centered onCancel={onClose} footer={null} destroyOnHidden>
+        <Modal title={workbenchText("视频播放", "Video playback")} open={Boolean(video)} width={960} centered onCancel={onClose} footer={null} destroyOnHidden>
             {video ? (
                 <div className="space-y-3">
                     <div className="overflow-hidden rounded-lg bg-black">
@@ -1861,19 +1873,19 @@ function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVide
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Button size="small" icon={playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />} onClick={() => void togglePlay()}>
-                                {playing ? "暂停" : "播放"}
+                                {workbenchText(playing ? "暂停" : "播放", playing ? "Pause" : "Play")}
                             </Button>
                             <Button size="small" icon={<RotateCcw className="size-3.5" />} onClick={() => void restart()}>
-                                重播
+                                {workbenchText("重播", "Replay")}
                             </Button>
                             <Button size="small" icon={muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />} onClick={toggleMute}>
-                                {muted ? "取消静音" : "静音"}
+                                {workbenchText(muted ? "取消静音" : "静音", muted ? "Unmute" : "Mute")}
                             </Button>
                             <Button size="small" icon={<Maximize2 className="size-3.5" />} onClick={() => void fullscreen()}>
-                                全屏
+                                {workbenchText("全屏", "Fullscreen")}
                             </Button>
                             <Button size="small" icon={<Download className="size-3.5" />} onClick={() => onDownload(video)}>
-                                下载
+                                {workbenchText("下载", "Download")}
                             </Button>
                         </div>
                     </div>
@@ -1885,7 +1897,7 @@ function VideoPlayerModal({ video, onClose, onDownload }: { video: GeneratedVide
 
 function ReferencePreviewModal({ preview, onClose }: { preview: ReferencePreview | null; onClose: () => void }) {
     return (
-        <Modal title={preview ? preview.label : "参考素材"} open={Boolean(preview)} width={preview?.kind === "image" ? 860 : 960} centered onCancel={onClose} footer={null} destroyOnHidden>
+        <Modal title={preview ? preview.label : workbenchText("参考素材", "References")} open={Boolean(preview)} width={preview?.kind === "image" ? 860 : 960} centered onCancel={onClose} footer={null} destroyOnHidden>
             {preview?.kind === "image" ? (
                 <div className="overflow-hidden rounded-lg bg-black">
                     <img src={preview.item.dataUrl} alt={preview.item.name} className="max-h-[76vh] w-full object-contain" />
@@ -2047,7 +2059,7 @@ function TrashPanel({
             <div className="mb-3 flex shrink-0 items-start justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 p-3 dark:border-stone-800 dark:bg-stone-900/40">
                 <div>
                     <div className="text-sm font-semibold text-stone-900 dark:text-stone-100">生成记录回收站</div>
-                    <div className="mt-1 text-xs leading-5 text-stone-500 dark:text-stone-400">删除后保留 {WORKBENCH_TRASH_RETENTION_DAYS} 天，每条记录按自己的到期时间自动清理。</div>
+                    <div className="mt-1 text-xs leading-5 text-stone-500 dark:text-stone-400">{workbenchText(`删除后保留 ${WORKBENCH_TRASH_RETENTION_DAYS} 天，每条记录按自己的到期时间自动清理。`, `Deleted records are kept for ${WORKBENCH_TRASH_RETENTION_DAYS} days and automatically removed when each one expires.`)}</div>
                 </div>
                 <Button size="small" danger disabled={!entries.length} onClick={onClear}>
                     清空
@@ -2066,7 +2078,7 @@ function TrashPanel({
             </div>
             <div className="thin-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {entries.map((entry) => {
-                    const promptPreview = entry.log.prompt || entry.log.title || "未命名";
+                    const promptPreview = entry.log.prompt || entry.log.title || workbenchText("未命名", "Untitled");
                     const selected = selectedIds.includes(entry.id);
                     const videos = logVideos(entry.log);
                     const coverVideo = entry.log.video || videos[0];
@@ -2075,18 +2087,18 @@ function TrashPanel({
                     const expirePercent = trashRemainingPercent(entry);
                     return (
                         <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
-                            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={(checked) => setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, entry.id])) : ids.filter((id) => id !== entry.id)))} ariaLabel="选择回收站记录" />
+                            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={(checked) => setSelectedIds((ids) => (checked ? Array.from(new Set([...ids, entry.id])) : ids.filter((id) => id !== entry.id)))} ariaLabel={workbenchText("选择回收站记录", "Select trash record")} />
                             <div className="flex gap-3 pr-8">
                                 <TrashVideoThumbnail logId={entry.log.id} video={coverVideo} sizeLabel={sizeLabel} />
                                 <div className="min-w-0 flex-1">
-                                    <div className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
+                                    <div data-no-i18n className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
                                     <div className="mt-2 flex flex-wrap gap-1">
-                                        <HistoryPill label="模型">{entry.log.config?.videoModel || entry.log.model || "默认"}</HistoryPill>
+                                        <HistoryPill label="模型"><span data-no-i18n>{entry.log.config?.videoModel || entry.log.model || workbenchText("默认", "Default")}</span></HistoryPill>
                                         <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="删除">{formatTrashDate(entry.deletedAt)}</HistoryPill>
-                                        <HistoryPill tone="danger" label="清理">{formatTrashExpiry(entry.expiresAt)}</HistoryPill>
+                                        <HistoryPill tone="danger" label="清理">{workbenchTrashExpiry(entry.expiresAt)}</HistoryPill>
                                     </div>
                                 </div>
                             </div>
@@ -2117,7 +2129,7 @@ function trashRemainingPercent(entry: WorkbenchTrashEntry<GenerationLog>) {
 }
 
 function formatTrashDate(value: number) {
-    return new Date(value).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return workbenchFormatDate(value, { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function TrashVideoThumbnail({ logId, video, sizeLabel }: { logId: string; video?: GeneratedVideo; sizeLabel: string }) {
@@ -2201,6 +2213,7 @@ function LogCard({
     onClick: () => void;
 }) {
     const promptPreview = log.prompt || log.title || "";
+    const displayPromptPreview = !log.prompt && (!log.title || log.title === "未命名") ? workbenchText("未命名", "Untitled") : promptPreview || compactLogTitle(log.model || "");
     const sizeLabel = videoSizeLabel(log.config.size || log.size, log.model);
     const resolutionLabel = videoResolutionBadge(log.config.vquality || log.resolution);
     const secondsLabel = videoSecondsBadge(log.config.videoSeconds || log.seconds);
@@ -2221,13 +2234,12 @@ function LogCard({
                 event.preventDefault();
                 onClick();
             }}
-            title={promptPreview}
         >
-            <Tooltip title={log.pinnedAt ? "取消置顶" : "置顶"}>
+            <Tooltip title={workbenchText(log.pinnedAt ? "取消置顶" : "置顶")}>
                 <Button
                     type="text"
                     size="small"
-                    aria-label={log.pinnedAt ? "取消置顶" : "置顶"}
+                    aria-label={workbenchText(log.pinnedAt ? "取消置顶" : "置顶")}
                     className={`!absolute !right-3 !top-12 z-10 !inline-grid !size-7 !place-items-center !rounded-full !border !p-0 !shadow-[0_2px_7px_rgba(15,23,42,0.06)] !backdrop-blur-md [&_.ant-btn-icon]:!m-0 ${log.pinnedAt ? "!border-stone-300/60 !bg-white/80 !text-stone-700 dark:!border-stone-600/60 dark:!bg-stone-950/75 dark:!text-stone-200" : "!border-stone-200/60 !bg-white/40 !text-stone-400 !opacity-[0.68] hover:!bg-white/70 hover:!text-stone-700 dark:!border-white/10 dark:!bg-stone-950/40 dark:!text-stone-500 dark:hover:!bg-stone-950/70 dark:hover:!text-stone-200"}`}
                     icon={
                         <span className={`grid size-3.5 place-items-center rounded-[4px] border transition ${log.pinnedAt ? "border-stone-400/50 bg-stone-200/70 text-stone-700 dark:border-stone-500/50 dark:bg-stone-700/60 dark:text-stone-100" : "border-current/35 bg-transparent"}`}>
@@ -2240,16 +2252,16 @@ function LogCard({
                     }}
                 />
             </Tooltip>
-            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel="选择生成记录" />
+            <SelectionBubble className="absolute right-3 top-3 z-10" selected={selected} onSelectedChange={onSelectedChange} ariaLabel={workbenchText("选择生成记录", "Select generation record")} />
             <div className="grid min-h-[112px] grid-cols-[112px_minmax(0,1fr)] gap-2 sm:min-h-[136px] sm:grid-cols-[136px_minmax(0,1fr)] sm:gap-3">
                 <div className="relative h-[112px] self-start sm:h-[136px]">
                     <LogVideoCover logId={log.id} video={coverVideo} status={log.status} sizeLabel={sizeLabel} resolutionLabel={resolutionLabel} />
                 </div>
                 <div className="flex min-w-0 flex-col py-1 pr-9">
-                    <div className="line-clamp-2 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-3">{promptPreview || compactLogTitle(log.model || "")}</div>
+                    <div data-no-i18n title={displayPromptPreview || undefined} className="line-clamp-2 text-sm leading-5 text-stone-600 dark:text-stone-300 sm:line-clamp-3">{displayPromptPreview}</div>
                     <div className="mt-2 flex flex-wrap gap-1">
                         <HistoryPill label="模型" className="max-w-full">
-                            {log.model || "默认"}
+                            <span data-no-i18n>{log.model || workbenchText("默认", "Default")}</span>
                         </HistoryPill>
                         <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode, log.model)}</HistoryPill>
                         <HistoryPill label="比例">{sizeLabel}</HistoryPill>
@@ -2264,7 +2276,7 @@ function LogCard({
                             {formatDuration(log.durationMs)}
                         </HistoryPill>
                         <HistoryPill label="总时长">{secondsLabel}</HistoryPill>
-                        <HistoryPill label="时间">{log.time}</HistoryPill>
+                        <HistoryPill label="时间">{workbenchFormatDate(log.createdAt, { hour12: false })}</HistoryPill>
                     </div>
                 </div>
             </div>
@@ -3037,8 +3049,8 @@ function updateVideoResultById(results: GenerationResult[], id: string, next: Pa
 }
 
 function videoModeLabel(value: AiConfig["videoCallMode"] | undefined, model = "") {
-    if (isGrokImagineVideoModel(modelOptionName(model))) return "异步";
-    return normalizeVideoCallMode(value) === "async" ? "异步·4倍扣费" : "同步";
+    if (isGrokImagineVideoModel(modelOptionName(model))) return workbenchText("异步", "Async");
+    return normalizeVideoCallMode(value) === "async" ? workbenchText("异步·4倍扣费", "Async · 4× billing") : workbenchText("同步", "Sync");
 }
 
 function normalizeVideoSize(value: string) {

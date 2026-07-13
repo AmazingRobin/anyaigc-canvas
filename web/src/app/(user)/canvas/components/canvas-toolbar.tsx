@@ -4,6 +4,8 @@ import { Button, Segmented, Switch } from "antd";
 import { CircleDot, Eraser, FolderOpen, Grid2x2, Hand, Image as ImageIcon, Info, Moon, Music2, Palette, Redo2, Settings2, Square, Sun, Trash2, Type, Undo2, Upload, Video } from "lucide-react";
 
 import { canvasThemes, type CanvasBackgroundMode, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
+import { canvasText } from "@/lib/i18n-canvas";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
@@ -245,6 +247,7 @@ function Divider({ theme }: { theme: CanvasTheme }) {
 }
 
 function CanvasThemeButton({ colorTheme, targetTheme, onThemeChange, children }: { colorTheme: CanvasColorTheme; targetTheme: CanvasColorTheme; onThemeChange: (theme: CanvasColorTheme) => void; children: ReactNode }) {
+    const language = useLanguageStore((state) => state.language);
     const theme = canvasThemes[colorTheme];
     const active = colorTheme === targetTheme;
     const activeStyle = colorTheme === "light" ? { background: "#111111", color: "#ffffff" } : { background: theme.toolbar.activeBg, color: theme.toolbar.activeText };
@@ -256,8 +259,8 @@ function CanvasThemeButton({ colorTheme, targetTheme, onThemeChange, children }:
             onThemeChange={onThemeChange}
             className="inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-sm transition"
             style={active ? activeStyle : { color: theme.toolbar.item }}
-            aria-label={`切换到${targetTheme === "dark" ? "深色" : "浅色"}主题`}
-            title={`切换到${targetTheme === "dark" ? "深色" : "浅色"}主题`}
+            aria-label={targetTheme === "dark" ? canvasText("切换到深色主题", "Switch To Dark Theme", language) : canvasText("切换到浅色主题", "Switch To Light Theme", language)}
+            title={targetTheme === "dark" ? canvasText("切换到深色主题", "Switch To Dark Theme", language) : canvasText("切换到浅色主题", "Switch To Light Theme", language)}
         >
             {children}
         </AnimatedThemeToggler>

@@ -6,7 +6,9 @@ import Link from "next/link";
 
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
 import { relayBasesLinks } from "@/constant/relaybases-links";
+import { sharedText } from "@/lib/i18n-shared";
 import { cn } from "@/lib/utils";
+import { useLanguageStore } from "@/stores/use-language-store";
 
 type MobileNavDrawerProps = {
     open: boolean;
@@ -15,8 +17,9 @@ type MobileNavDrawerProps = {
 };
 
 export function MobileNavDrawer({ open, activeToolSlug, onClose }: MobileNavDrawerProps) {
+    const language = useLanguageStore((state) => state.language);
     return (
-        <Drawer title="导航" placement="left" size={280} open={open} onClose={onClose} className="md:hidden">
+        <Drawer title={sharedText("导航", "Navigation", language)} placement="left" size={280} open={open} onClose={onClose} className="md:hidden">
             <div className="space-y-1">
                 {navigationTools.map((tool) => {
                     const Icon = tool.icon;
@@ -32,7 +35,7 @@ export function MobileNavDrawer({ open, activeToolSlug, onClose }: MobileNavDraw
                             )}
                         >
                             <Icon className="size-5" />
-                            <span>{tool.label}</span>
+                            <span>{sharedText(tool.label, undefined, language)}</span>
                         </Link>
                     );
                 })}
@@ -54,7 +57,7 @@ export function MobileNavDrawer({ open, activeToolSlug, onClose }: MobileNavDraw
                                     : "text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-stone-100",
                             )}
                         >
-                            <span>{link.label}</span>
+                            <span>{sharedText(link.label, undefined, language)}</span>
                             <ExternalLink className="size-4 opacity-60" />
                         </a>
                     ))}

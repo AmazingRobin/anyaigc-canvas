@@ -5,11 +5,13 @@ import type { ReactNode } from "react";
 import { ChevronRight, Image as ImageIcon, Music2, RefreshCw, Star, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasErrorText, canvasText } from "@/lib/i18n-canvas";
 import { formatBytes } from "@/lib/image-utils";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { CanvasNodeType, type CanvasNodeData, type Position } from "../types";
-import type { CanvasResourceReference } from "../utils/canvas-resource-references";
+import { canvasResourceDisplayLabel, type CanvasResourceReference } from "../utils/canvas-resource-references";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 const selectionBlue = "#2f80ff";
@@ -362,9 +364,12 @@ function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {
 }
 
 function ErrorContent({ node, theme, onRetry }: Pick<NodeContentRendererProps, "node" | "theme" | "onRetry">) {
+    const language = useLanguageStore((state) => state.language);
     return (
         <div className="flex max-w-[260px] flex-col items-center gap-3 px-5 text-center">
-            <div className="text-xs leading-5 text-red-300">{node.metadata?.errorDetails || "生成失败"}</div>
+            <div className="text-xs leading-5 text-red-300">
+                {node.metadata?.errorDetails ? <span data-no-i18n="true">{canvasErrorText(node.metadata.errorDetails, language)}</span> : canvasText("生成失败", "Generation failed", language)}
+            </div>
             <button
                 type="button"
                 className="inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition hover:scale-[1.02]"
@@ -414,6 +419,7 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
             </button>
             {isEditingContent ? (
                 <CanvasResourceMentionTextarea
+                    data-no-i18n="true"
                     ref={textareaRef}
                     className="thin-scrollbar block h-full w-full resize-none overflow-y-auto whitespace-pre-wrap break-words border-none bg-transparent pl-4 pr-14 pt-0 pb-4 m-0 font-mono outline-none select-text appearance-none"
                     style={textStyle}
@@ -435,7 +441,7 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
                     style={textStyle}
                     onWheel={(event) => event.stopPropagation()}
                 >
-                    {node.metadata?.content || <span style={{ color: theme.node.placeholder }}>双击编辑文字</span>}
+                    {node.metadata?.content ? <span data-no-i18n="true">{node.metadata.content}</span> : <span style={{ color: theme.node.placeholder }}>双击编辑文字</span>}
                 </div>
             )}
         </div>
@@ -443,9 +449,10 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
 }
 
 function ResourceLabelBadge({ reference }: { reference: CanvasResourceReference }) {
+    const language = useLanguageStore((state) => state.language);
     return (
         <span className={`pointer-events-none absolute right-2 top-2 z-30 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${reference.active ? "bg-[#2f80ff] text-white shadow-sm" : "bg-black/35 text-white/75"}`}>
-            {reference.label}
+            {canvasResourceDisplayLabel(reference, language)}
         </span>
     );
 }
@@ -523,7 +530,7 @@ function AudioNodeContent({ node, theme }: NodeContentRendererProps) {
         <div className="flex h-full w-full flex-col justify-center gap-3 px-4" style={{ background: theme.node.fill, color: theme.node.text }}>
             <div className="flex min-w-0 items-center gap-2 text-sm opacity-70">
                 <Music2 className="size-4 shrink-0" />
-                <span className="truncate">{node.title || "音频"}</span>
+                <span className="truncate">{node.title ? <span data-no-i18n="true">{node.title}</span> : "音频"}</span>
             </div>
             <audio src={node.metadata.content} controls className="w-full" data-canvas-no-zoom />
         </div>
@@ -550,12 +557,14 @@ function ImageContent({
     onSetBatchPrimary?: () => void;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const language = useLanguageStore((state) => state.language);
     const isBatchChild = Boolean(node.metadata?.batchRootId);
 
     return (
         <BatchFrame batchCount={isBatchRoot ? batchCount : 0} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} onToggleBatch={onToggleBatch}>
             <div className="h-full w-full overflow-hidden rounded-3xl">
                 <img
+                    data-no-i18n="true"
                     src={node.metadata!.content!}
                     alt={node.title}
                     draggable={false}
@@ -568,7 +577,7 @@ function ImageContent({
                     type="button"
                     className="absolute right-2.5 top-2.5 z-30 flex h-8 items-center justify-center gap-1 rounded-full border px-2.5 text-xs font-semibold shadow-[0_6px_18px_rgba(15,23,42,.10)] backdrop-blur-md transition hover:scale-[1.02]"
                     style={{ background: `${theme.toolbar.panel}d9`, borderColor: `${theme.toolbar.border}cc`, color: theme.node.text }}
-                    aria-label={batchExpanded ? "图片组已展开" : "图片组已收起"}
+                    aria-label={batchExpanded ? canvasText("图片组已展开", "Image group expanded", language) : canvasText("图片组已收起", "Image group collapsed", language)}
                     onClick={(event) => {
                         event.stopPropagation();
                         onToggleBatch?.();

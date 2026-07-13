@@ -15,6 +15,13 @@ export type CanvasResourceReference = {
     active: boolean;
 };
 
+export function canvasResourceDisplayLabel(reference: CanvasResourceReference, language: "zh" | "en") {
+    if (language !== "en") return reference.label;
+    const index = reference.label.match(/(\d+)$/)?.[1];
+    const kind = { image: "Image", video: "Video", audio: "Audio", text: "Text" }[reference.kind];
+    return index ? `${kind} ${index}` : kind;
+}
+
 export function buildCanvasResourceReferences(nodes: CanvasNodeData[], connections: CanvasConnection[], contextNodeId?: string | null) {
     const contextNodes = contextNodeId ? getMentionResourceNodes(contextNodeId, nodes, connections) : [];
     const globalReferences = labelResourceNodes(nodes.filter(isResourceNode), false);

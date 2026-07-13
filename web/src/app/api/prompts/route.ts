@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     return Response.json({
         items: filtered.slice((page - 1) * pageSize, page * pageSize),
-        tags: collectTags(withoutTagFilter),
+        tags: collectTags(withoutTagFilter, lang),
         categories: collectCategories(items),
         total: filtered.length,
     });
@@ -69,8 +69,8 @@ function filterPrompts(items: Prompt[], options: { keyword: string; category: st
     });
 }
 
-function collectTags(items: Prompt[]) {
-    return Array.from(new Set(items.flatMap((item) => item.tags).filter(Boolean))).sort(new Intl.Collator("zh-CN").compare);
+function collectTags(items: Prompt[], lang: "zh" | "en") {
+    return Array.from(new Set(items.flatMap((item) => item.tags).filter(Boolean))).sort(new Intl.Collator(lang === "en" ? "en-US" : "zh-CN").compare);
 }
 
 function collectCategories(items: Prompt[]) {

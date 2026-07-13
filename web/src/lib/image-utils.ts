@@ -1,4 +1,5 @@
 import type { ReferenceImage } from "@/types/image";
+import { workbenchFormatDuration, workbenchText, type WorkbenchLanguage } from "@/lib/i18n-workbench";
 
 export const AZURE_IMAGE_EDIT_MAX_BYTES = 50 * 1024 * 1024;
 export const AZURE_IMAGE_MASK_MAX_BYTES = 4 * 1024 * 1024;
@@ -29,11 +30,8 @@ export function formatBytes(bytes: number) {
     return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
 }
 
-export function formatDuration(ms: number) {
-    const value = Math.max(0, Math.floor(ms / 1000));
-    const minutes = Math.floor(value / 60);
-    const seconds = value % 60;
-    return minutes ? `${minutes}分${String(seconds).padStart(2, "0")}秒` : `${seconds}秒`;
+export function formatDuration(ms: number, language?: WorkbenchLanguage) {
+    return workbenchFormatDuration(ms, language);
 }
 
 export function getDataUrlByteSize(dataUrl: string) {
@@ -46,7 +44,7 @@ export function getDataUrlByteSize(dataUrl: string) {
 }
 
 export async function validateAzureImageEditFile(file: Blob & { name?: string }, options: AzureImageEditValidationOptions = {}) {
-    const label = options.label || (options.index ? `第 ${options.index} 张参考图` : "参考图");
+    const label = options.label || (options.index ? workbenchText(`第 ${options.index} 张参考图`, `Reference image ${options.index}`) : workbenchText("参考图", "Reference image"));
     const mimeType = (file.type || "").toLowerCase();
     const name = file.name || "";
     const extension = name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || "";
@@ -56,15 +54,15 @@ export async function validateAzureImageEditFile(file: Blob & { name?: string },
     const maxBytes = options.maxBytes || AZURE_IMAGE_EDIT_MAX_BYTES;
 
     if (hasMimeType ? !allowedByMime : !allowedByExt) {
-        throw new Error(options.pngOnly ? `${label} 必须是 PNG 文件` : `${label} 只支持 PNG/JPG，请重新导出后上传`);
+        throw new Error(options.pngOnly ? workbenchText(`${label} 必须是 PNG 文件`, `${label} must be a PNG file`) : workbenchText(`${label} 只支持 PNG/JPG，请重新导出后上传`, `${label} only supports PNG/JPG. Export it again and upload it.`));
     }
-    if (!file.size) throw new Error(`${label} 文件为空，请重新选择`);
-    if (file.size >= maxBytes) throw new Error(`${label} 不能超过 ${formatFileSizeLimit(maxBytes)}`);
+    if (!file.size) throw new Error(workbenchText(`${label} 文件为空，请重新选择`, `${label} is empty. Choose it again.`));
+    if (file.size >= maxBytes) throw new Error(workbenchText(`${label} 不能超过 ${formatFileSizeLimit(maxBytes)}`, `${label} cannot exceed ${formatFileSizeLimit(maxBytes)}`));
     const bitmap = await readImageBitmap(file, label);
     const dimensions = { width: bitmap.width, height: bitmap.height };
     bitmap.close?.();
     if (options.expectedDimensions && (dimensions.width !== options.expectedDimensions.width || dimensions.height !== options.expectedDimensions.height)) {
-        throw new Error(`${label} 尺寸必须和参考图一致`);
+        throw new Error(workbenchText(`${label} 尺寸必须和参考图一致`, `${label} dimensions must match the reference image`));
     }
     return dimensions;
 }
@@ -78,7 +76,7 @@ export function readFileAsDataUrl(file: File) {
     return new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error("读取图片失败"));
+        reader.onerror = () => reject(new Error(workbenchText("读取图片失败", "Failed to read the image")));
         reader.readAsDataURL(file);
     });
 }
@@ -111,7 +109,7 @@ function readImageBitmap(file: Blob, label: string): Promise<{ width: number; he
             .then((bitmap) => {
                 if (!bitmap.width || !bitmap.height) {
                     bitmap.close();
-                    throw new Error(`${label} 无法读取，请重新导出为 PNG/JPG`);
+                    throw new Error(workbenchText(`${label} 无法读取，请重新导出为 PNG/JPG`, `${label} could not be read. Export it as PNG/JPG and try again.`));
                 }
                 return { width: bitmap.width, height: bitmap.height, source: bitmap, close: () => bitmap.close() };
             })
@@ -128,14 +126,14 @@ function readImageElement(file: Blob, label: string): Promise<{ width: number; h
         image.onload = () => {
             cleanup();
             if (!image.naturalWidth || !image.naturalHeight) {
-                reject(new Error(`${label} 无法读取，请重新导出为 PNG/JPG`));
+                reject(new Error(workbenchText(`${label} 无法读取，请重新导出为 PNG/JPG`, `${label} could not be read. Export it as PNG/JPG and try again.`)));
                 return;
             }
             resolve({ width: image.naturalWidth, height: image.naturalHeight, source: image });
         };
         image.onerror = () => {
             cleanup();
-            reject(new Error(`${label} 无法读取，请重新导出为 PNG/JPG`));
+            reject(new Error(workbenchText(`${label} 无法读取，请重新导出为 PNG/JPG`, `${label} could not be read. Export it as PNG/JPG and try again.`)));
         };
         image.src = url;
     });

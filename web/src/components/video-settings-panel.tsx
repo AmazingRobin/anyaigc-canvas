@@ -20,6 +20,8 @@ import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/r
 import { GROK_VIDEO_RESOLUTIONS, isGrokImagineVideoModel, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { isRelayBasesVideoModel, modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
+import { workbenchText, type WorkbenchLanguage } from "@/lib/i18n-workbench";
+import { useLanguageStore } from "@/stores/use-language-store";
 
 const relayBasesAspectRatioOptions = [
     { value: "16:9", label: "横屏", width: 16, height: 9 },
@@ -48,6 +50,7 @@ type VideoSettingsPanelProps = {
 
 export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5" }: VideoSettingsPanelProps) {
     const [editingSeconds, setEditingSeconds] = useState(false);
+    const language = useLanguageStore((state) => state.language);
 
     if (isSeedanceVideoConfig({ ...config, model: config.videoModel || config.model })) {
         return <SeedanceVideoSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
@@ -58,7 +61,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const timing = relayBasesVideoTiming(selectedModel);
     const seconds = String(normalizeRelayBasesVideoDuration(config.videoSeconds, selectedModel));
     const aspectRatio = normalizeRelayBasesVideoAspectRatio(config.size);
-    const resolutionLabel = relayBasesVideoResolutionLabel(selectedModel);
+    const resolutionLabel = relayBasesVideoResolutionLabel(selectedModel, language);
     const resolution = normalizeGrokVideoResolution(config.vquality);
     const videoCallMode = normalizeVideoCallMode(config.videoCallMode);
     const showCallMode = isRelayBasesVideoModel(config.videoModel || config.model);
@@ -67,26 +70,26 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
     return (
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
-                {showTitle ? <div className="text-lg font-semibold">视频设置</div> : null}
+                {showTitle ? <div className="text-lg font-semibold">{workbenchText("视频设置", "Video settings", language)}</div> : null}
                 {grokVideo ? (
-                    <SettingGroup title="调用方式" color={theme.node.muted}>
+                    <SettingGroup title={workbenchText("调用方式", "Call mode", language)} color={theme.node.muted}>
                         <div className="rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
-                            异步任务 · 不加收 4 倍费用
+                            {workbenchText("异步任务 · 不加收 4 倍费用", "Async task · no x4 surcharge", language)}
                         </div>
                     </SettingGroup>
                 ) : showCallMode ? (
-                    <SettingGroup title="调用方式" color={theme.node.muted}>
+                    <SettingGroup title={workbenchText("调用方式", "Call mode", language)} color={theme.node.muted}>
                         <div className="grid grid-cols-2 gap-2.5">
                             <OptionPill selected={videoCallMode === "sync"} theme={theme} onClick={() => onConfigChange("videoCallMode", "sync")}>
-                                同步
+                                {workbenchText("同步", "Sync", language)}
                             </OptionPill>
                             <OptionPill selected={videoCallMode === "async"} theme={theme} onClick={() => onConfigChange("videoCallMode", "async")}>
-                                异步·4倍扣费
+                                {workbenchText("异步·4倍扣费", "Async · cost x4", language)}
                             </OptionPill>
                         </div>
                     </SettingGroup>
                 ) : null}
-                <SettingGroup title="输出规格" color={theme.node.muted}>
+                <SettingGroup title={workbenchText("输出规格", "Output specs", language)} color={theme.node.muted}>
                     {grokVideo ? (
                         <div className="grid grid-cols-3 gap-2.5">
                             {grokVideoResolutionOptions.map((item) => (
@@ -97,14 +100,14 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         </div>
                     ) : (
                         <div className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
-                            <span className="opacity-65">清晰度由模型固定</span>
+                            <span className="opacity-65">{workbenchText("清晰度由模型固定", "Resolution is fixed by the model", language)}</span>
                             <span className="rounded-full px-2 py-1 font-semibold" style={{ background: theme.node.fill }}>
                                 {resolutionLabel}
                             </span>
                         </div>
                     )}
                 </SettingGroup>
-                <SettingGroup title="画面比例" color={theme.node.muted}>
+                <SettingGroup title={workbenchText("画面比例", "Aspect ratio", language)} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
                         {relayBasesAspectRatioOptions.map((item) => (
                             <button
@@ -116,13 +119,13 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 onClick={() => onConfigChange("size", item.value)}
                             >
                                 <SizePreview width={item.width} height={item.height} color={mutedPreviewColor(theme)} />
-                                <span>{item.label}</span>
+                                <span>{workbenchText(item.label, undefined, language)}</span>
                                 <span className="text-[11px] leading-none opacity-55">{item.value}</span>
                             </button>
                         ))}
                     </div>
                 </SettingGroup>
-                <SettingGroup title="秒数" color={theme.node.muted}>
+                <SettingGroup title={workbenchText("秒数", "Duration", language)} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
                         {timing.options.map((value) => (
                             <OptionPill key={value} selected={!editingSeconds && seconds === String(value)} theme={theme} onClick={() => onConfigChange("videoSeconds", String(value))}>
@@ -139,6 +142,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
 
 function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, className }: VideoSettingsPanelProps) {
     const [editingSeconds, setEditingSeconds] = useState(false);
+    const language = useLanguageStore((state) => state.language);
     const model = modelOptionName(config.videoModel || config.model);
     const resolution = normalizeSeedanceResolution(config.vquality, model);
     const ratio = normalizeSeedanceRatio(config.size);
@@ -150,8 +154,8 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
     return (
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
-                {showTitle ? <div className="text-lg font-semibold">视频设置</div> : null}
-                <SettingGroup title="分辨率" color={theme.node.muted}>
+                {showTitle ? <div className="text-lg font-semibold">{workbenchText("视频设置", "Video settings", language)}</div> : null}
+                <SettingGroup title={workbenchText("分辨率", "Resolution", language)} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
                         {seedanceResolutionOptions.map((item) => {
                             const disabled = item.value === "1080p" && isSeedanceFastModel(model);
@@ -162,9 +166,9 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
                             );
                         })}
                     </div>
-                    {isSeedanceFastModel(model) ? <div className="text-[11px] leading-4 opacity-55">fast 模型不支持 1080p，会自动使用 720p。</div> : null}
+                    {isSeedanceFastModel(model) ? <div className="text-[11px] leading-4 opacity-55">{workbenchText("fast 模型不支持 1080p，会自动使用 720p。", "Fast models do not support 1080p and will automatically use 720p.", language)}</div> : null}
                 </SettingGroup>
-                <SettingGroup title="比例" color={theme.node.muted}>
+                <SettingGroup title={workbenchText("比例", "Aspect ratio", language)} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
                         {seedanceRatioOptions.map((item) => (
                             <button
@@ -182,20 +186,20 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
                         ))}
                     </div>
                 </SettingGroup>
-                <SettingGroup title="时长" color={theme.node.muted}>
+                <SettingGroup title={workbenchText("时长", "Duration", language)} color={theme.node.muted}>
                     <div className="grid grid-cols-4 gap-2.5">
                         {seedanceDurationOptions.map((value) => (
                             <OptionPill key={value} selected={!editingSeconds && duration === value} theme={theme} onClick={() => onConfigChange("videoSeconds", String(value))}>
-                                {value === -1 ? "智能" : `${value}s`}
+                                {value === -1 ? workbenchText("智能", "Auto", language) : `${value}s`}
                             </OptionPill>
                         ))}
                     </div>
                     <NumberInput value={config.videoSeconds || String(duration)} min={-1} max={15} selected={editingSeconds || !isPresetDuration} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} onEditingChange={setEditingSeconds} />
                 </SettingGroup>
-                <SettingGroup title="输出" color={theme.node.muted}>
+                <SettingGroup title={workbenchText("输出", "Output", language)} color={theme.node.muted}>
                     <div className="grid gap-2 rounded-xl border p-2.5" style={{ borderColor: mutedBorderColor(theme) }}>
-                        <SwitchRow label="生成声音" checked={generateAudio} theme={theme} onChange={(checked) => onConfigChange("videoGenerateAudio", String(checked))} />
-                        <SwitchRow label="添加水印" checked={watermark} theme={theme} onChange={(checked) => onConfigChange("videoWatermark", String(checked))} />
+                        <SwitchRow label={workbenchText("生成声音", "Generate audio", language)} checked={generateAudio} theme={theme} onChange={(checked) => onConfigChange("videoGenerateAudio", String(checked))} />
+                        <SwitchRow label={workbenchText("添加水印", "Add watermark", language)} checked={watermark} theme={theme} onChange={(checked) => onConfigChange("videoWatermark", String(checked))} />
                     </div>
                 </SettingGroup>
             </div>
@@ -203,23 +207,26 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
     );
 }
 
-export function videoResolutionLabel(value: string, model?: string) {
+export function videoResolutionLabel(value: string, model?: string, language?: WorkbenchLanguage) {
     if (model && isGrokImagineVideoModel(model)) return normalizeGrokVideoResolution(value);
-    if (model && isRelayBasesVideoModel(model)) return relayBasesVideoResolutionLabel(modelOptionName(model));
+    if (model && isRelayBasesVideoModel(model)) return relayBasesVideoResolutionLabel(modelOptionName(model), language);
     return `${normalizeVideoResolutionValue(value)}p`;
 }
 
-export function videoSizeLabel(value: string, model?: string) {
-    if (model && isGrokImagineVideoModel(model)) return relayBasesAspectRatioLabel(value);
-    if (model && isRelayBasesVideoModel(model)) return relayBasesAspectRatioLabel(value);
+export function videoSizeLabel(value: string, model?: string, language?: WorkbenchLanguage) {
+    if (model && isGrokImagineVideoModel(model)) return relayBasesAspectRatioLabel(value, language);
+    if (model && isRelayBasesVideoModel(model)) return relayBasesAspectRatioLabel(value, language);
     const ratio = normalizeSeedanceRatio(value);
-    if (value === "adaptive" || value === "auto") return "自适应";
-    if (ratio === value) return seedanceRatioOptions.find((item) => item.value === ratio)?.label || ratio;
-    return relayBasesAspectRatioLabel(value);
+    if (value === "adaptive" || value === "auto") return workbenchText("自适应", "Adaptive", language);
+    if (ratio === value) {
+        const label = seedanceRatioOptions.find((item) => item.value === ratio)?.label || ratio;
+        return workbenchText(label, undefined, language);
+    }
+    return relayBasesAspectRatioLabel(value, language);
 }
 
-export function videoSecondsLabel(value: string) {
-    if (String(value).trim() === "-1") return "智能";
+export function videoSecondsLabel(value: string, language?: WorkbenchLanguage) {
+    if (String(value).trim() === "-1") return workbenchText("智能", "Auto", language);
     return `${value || "6"}s`;
 }
 
@@ -248,13 +255,14 @@ export function normalizeRelayBasesVideoAspectRatio(value: string) {
     return width > height ? "16:9" : "9:16";
 }
 
-function relayBasesAspectRatioLabel(value: string) {
+function relayBasesAspectRatioLabel(value: string, language?: WorkbenchLanguage) {
     const ratio = normalizeRelayBasesVideoAspectRatio(value);
-    return relayBasesAspectRatioOptions.find((item) => item.value === ratio)?.label || ratio;
+    const label = relayBasesAspectRatioOptions.find((item) => item.value === ratio)?.label || ratio;
+    return workbenchText(label, undefined, language);
 }
 
-function relayBasesVideoResolutionLabel(model: string) {
-    return relayBasesVideoResolutionLabels[modelOptionName(model)] || "模型固定";
+function relayBasesVideoResolutionLabel(model: string, language?: WorkbenchLanguage) {
+    return relayBasesVideoResolutionLabels[modelOptionName(model)] || workbenchText("模型固定", "Fixed by model", language);
 }
 
 function OptionPill({ selected, disabled = false, theme, onClick, children }: { selected: boolean; disabled?: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {

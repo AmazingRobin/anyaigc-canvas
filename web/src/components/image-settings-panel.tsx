@@ -5,6 +5,7 @@ import { ConfigProvider, Switch } from "antd";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { useI18n } from "@/lib/i18n";
+import { normalizeWorkbenchQuality, workbenchQualityLabel, workbenchText, type WorkbenchLanguage } from "@/lib/i18n-workbench";
 import type { AiConfig } from "@/stores/use-config-store";
 
 export const IMAGE_QUALITY_OPTIONS = [
@@ -49,7 +50,7 @@ type ImageSettingsPanelProps = {
 export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, showQuality = true, showSize = true, showAspect = true, showCount = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 10 }: ImageSettingsPanelProps) {
     const { language } = useI18n();
     const [snapDimensionToStep, setSnapDimensionToStep] = useState(true);
-    const quality = config.quality || "auto";
+    const quality = normalizeWorkbenchQuality(config.quality);
     const count = Math.max(1, Math.min(maxCount, Math.floor(Math.abs(Number(config.count)) || 1)));
     const activeSize = config.size || "auto";
     const selectedAspect = aspectOptions.find((item) => (item.size || item.value) === activeSize || item.value === activeSize);
@@ -76,25 +77,25 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     if (document.activeElement instanceof HTMLInputElement && event.currentTarget.contains(document.activeElement)) document.activeElement.blur();
                 }}
             >
-                {showTitle ? <div className="text-lg font-semibold">图像设置</div> : null}
+                {showTitle ? <div className="text-lg font-semibold">{workbenchText("图像设置", "Image settings", language)}</div> : null}
                 {showQuality ? <div className="space-y-2.5">
-                    <SettingTitle color={theme.node.muted}>质量</SettingTitle>
+                    <SettingTitle color={theme.node.muted}>{workbenchText("质量", "Quality", language)}</SettingTitle>
                     <div className="grid grid-cols-4 gap-2.5">
                         {qualityOptions.map((item) => (
                             <OptionPill key={item.value} selected={quality === item.value} theme={theme} onClick={() => onConfigChange("quality", item.value)}>
-                                {item.label}
+                                {workbenchQualityLabel(item.value, language)}
                             </OptionPill>
                         ))}
                     </div>
                 </div> : null}
                 {showSize ? <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-3">
-                        <SettingTitle color={theme.node.muted}>尺寸</SettingTitle>
+                        <SettingTitle color={theme.node.muted}>{workbenchText("尺寸", "Size", language)}</SettingTitle>
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium" style={{ color: theme.node.muted }}>
-                                16倍数对齐
+                                {workbenchText("16倍数对齐", "Align to multiples of 16", language)}
                             </span>
-                            <span title="输入完成后自动向上补成 16 的倍数" onMouseDown={(event) => event.stopPropagation()}>
+                            <span title={workbenchText("输入完成后自动向上补成 16 的倍数", "Round up to the nearest multiple of 16", language)} onMouseDown={(event) => event.stopPropagation()}>
                                 <Switch size="small" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
                             </span>
                         </div>
@@ -106,7 +107,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     </div>
                 </div> : null}
                 {showAspect ? <div className="space-y-2.5">
-                    <SettingTitle color={theme.node.muted}>宽高比</SettingTitle>
+                    <SettingTitle color={theme.node.muted}>{workbenchText("宽高比", "Aspect ratio", language)}</SettingTitle>
                     <div className="grid grid-cols-4 gap-2.5">
                         {aspectOptions.map((item) => (
                             <button
@@ -124,7 +125,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     </div>
                 </div> : null}
                 {showCount ? <div className="space-y-2.5">
-                    <SettingTitle color={theme.node.muted}>生成张数</SettingTitle>
+                    <SettingTitle color={theme.node.muted}>{workbenchText("生成张数", "Image count", language)}</SettingTitle>
                     <div className={quickCount > 0 ? "grid grid-cols-4 gap-2.5" : "grid grid-cols-1 gap-2.5"}>
                         {quickCount > 0
                             ? Array.from({ length: quickCount }, (_, index) => index + 1).map((value) => (
@@ -154,8 +155,8 @@ export function ImageSettingsTheme({ theme, children }: { theme: CanvasTheme; ch
     );
 }
 
-export function imageQualityLabel(value: string) {
-    return IMAGE_QUALITY_OPTIONS.find((item) => item.value === value)?.label || value;
+export function imageQualityLabel(value: string, language?: WorkbenchLanguage) {
+    return workbenchQualityLabel(value, language);
 }
 
 export function imageSizeLabel(size: string) {
@@ -234,7 +235,7 @@ function CountInput({ value, max, theme, wide, unit, onChange }: { value: number
                 onChange={(event) => onChange(Number(event.target.value) || null)}
                 onMouseDown={(event) => event.stopPropagation()}
             />
-            <span className={`${unit === "张" ? "w-10" : "w-14"} grid place-items-center border-l px-1 text-xs font-medium`} style={{ borderColor: mutedBorderColor(theme), color: theme.node.muted }}>
+            <span className={`${unit.length === 1 ? "w-10" : "w-14"} grid place-items-center border-l px-1 text-xs font-medium`} style={{ borderColor: mutedBorderColor(theme), color: theme.node.muted }}>
                 {unit}
             </span>
         </label>

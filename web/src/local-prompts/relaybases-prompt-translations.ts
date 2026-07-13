@@ -131,6 +131,7 @@ export const promptTagEnByZh: Record<string, string> = {
     生活方式: "Lifestyle",
     美妆: "Beauty",
     清透: "Translucent",
+    透明: "Transparent",
     咖啡: "Coffee",
     静物: "Still Life",
     透明材质: "Transparent Material",

@@ -6,8 +6,9 @@ import { createPortal } from "react-dom";
 import { FileText, Image as ImageIcon, Music2, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
-import type { CanvasResourceReference } from "../utils/canvas-resource-references";
+import { canvasResourceDisplayLabel, type CanvasResourceReference } from "../utils/canvas-resource-references";
 
 type MentionState = {
     start: number;
@@ -25,6 +26,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
 
 export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Props>(function CanvasResourceMentionTextarea({ value, references, onChange, onSubmit, onKeyDown, className, containerClassName, style, highlightLabels = true, ...props }, forwardedRef) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const language = useLanguageStore((state) => state.language);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const overlayRef = useRef<HTMLDivElement | null>(null);
     const [mention, setMention] = useState<MentionState | null>(null);
@@ -35,8 +37,8 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
         const query = mention.query.trim().toLowerCase();
         const activeReferences = references.filter((item) => item.active);
         if (!query) return activeReferences;
-        return activeReferences.filter((item) => `${item.label} ${item.title} ${item.kind} ${item.text || ""}`.toLowerCase().includes(query));
-    }, [mention, references]);
+        return activeReferences.filter((item) => `${item.label} ${canvasResourceDisplayLabel(item, language)} ${item.title} ${item.kind} ${item.text || ""}`.toLowerCase().includes(query));
+    }, [language, mention, references]);
     const activeLabels = useMemo(() => (highlightLabels ? Array.from(new Set(references.filter((item) => item.active).map((item) => item.label))).sort((a, b) => b.length - a.length) : []), [highlightLabels, references]);
 
     const updateValue = (next: string, selectionStart?: number) => {
@@ -92,12 +94,12 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
         caretColor: style?.color || theme.node.text,
         ...(showOverlay ? { background: "transparent", backgroundColor: "transparent" } : {}),
     } as CSSProperties;
-    const menu = mention && candidates.length && textareaRef.current ? <MentionMenu textarea={textareaRef.current} references={candidates} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} onSelect={insertReference} /> : null;
+    const menu = mention && candidates.length && textareaRef.current ? <MentionMenu textarea={textareaRef.current} references={candidates} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} language={language} onSelect={insertReference} /> : null;
 
     return (
         <div className={`relative h-full w-full ${containerClassName || ""}`}>
             {showOverlay ? (
-                <div ref={overlayRef} className={`${className || ""} pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words`} style={{ ...style, color: theme.node.text }}>
+                <div data-no-i18n={value ? "true" : undefined} ref={overlayRef} className={`${className || ""} pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words`} style={{ ...style, color: theme.node.text }}>
                     <MentionHighlightText value={value || props.placeholder?.toString() || ""} labels={activeLabels} placeholder={!value} />
                 </div>
             ) : null}
@@ -196,7 +198,7 @@ function MentionHighlightText({ value, labels, placeholder }: { value: string; l
     );
 }
 
-function MentionMenu({ textarea, references, activeIndex, theme, onSelect }: { textarea: HTMLTextAreaElement; references: CanvasResourceReference[]; activeIndex: number; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; onSelect: (reference: CanvasResourceReference) => void }) {
+function MentionMenu({ textarea, references, activeIndex, theme, language, onSelect }: { textarea: HTMLTextAreaElement; references: CanvasResourceReference[]; activeIndex: number; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; language: LanguageName; onSelect: (reference: CanvasResourceReference) => void }) {
     const selectedRef = useRef(false);
     const rect = textarea.getBoundingClientRect();
     const boundary = textarea.closest(".ant-modal-content")?.getBoundingClientRect() || { left: 8, top: 8, right: window.innerWidth - 8, bottom: window.innerHeight - 8 };
@@ -244,8 +246,8 @@ function MentionMenu({ textarea, references, activeIndex, theme, onSelect }: { t
                 >
                     <ReferencePreview reference={reference} />
                     <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{reference.label}</span>
-                        <span className="block truncate opacity-65">{reference.text || reference.title}</span>
+                        <span className="block font-medium">{canvasResourceDisplayLabel(reference, language)}</span>
+                        <span data-no-i18n="true" className="block truncate opacity-65">{reference.text || (reference.title === reference.label ? canvasResourceDisplayLabel(reference, language) : reference.title)}</span>
                     </span>
                 </button>
             ))}

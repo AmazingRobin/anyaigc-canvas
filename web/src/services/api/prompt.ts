@@ -1,4 +1,5 @@
 import { requestImageQuestion, type AiTextMessage } from "@/services/api/image";
+import { workbenchText } from "@/lib/i18n-workbench";
 import { resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 
 export type PromptOptimizeTarget = "image" | "video";
@@ -14,8 +15,8 @@ export function isPromptOptimizerReady(config: AiConfig) {
 
 export async function optimizeGenerationPrompt(config: AiConfig, target: PromptOptimizeTarget, prompt: string, options?: RequestOptions) {
     const text = prompt.trim();
-    if (!text) throw new Error("请先输入提示词梗概");
-    if (!isPromptOptimizerReady(config)) throw new Error("请先配置文本 API Key 并获取文本模型");
+    if (!text) throw new Error(workbenchText("请先输入提示词梗概"));
+    if (!isPromptOptimizerReady(config)) throw new Error(workbenchText("请先配置文本 API Key 并获取文本模型"));
 
     const messages: AiTextMessage[] = [
         {
@@ -38,7 +39,7 @@ export async function optimizeGenerationPrompt(config: AiConfig, target: PromptO
     ];
 
     const result = cleanOptimizedPrompt(await requestImageQuestion(config, messages, () => {}, options));
-    if (!result) throw new Error("文本模型没有返回可用提示词");
+    if (!result) throw new Error(workbenchText("文本模型没有返回可用提示词"));
     return result;
 }
 

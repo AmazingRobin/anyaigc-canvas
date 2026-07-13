@@ -17,9 +17,11 @@ import { nanoid } from "nanoid";
 import { AZURE_IMAGE_EDIT_ACCEPT, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
 import { grokImageRequestError, grokVideoRequestError, isGrokImagineVideoModel } from "@/lib/relaybases-media-models";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
+import { canvasText } from "@/lib/i18n-canvas";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl } from "../utils/canvas-image-data";
 import { hasCanvasAgentCredentials, isCanvasAgentMode } from "../utils/canvas-navigation-query";
 import { fitNodeSize, nodeSizeFromRatio } from "../utils/canvas-node-size";
@@ -240,6 +242,7 @@ function ConnectionCreateOption({ theme, icon, title, description, onClick }: { 
 }
 
 function InfiniteCanvasPage() {
+    const language = useLanguageStore((state) => state.language);
     const { message, modal } = App.useApp();
     const params = useParams<{ id: string }>();
     const router = useRouter();
@@ -1074,9 +1077,10 @@ function InfiniteCanvasPage() {
     }, [applyHistory]);
 
     const createAndOpenProject = useCallback(() => {
-        const id = createProject(`无限画布 ${useCanvasStore.getState().projects.length + 1}`);
+        const projectNumber = useCanvasStore.getState().projects.length + 1;
+        const id = createProject(canvasText(`无限画布 ${projectNumber}`, `Infinite Canvas ${projectNumber}`, language));
         router.push(`/canvas/${id}`);
-    }, [createProject, router]);
+    }, [createProject, language, router]);
 
     const deleteCurrentProject = useCallback(async () => {
         await recordDeletedSyncIds("canvas", [projectId]);
@@ -1388,7 +1392,7 @@ function InfiniteCanvasPage() {
 
             const node = {
                 ...createCanvasNode(CanvasNodeType.Text, getCanvasCenter(), { content: trimmed, status: NODE_STATUS_SUCCESS }),
-                title: trimmed.slice(0, 32) || "剪切板文本",
+                title: trimmed.slice(0, 32) || canvasText("剪切板文本", "Clipboard Text", language),
             };
 
             setNodes((prev) => [...prev, node]);
@@ -1398,7 +1402,7 @@ function InfiniteCanvasPage() {
             setDialogNodeId(node.id);
             return true;
         },
-        [getCanvasCenter],
+        [getCanvasCenter, language],
     );
 
     const pasteSystemClipboard = useCallback(async () => {
@@ -1604,7 +1608,7 @@ function InfiniteCanvasPage() {
             if (node.type === CanvasNodeType.Text) {
                 const content = node.metadata?.content?.trim();
                 if (!content) return message.error("没有可保存的文本");
-                addAsset({ kind: "text", title: node.metadata?.prompt?.slice(0, 24) || "画布文本", coverUrl: "", tags: [], source: "Canvas", data: { content }, metadata: { source: "canvas", nodeId: node.id } });
+                addAsset({ kind: "text", title: node.metadata?.prompt?.slice(0, 24) || canvasText("画布文本", "Canvas Text", language), coverUrl: "", tags: [], source: "Canvas", data: { content }, metadata: { source: "canvas", nodeId: node.id } });
                 message.success("已加入我的素材");
                 return;
             }
@@ -1612,7 +1616,7 @@ function InfiniteCanvasPage() {
                 if (!node.metadata?.content) return message.error("没有可保存的视频");
                 addAsset({
                     kind: "video",
-                    title: node.metadata?.prompt?.slice(0, 24) || "画布视频",
+                    title: node.metadata?.prompt?.slice(0, 24) || canvasText("画布视频", "Canvas Video", language),
                     coverUrl: "",
                     tags: [],
                     source: "Canvas",
@@ -1626,7 +1630,7 @@ function InfiniteCanvasPage() {
             const dataUrl = node.metadata.storageKey ? "" : node.metadata.content;
             addAsset({
                 kind: "image",
-                title: node.metadata?.prompt?.slice(0, 24) || "画布图片",
+                title: node.metadata?.prompt?.slice(0, 24) || canvasText("画布图片", "Canvas Image", language),
                 coverUrl: node.metadata.content,
                 tags: [],
                 source: "Canvas",
@@ -1642,7 +1646,7 @@ function InfiniteCanvasPage() {
             });
             message.success("已加入我的素材");
         },
-        [addAsset, message],
+        [addAsset, language, message],
     );
 
     const createImageReversePromptNodes = useCallback(
@@ -1731,10 +1735,11 @@ function InfiniteCanvasPage() {
                 pieces.map(async (piece) => {
                     const image = await uploadImage(piece.dataUrl);
                     const id = nanoid();
+                    const titleBase = node.title || canvasText("图片", "Image", language);
                     return {
                         id,
                         type: CanvasNodeType.Image,
-                        title: `${node.title || "图片"} ${piece.row + 1}-${piece.column + 1}`,
+                        title: `${titleBase} ${piece.row + 1}-${piece.column + 1}`,
                         position: { x: startX + columnOffsets[piece.column], y: startY + rowOffsets[piece.row] },
                         width: cellWidths[piece.column],
                         height: cellHeights[piece.row],
@@ -1750,9 +1755,9 @@ function InfiniteCanvasPage() {
             setSelectedNodeIds(new Set(childNodes.map((child) => child.id)));
             setSelectedConnectionId(null);
             setDialogNodeId(null);
-            message.success(`已切分为 ${childNodes.length} 个子节点`);
+            message.success(canvasText(`已切分为 ${childNodes.length} 个子节点`, `Split into ${childNodes.length} child nodes`, language));
         },
-        [message],
+        [language, message],
     );
 
     const maskEditImageNode = useCallback(
@@ -2977,7 +2982,7 @@ function InfiniteCanvasPage() {
                     width="auto"
                     styles={{ body: { padding: 0, display: "flex", justifyContent: "center", alignItems: "center", maxHeight: "80vh" } }}
                 >
-                    {previewNode?.metadata?.content ? <img src={previewNode.metadata.content} alt={previewNode.title || "图片"} style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }} /> : null}
+                    {previewNode?.metadata?.content ? <img data-no-i18n="true" src={previewNode.metadata.content} alt={previewNode.title || canvasText("图片", "Image", language)} style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }} /> : null}
                 </Modal>
 
                 <Modal
@@ -3107,6 +3112,7 @@ function CanvasTopBar({
                     <div ref={titleRef} className="flex min-w-0 items-center gap-2">
                         {isTitleEditing ? (
                             <input
+                                data-no-i18n="true"
                                 autoFocus
                                 value={titleDraft}
                                 onChange={(event) => onTitleDraftChange(event.target.value)}
@@ -3125,7 +3131,7 @@ function CanvasTopBar({
                                 onDoubleClick={onStartTitleEditing}
                                 title="双击修改画布名称"
                             >
-                                {title}
+                                <span data-no-i18n="true">{title}</span>
                             </button>
                         )}
                     </div>
@@ -3177,9 +3183,14 @@ function MenuLabel({ text, shortcut }: { text: string; shortcut: string }) {
 }
 
 function CompactAgentStatus({ status, onClick }: { status: { connected: boolean; enabled: boolean; activity: string }; onClick: () => void }) {
+    const language = useLanguageStore((state) => state.language);
     const colorTheme = useThemeStore((state) => state.theme);
     const theme = canvasThemes[colorTheme];
-    const label = status.connected ? "已连接到本地 Codex" : status.enabled ? status.activity || "连接中" : "正在连接本地 Codex";
+    const label = status.connected
+        ? canvasText("已连接到本地 Codex", "Connected to local Codex", language)
+        : status.enabled
+          ? compactAgentActivityLabel(status.activity, language) || canvasText("连接中", "Connecting", language)
+          : canvasText("正在连接本地 Codex", "Connecting to local Codex", language);
     const dotColor = status.connected ? "#22c55e" : status.enabled ? "#f59e0b" : theme.node.muted;
     return (
         <button
@@ -3193,6 +3204,27 @@ function CompactAgentStatus({ status, onClick }: { status: { connected: boolean;
             <span className="max-w-[180px] truncate">{label}</span>
         </button>
     );
+}
+
+function compactAgentActivityLabel(value: string, language: "zh" | "en") {
+    const labels: Array<[string, string]> = [
+        ["已连接", "Connected"],
+        ["连接中", "Connecting"],
+        ["连接断开", "Disconnected"],
+        ["连接失败", "Connection failed"],
+        ["离线", "Offline"],
+        ["出错", "Error"],
+        ["完成", "Completed"],
+        ["发送中", "Sending"],
+        ["发送失败", "Send failed"],
+        ["等待确认", "Waiting for confirmation"],
+        ["执行画布操作", "Applying canvas changes"],
+        ["读取画布", "Reading canvas"],
+        ["工具完成", "Tool completed"],
+        ["工具失败", "Tool failed"],
+    ];
+    const label = labels.find(([zh, en]) => value === zh || value === en);
+    return label ? canvasText(label[0], label[1], language) : value;
 }
 
 function Shortcut({ keys, value }: { keys: string[]; value: string }) {

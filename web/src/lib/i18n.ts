@@ -1,8 +1,11 @@
 import { useCallback } from "react";
 
+import { canvasZhToEn } from "@/lib/i18n-canvas";
+import { sharedZhToEn } from "@/lib/i18n-shared";
+import { workbenchZhToEn } from "@/lib/i18n-workbench";
 import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 
-const zhToEn = {
+const coreZhToEn = {
     无限画布: "Infinite Canvas",
     "RelayBases Canvas": "RelayBases Canvas",
     一张画布: "One Canvas",
@@ -65,6 +68,7 @@ const zhToEn = {
     快捷键: "Shortcuts",
     切换到浅色主题: "Switch To Light Theme",
     切换到深色主题: "Switch To Dark Theme",
+    切换主题: "Toggle Theme",
     切换到英文: "Switch To English",
     切换到中文: "Switch To Chinese",
 
@@ -238,11 +242,19 @@ const zhToEn = {
     "模型没有返回工具调用，画布操作未执行。": "The model returned no tool call, so no canvas operation was executed.",
 } as const;
 
-const enToZh = Object.fromEntries(Object.entries(zhToEn).map(([zh, en]) => [en, zh])) as Record<string, string>;
+export const zhToEn = {
+    ...coreZhToEn,
+    ...workbenchZhToEn,
+    ...canvasZhToEn,
+    ...sharedZhToEn,
+} as const;
 
 export function translateText(value: string, language: LanguageName): string {
-    if (language === "en") return zhToEn[value as keyof typeof zhToEn] ?? value;
-    return enToZh[value] ?? value;
+    if (language === "en") {
+        const compactChineseSpacing = value.replace(/([\u3400-\u9fff])\s+(?=[\u3400-\u9fff])/gu, "$1");
+        return zhToEn[value as keyof typeof zhToEn] ?? zhToEn[compactChineseSpacing as keyof typeof zhToEn] ?? value;
+    }
+    return value;
 }
 
 export function translateLooseText(value: string, language: LanguageName): string {

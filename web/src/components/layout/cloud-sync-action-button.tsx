@@ -5,9 +5,11 @@ import { AlertCircle, Cloud, RefreshCw } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { sharedErrorText, sharedText, type SharedLanguage } from "@/lib/i18n-shared";
 import { cn } from "@/lib/utils";
 import { getCloudSyncApiKey } from "@/services/cloud-sync";
 import { useConfigStore } from "@/stores/use-config-store";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 
 type CloudSyncActionButtonProps = {
@@ -16,6 +18,7 @@ type CloudSyncActionButtonProps = {
 
 export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionButtonProps) {
     const { message } = App.useApp();
+    const language = useLanguageStore((state) => state.language);
     const themeName = useThemeStore((state) => state.theme);
     const canvasTheme = canvasThemes[themeName];
     const config = useConfigStore((state) => state.config);
@@ -39,20 +42,22 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
             : undefined;
 
     const title = syncing
-        ? cloudSyncActivity === "auto"
-            ? "自动云同步正在后台运行"
-            : "云同步正在运行"
+        ? sharedText(cloudSyncActivity === "auto" ? "自动云同步正在后台运行" : "云同步正在运行", cloudSyncActivity === "auto" ? "Automatic cloud sync is running in the background" : "Cloud sync is running", language)
         : !ready
-        ? "填写媒体 API Key 或文本 API Key 后可使用云同步"
-        : hasError
-          ? `最近失败：${cloudSync.lastError}`
-          : enabled
-            ? `已开启自动同步。${cloudSync.lastSyncedAt ? `上次同步 ${formatCloudSyncTime(cloudSync.lastSyncedAt)}。` : ""}点击打开同步进度。`
-            : "点击开启云同步并查看进度";
+          ? sharedText("填写媒体 API Key 或文本 API Key 后可使用云同步", "Enter a media API key or text API key to use cloud sync", language)
+          : hasError
+            ? language === "en"
+                ? `Last failure: ${sharedErrorText(cloudSync.lastError, language)}`
+                : `最近失败：${cloudSync.lastError}`
+            : enabled
+              ? language === "en"
+                  ? `Automatic sync is enabled. ${cloudSync.lastSyncedAt ? `Last sync ${formatCloudSyncTime(cloudSync.lastSyncedAt, language)}. ` : ""}Click to open sync progress.`
+                  : `已开启自动同步。${cloudSync.lastSyncedAt ? `上次同步 ${formatCloudSyncTime(cloudSync.lastSyncedAt, language)}。` : ""}点击打开同步进度。`
+              : sharedText("点击开启云同步并查看进度", "Click to enable cloud sync and view progress", language);
 
     const openSyncPanel = () => {
         if (!ready) {
-            message.error("请先填写媒体 API Key 或文本 API Key");
+            message.error(sharedText("请先填写媒体 API Key 或文本 API Key", "Enter a media API key or text API key first", language));
             openConfigDialog(false, "channels");
             return;
         }
@@ -77,18 +82,20 @@ export function CloudSyncActionButton({ variant = "default" }: CloudSyncActionBu
             )}
             style={buttonStyle}
             onClick={openSyncPanel}
-            aria-label={syncing ? "云同步正在运行" : enabled ? "打开云同步进度" : "开启云同步"}
+            aria-label={sharedText(syncing ? "云同步正在运行" : enabled ? "打开云同步进度" : "开启云同步", syncing ? "Cloud sync is running" : enabled ? "Open cloud sync progress" : "Enable cloud sync", language)}
             title={title}
         >
             <Icon className={cn("size-4", syncing && "animate-spin")} />
-            <span className="hidden sm:inline">{syncing ? (cloudSyncActivity === "auto" ? "自动同步中" : "同步中") : enabled ? "云同步" : "开启同步"}</span>
+            <span className="hidden sm:inline">
+                {sharedText(syncing ? (cloudSyncActivity === "auto" ? "自动同步中" : "同步中") : enabled ? "云同步" : "开启同步", syncing ? (cloudSyncActivity === "auto" ? "Auto syncing" : "Syncing") : enabled ? "Cloud Sync" : "Enable Sync", language)}
+            </span>
         </button>
     );
 }
 
-function formatCloudSyncTime(value: string) {
+function formatCloudSyncTime(value: string, language: SharedLanguage) {
     try {
-        return new Date(value).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+        return new Date(value).toLocaleString(language === "en" ? "en-US" : "zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
     } catch {
         return value;
     }

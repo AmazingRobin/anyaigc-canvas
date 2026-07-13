@@ -7,6 +7,8 @@ import { Button } from "antd";
 import { ModelPicker } from "@/components/model-picker";
 import { normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasText } from "@/lib/i18n-canvas";
+import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasPromptLibrary } from "./canvas-prompt-library";
@@ -31,6 +33,7 @@ type CanvasNodePromptPanelProps = {
 };
 
 export function CanvasNodePromptPanel({ node, isRunning, onPromptChange, onConfigChange, onGenerate, onStop, mentionReferences = [], onImageSettingsOpenChange }: CanvasNodePromptPanelProps) {
+    const language = useLanguageStore((state) => state.language);
     const globalConfig = useEffectiveConfig();
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
@@ -77,7 +80,7 @@ export function CanvasNodePromptPanel({ node, isRunning, onPromptChange, onConfi
                 onSubmit={submit}
                 className="thin-scrollbar h-24 w-full resize-none rounded-xl border px-3 py-2 text-sm leading-5 outline-none"
                 style={{ background: theme.node.fill, borderColor: theme.node.stroke, color: theme.node.text }}
-                placeholder={promptPlaceholder(mode, hasImageContent, hasTextContent)}
+                placeholder={promptPlaceholder(mode, hasImageContent, hasTextContent, language)}
             />
 
             <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
@@ -115,7 +118,7 @@ export function CanvasNodePromptPanel({ node, isRunning, onPromptChange, onConfi
                     danger={isRunning}
                     disabled={!isRunning && !prompt.trim()}
                     onClick={() => (isRunning ? onStop(node.id) : submit())}
-                    aria-label={isRunning ? "停止生成" : "生成"}
+                    aria-label={isRunning ? canvasText("停止生成", "Stop generation", language) : canvasText("生成", "Generate", language)}
                 >
                     <span className="flex items-center gap-1.5">
                         {isRunning ? (
@@ -140,11 +143,11 @@ function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
     return type === CanvasNodeType.Text ? "text" : type === CanvasNodeType.Video ? "video" : type === CanvasNodeType.Audio ? "audio" : "image";
 }
 
-function promptPlaceholder(mode: CanvasNodeGenerationMode, hasImageContent: boolean, hasTextContent: boolean) {
-    if (mode === "video") return "描述要生成的视频内容";
-    if (mode === "audio") return "描述要生成的音频内容";
-    if (mode === "image") return hasImageContent ? "请输入你想要把这张图修改成什么" : "描述要生成的图片内容";
-    return hasTextContent ? "请输入你想要将本段文本修改成什么" : "请输入你想要生成的文本内容";
+function promptPlaceholder(mode: CanvasNodeGenerationMode, hasImageContent: boolean, hasTextContent: boolean, language: LanguageName) {
+    if (mode === "video") return canvasText("描述要生成的视频内容", "Describe the video you want to generate", language);
+    if (mode === "audio") return canvasText("描述要生成的音频内容", "Describe the audio you want to generate", language);
+    if (mode === "image") return hasImageContent ? canvasText("请输入你想要把这张图修改成什么", "Describe how you want to edit this image", language) : canvasText("描述要生成的图片内容", "Describe the image you want to generate", language);
+    return hasTextContent ? canvasText("请输入你想要将本段文本修改成什么", "Describe how you want to rewrite this text", language) : canvasText("请输入你想要生成的文本内容", "Describe the text you want to generate", language);
 }
 
 function videoConfigPatch(key: keyof AiConfig, value: string) {

@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { Button, InputNumber, Modal } from "antd";
 import { Grid2x2, Plus, RefreshCw, Trash2 } from "lucide-react";
 
+import { canvasText } from "@/lib/i18n-canvas";
 import { readImageMeta } from "@/lib/image-utils";
+import { useLanguageStore } from "@/stores/use-language-store";
 import type { ImageSplitParams } from "../utils/canvas-image-data";
 
 export type CanvasImageSplitParams = ImageSplitParams;
@@ -16,6 +18,7 @@ type SplitAxis = "horizontal" | "vertical";
 type ActiveLine = { axis: SplitAxis; index: number } | null;
 
 export function CanvasNodeSplitDialog({ dataUrl, open, onClose, onConfirm }: { dataUrl: string; open: boolean; onClose: () => void; onConfirm: (params: CanvasImageSplitParams) => void }) {
+    const language = useLanguageStore((state) => state.language);
     const previewRef = useRef<HTMLDivElement | null>(null);
     const [params, setParams] = useState(defaultParams);
     const [image, setImage] = useState<{ width: number; height: number } | null>(null);
@@ -121,7 +124,7 @@ export function CanvasNodeSplitDialog({ dataUrl, open, onClose, onConfirm }: { d
             <div className="space-y-5">
                 <div>
                     <h2 className="text-xl font-semibold">切分图片</h2>
-                    <p className="mt-1 text-sm opacity-60">拖动分割线微调切块比例，生成 {total} 个图片子节点</p>
+                    <p className="mt-1 text-sm opacity-60">{canvasText(`拖动分割线微调切块比例，生成 ${total} 个图片子节点`, `Drag the dividers to fine-tune the slices and create ${total} image nodes.`, language)}</p>
                 </div>
                 <div className="grid gap-6 md:grid-cols-[minmax(280px,1fr)_300px]">
                     <div className="rounded-xl border p-4">
@@ -158,7 +161,7 @@ export function CanvasNodeSplitDialog({ dataUrl, open, onClose, onConfirm }: { d
                         <div className="rounded-xl border px-4 py-3 text-sm">
                             <div className="flex items-center justify-between">
                                 <span className="opacity-60">子节点</span>
-                                <span className="font-semibold">{total} 个</span>
+                                <span className="font-semibold">{canvasText(`${total} 个`, `${total}`, language)}</span>
                             </div>
                             <div className="mt-2 flex items-center justify-between">
                                 <span className="opacity-60">平均单块</span>

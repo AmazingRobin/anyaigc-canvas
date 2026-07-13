@@ -1,15 +1,17 @@
 "use client";
 
 import { ArrowRight, ExternalLink, Settings2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { App, Image, Tag } from "antd";
 
 import { RelayBasesCanvasIcon } from "@/components/brand/relaybases-canvas-icon";
 import { navigationTools } from "@/constant/navigation-tools";
 import { RELAYBASES_HOME_URL, RELAYBASES_KEYS_URL } from "@/constant/relaybases-links";
+import { sharedErrorText, sharedText } from "@/lib/i18n-shared";
+import { englishPromptFor, promptTagEnByZh, promptTitleEnById } from "@/local-prompts/relaybases-prompt-translations";
 import { fetchPrompts, type Prompt } from "@/services/api/prompts";
 import { useConfigStore } from "@/stores/use-config-store";
-import { useLanguageStore } from "@/stores/use-language-store";
+import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 
 const heroPromptIds = ["rb-prompt-001", "rb-prompt-011", "rb-prompt-021", "rb-prompt-031", "rb-prompt-041", "rb-prompt-051", "rb-prompt-061", "rb-prompt-071", "rb-prompt-081", "rb-prompt-091"];
 
@@ -27,6 +29,15 @@ const fallbackPrompts: Prompt[] = [
     createFallbackPrompt("rb-prompt-012", "黑色机械腕表特写", "/prompt-covers/relaybases/rb-prompt-012.webp", ["产品", "机械"]),
     createFallbackPrompt("rb-prompt-032", "竹林晨雾小径", "/prompt-covers/relaybases/rb-prompt-032.webp", ["风景", "东方"]),
 ];
+
+function localizedFallbackPrompts(language: LanguageName): Prompt[] {
+    if (language === "zh") return fallbackPrompts;
+    return fallbackPrompts.map((item) => {
+        const title = promptTitleEnById[item.id] || item.title;
+        const tags = item.tags.map((tag) => promptTagEnByZh[tag] || tag);
+        return { ...item, title, tags, prompt: englishPromptFor(title, tags) };
+    });
+}
 
 const workflowHighlights = ["提示词", "图片", "视频", "Agent"] as const;
 
@@ -68,24 +79,26 @@ export default function IndexPage() {
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const language = useLanguageStore((state) => state.language);
     const [primaryTool] = navigationTools;
-    const [promptShowcase, setPromptShowcase] = useState<Prompt[]>([]);
+    const fallbackForLanguage = useMemo(() => localizedFallbackPrompts(language), [language]);
+    const [promptShowcaseResult, setPromptShowcaseResult] = useState<{ language: LanguageName; items: Prompt[] }>(() => ({ language, items: [] }));
     const [hiddenPromptIds, setHiddenPromptIds] = useState<Set<string>>(() => new Set());
     const [previewIndex, setPreviewIndex] = useState(0);
     const [previewOpen, setPreviewOpen] = useState(false);
+    const promptShowcase = promptShowcaseResult.language === language ? promptShowcaseResult.items : [];
     const visiblePromptShowcase = promptShowcase.filter((item) => !hiddenPromptIds.has(item.id) && item.coverUrl.trim());
-    const showcasePrompts = (visiblePromptShowcase.length ? visiblePromptShowcase : fallbackPrompts).filter((item) => !hiddenPromptIds.has(item.id));
+    const showcasePrompts = (visiblePromptShowcase.length ? visiblePromptShowcase : fallbackForLanguage).filter((item) => !hiddenPromptIds.has(item.id));
     const heroPrompts = pickHeroPrompts(showcasePrompts);
     const heroPromptIdSet = new Set(heroPrompts.map((item) => item.id));
     const galleryPrompts = showcasePrompts.filter((item) => !heroPromptIdSet.has(item.id)).slice(0, 15);
     const previewPrompts = [...heroPrompts, ...galleryPrompts];
 
     useEffect(() => {
-        void fetchPrompts({ pageSize: 100 })
+        void fetchPrompts({ pageSize: 100, language })
             .then((data) => {
                 setHiddenPromptIds(new Set());
-                setPromptShowcase(data.items);
+                setPromptShowcaseResult({ language, items: data.items });
             })
-            .catch((error) => message.error(error instanceof Error ? error.message : "获取提示词失败"));
+            .catch((error) => message.error(error instanceof Error ? sharedErrorText(error.message, language) : sharedText("获取提示词失败", "Failed to load prompts", language)));
     }, [language, message]);
 
     const hidePrompt = (id: string) => {

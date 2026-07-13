@@ -7,6 +7,8 @@ import { Button, Segmented } from "antd";
 import { ModelPicker } from "@/components/model-picker";
 import { normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasText } from "@/lib/i18n-canvas";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
@@ -25,6 +27,7 @@ type CanvasConfigNodePanelProps = {
 };
 
 export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigChange, onGenerate, onStop, onComposerToggle }: CanvasConfigNodePanelProps) {
+    const language = useLanguageStore((state) => state.language);
     const globalConfig = useEffectiveConfig();
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
@@ -88,10 +91,10 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
             </div>
 
             <div className="mb-2 flex flex-wrap gap-1.5">
-                <InputChip label="提示词" value={`${inputSummary.textCount} 个`} style={chipStyle} />
-                <InputChip label="参考图" value={`${inputSummary.imageCount} 张`} style={chipStyle} />
-                <InputChip label="参考视频" value={`${inputSummary.videoCount} 个`} style={chipStyle} />
-                <InputChip label="参考音频" value={`${inputSummary.audioCount} 个`} style={chipStyle} />
+                <InputChip label="提示词" value={canvasText(`${inputSummary.textCount} 个`, `${inputSummary.textCount}`, language)} style={chipStyle} />
+                <InputChip label="参考图" value={canvasText(`${inputSummary.imageCount} 张`, `${inputSummary.imageCount}`, language)} style={chipStyle} />
+                <InputChip label="参考视频" value={canvasText(`${inputSummary.videoCount} 个`, `${inputSummary.videoCount}`, language)} style={chipStyle} />
+                <InputChip label="参考音频" value={canvasText(`${inputSummary.audioCount} 个`, `${inputSummary.audioCount}`, language)} style={chipStyle} />
                 <button type="button" className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px]" style={chipStyle} onMouseDown={(event) => event.stopPropagation()} onClick={onComposerToggle}>
                     <Settings2 className="size-3.5" />
                     组装提示词

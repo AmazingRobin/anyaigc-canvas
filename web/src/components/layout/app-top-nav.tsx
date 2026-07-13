@@ -9,12 +9,15 @@ import { RELAYBASES_HOME_URL, relayBasesLinks } from "@/constant/relaybases-link
 import { AppConfigModal } from "@/components/layout/app-config-modal";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
+import { sharedText } from "@/lib/i18n-shared";
 import { cn } from "@/lib/utils";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { useState } from "react";
 
 export function AppTopNav() {
     const pathname = usePathname();
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const language = useLanguageStore((state) => state.language);
     const hideHeader = /^\/canvas\/[^/]+/.test(pathname);
     const slug = pathname.split("/").filter(Boolean)[0];
     const activeToolSlug = navigationTools.some((tool) => tool.slug === slug) ? (slug as NavigationToolSlug) : undefined;
@@ -42,7 +45,7 @@ export function AppTopNav() {
                             </a>
                             <span className="mx-3 hidden h-5 w-px shrink-0 bg-stone-200 sm:block dark:bg-stone-800" />
                             <Link href="/" className="hidden h-full shrink-0 items-center px-1 text-[13px] font-medium leading-none tracking-tight text-stone-500 transition hover:text-stone-950 sm:flex dark:text-stone-400 dark:hover:text-stone-100">
-                                <span>无限画布</span>
+                                <span>{sharedText("无限画布", "Infinite Canvas", language)}</span>
                             </Link>
 
                             <nav className="hide-scrollbar ml-6 hidden h-16 min-w-0 items-center gap-5 overflow-x-auto lg:gap-6 md:flex xl:ml-8 xl:gap-7">
@@ -61,7 +64,7 @@ export function AppTopNav() {
                                             )}
                                         >
                                             <Icon className="size-4 shrink-0" />
-                                            <span className="whitespace-nowrap">{tool.label}</span>
+                                            <span className="whitespace-nowrap">{sharedText(tool.label, undefined, language)}</span>
                                         </Link>
                                     );
                                 })}
@@ -73,12 +76,12 @@ export function AppTopNav() {
                                 type="button"
                                 className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white/80 text-stone-900 shadow-sm transition hover:border-stone-300 hover:bg-white md:hidden dark:border-stone-800 dark:bg-stone-950/70 dark:text-stone-100 dark:hover:border-stone-700 dark:hover:bg-stone-900"
                                 onClick={() => setMobileNavOpen(true)}
-                                aria-label="打开导航菜单"
-                                title="导航菜单"
+                                aria-label={sharedText("打开导航菜单", "Open navigation", language)}
+                                title={sharedText("导航菜单", "Navigation", language)}
                             >
                                 <Menu className="size-5" />
                             </button>
-                            <nav className="mr-1 hidden items-center gap-1 2xl:flex" aria-label="RelayBases 主站导航">
+                            <nav className="mr-1 hidden items-center gap-1 2xl:flex" aria-label={sharedText("RelayBases 主站导航", "RelayBases main site navigation", language)}>
                                 {relayBasesLinks.map((link) => (
                                     <a
                                         key={link.href}
@@ -92,7 +95,7 @@ export function AppTopNav() {
                                                 : "text-stone-500 hover:bg-stone-100 hover:text-stone-950 dark:text-stone-400 dark:hover:bg-stone-900 dark:hover:text-stone-100",
                                         )}
                                     >
-                                        {link.label}
+                                        {sharedText(link.label, undefined, language)}
                                     </a>
                                 ))}
                             </nav>

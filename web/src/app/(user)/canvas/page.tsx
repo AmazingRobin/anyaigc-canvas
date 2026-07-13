@@ -6,8 +6,10 @@ import { App, Button } from "antd";
 import { Download, FileUp, Plus } from "lucide-react";
 
 import { readZip } from "@/lib/zip";
+import { canvasText } from "@/lib/i18n-canvas";
 import { setMediaBlob } from "@/services/file-storage";
 import { setImageBlob } from "@/services/image-storage";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { CanvasDeleteProjectsDialog } from "./components/canvas-delete-projects-dialog";
 import { CanvasProjectCard } from "./components/canvas-project-card";
 import type { CanvasExportFile } from "./export-types";
@@ -26,6 +28,7 @@ export default function CanvasPage() {
 
 function CanvasPageContent() {
     const { message } = App.useApp();
+    const language = useLanguageStore((state) => state.language);
     const router = useRouter();
     const searchParams = useSearchParams();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -44,7 +47,7 @@ function CanvasPageContent() {
     const enterProject = (id: string) => {
         router.push(`/canvas/${id}${agentQuery}`);
     };
-    const createAndEnter = () => enterProject(createProject(`无限画布 ${projects.length + 1}`));
+    const createAndEnter = () => enterProject(createProject(canvasText(`无限画布 ${projects.length + 1}`, `Infinite Canvas ${projects.length + 1}`, language)));
     const importCanvas = async (file?: File) => {
         if (!file) return;
         try {
@@ -63,9 +66,9 @@ function CanvasPageContent() {
                 ),
             );
             data.projects.forEach((item) => importProject(item.project));
-            message.success(`已导入 ${data.projects.length} 个画布`);
+            message.success(canvasText(`已导入 ${data.projects.length} 个画布`, `Imported ${data.projects.length} ${data.projects.length === 1 ? "canvas" : "canvases"}.`, language));
         } catch {
-            message.error("导入失败，请选择有效的画布压缩包");
+            message.error(canvasText("导入失败，请选择有效的画布压缩包", "Import failed. Select a valid canvas archive.", language));
         } finally {
             if (inputRef.current) inputRef.current.value = "";
         }
@@ -74,8 +77,8 @@ function CanvasPageContent() {
     useEffect(() => {
         if (!hydrated || autoOpenRef.current || (mode !== "new" && mode !== "recent")) return;
         autoOpenRef.current = true;
-        enterProject(mode === "new" ? createProject(`无限画布 ${projects.length + 1}`) : projects[0]?.id || createProject(`无限画布 ${projects.length + 1}`));
-    }, [createProject, hydrated, mode, projects]);
+        enterProject(mode === "new" ? createProject(canvasText(`无限画布 ${projects.length + 1}`, `Infinite Canvas ${projects.length + 1}`, language)) : projects[0]?.id || createProject(canvasText(`无限画布 ${projects.length + 1}`, `Infinite Canvas ${projects.length + 1}`, language)));
+    }, [createProject, hydrated, language, mode, projects]);
 
     useEffect(() => {
         const projectIds = new Set(projects.map((project) => project.id));
@@ -112,7 +115,7 @@ function CanvasPageContent() {
                                     onClick={() =>
                                         void exportCanvasProjects(
                                             projects.filter((project) => selectedIds.includes(project.id)),
-                                            `无限画布-${selectedIds.length}个项目`,
+                                            canvasText(`无限画布-${selectedIds.length}个项目`, `infinite-canvas-${selectedIds.length}-projects`, language),
                                         )
                                     }
                                 >

@@ -1,4 +1,5 @@
 import { compactApiParams, serializeApiParams } from "@/services/api/request";
+import { sharedFormatDate, sharedText, type SharedLanguage } from "@/lib/i18n-shared";
 
 export type Prompt = {
     id: string;
@@ -22,16 +23,10 @@ export type PromptListResponse = {
     total: number;
 };
 
-function currentPromptLanguage() {
-    if (typeof document === "undefined") return "";
-    const language = document.documentElement.dataset.lang || document.documentElement.lang || "";
-    return language.toLowerCase().startsWith("en") ? "en" : "zh";
-}
-
-export async function fetchPrompts({ keyword = "", tag = [], category = ALL_PROMPTS_OPTION, page, pageSize }: { keyword?: string; tag?: string[]; category?: string; page?: number; pageSize?: number } = {}) {
+export async function fetchPrompts({ keyword = "", tag = [], category = ALL_PROMPTS_OPTION, page, pageSize, language = "zh" }: { keyword?: string; tag?: string[]; category?: string; page?: number; pageSize?: number; language?: SharedLanguage } = {}) {
     const params = serializeApiParams(
         compactApiParams({
-            lang: currentPromptLanguage(),
+            lang: language,
             ...(keyword ? { keyword } : {}),
             ...(tag.length ? { tag } : {}),
             ...(category !== ALL_PROMPTS_OPTION ? { category } : {}),
@@ -40,11 +35,10 @@ export async function fetchPrompts({ keyword = "", tag = [], category = ALL_PROM
         }),
     );
     const response = await fetch(`/api/prompts${params.size ? `?${params}` : ""}`);
-    if (!response.ok) throw new Error("获取提示词失败");
+    if (!response.ok) throw new Error(sharedText("获取提示词失败", "Failed to load prompts"));
     return (await response.json()) as PromptListResponse;
 }
 
-export function formatPromptDate(value: string) {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+export function formatPromptDate(value: string, language?: SharedLanguage) {
+    return sharedFormatDate(value, language);
 }

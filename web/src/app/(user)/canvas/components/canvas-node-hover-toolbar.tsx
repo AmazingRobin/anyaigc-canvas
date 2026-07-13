@@ -5,9 +5,11 @@ import { App, Modal, Segmented, Tooltip } from "antd";
 import { Download, Ellipsis, FolderPlus, Image as ImageIcon, Info, MessageSquare, Minus, Music2, Pencil, Plus, RefreshCw, Settings2, Trash2, Upload, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasErrorText, canvasText } from "@/lib/i18n-canvas";
 import { formatBytes, getDataUrlByteSize } from "@/lib/image-utils";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { useLanguageStore } from "@/stores/use-language-store";
 import { CanvasNodeType, type CanvasNodeData, type ViewportTransform } from "../types";
 import { ImageToolSettingsModal, type ImageToolbarSettingsTool } from "./canvas-image-toolbar-settings-modal";
 import { IMAGE_QUICK_TOOLS_STORAGE_KEY, buildImageToolbarTools, defaultImageQuickToolIds, readImageQuickToolsConfig, type ImageQuickToolId } from "./canvas-image-toolbar-tools";
@@ -75,6 +77,7 @@ export function CanvasNodeHoverToolbar({
     onToggleFreeResize,
     onDelete,
 }: CanvasNodeHoverToolbarProps) {
+    const language = useLanguageStore((state) => state.language);
     const [quickImageToolIds, setQuickImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
     const [showImageToolLabels, setShowImageToolLabels] = useState(true);
     const [draftImageToolIds, setDraftImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
@@ -118,10 +121,10 @@ export function CanvasNodeHoverToolbar({
     const copyImagePrompt = (target: CanvasNodeData) => {
         const prompt = target.metadata?.prompt?.trim();
         if (!prompt) {
-            message.warning("暂无可复制的提示词");
+            message.warning(canvasText("暂无可复制的提示词", "There is no prompt to copy.", language));
             return;
         }
-        copyText(prompt, "提示词已复制");
+        copyText(prompt, canvasText("提示词已复制", "Prompt copied.", language));
     };
     const imageTools = buildImageToolbarTools(node, { onUpload, onToggleFreeResize, onMaskEdit, onCrop, onSplit, onUpscale, onSuperResolve, onAngle, onViewImage, onCopyPrompt: copyImagePrompt, onReversePrompt });
 
@@ -211,6 +214,7 @@ export function CanvasNodeHoverToolbar({
 }
 
 export function CanvasNodeInfoModal({ node, open, onClose }: { node: CanvasNodeData | null; open: boolean; onClose: () => void }) {
+    const language = useLanguageStore((state) => state.language);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [view, setView] = useState<"info" | "json">("info");
     const imageBytes = node?.type === CanvasNodeType.Image && node.metadata?.content ? getDataUrlByteSize(node.metadata.content) : 0;
@@ -260,17 +264,17 @@ export function CanvasNodeInfoModal({ node, open, onClose }: { node: CanvasNodeD
                             <InfoRow label="尺寸" value={`${Math.round(node.width)} x ${Math.round(node.height)}`} />
                             <InfoRow label="位置" value={`${Math.round(node.position.x)}, ${Math.round(node.position.y)}`} />
                             <InfoRow label="状态" value={node.metadata?.status || "idle"} />
-                            {batchCount > 1 ? <InfoRow label="图片组" value={`${batchCount} 张`} /> : null}
-                            {node.metadata?.prompt ? <InfoRow label="提示词" value={node.metadata.prompt} /> : null}
+                            {batchCount > 1 ? <InfoRow label="图片组" value={canvasText(`${batchCount} 张`, `${batchCount} images`, language)} /> : null}
+                            {node.metadata?.prompt ? <InfoRow label="提示词" value={node.metadata.prompt} noI18n /> : null}
                             {imageBytes ? <InfoRow label="图片大小" value={formatBytes(imageBytes)} /> : null}
                             {node.metadata?.errorDetails ? (
-                                <div className="rounded-lg border p-3 text-red-400" style={{ borderColor: theme.node.stroke }}>
-                                    {node.metadata.errorDetails}
+                                <div data-no-i18n="true" className="rounded-lg border p-3 text-red-400" style={{ borderColor: theme.node.stroke }}>
+                                    {canvasErrorText(node.metadata.errorDetails, language)}
                                 </div>
                             ) : null}
                         </div>
                     ) : (
-                        <pre className="thin-scrollbar h-full overflow-auto rounded-lg border p-3 text-xs leading-5" style={{ background: theme.node.fill, borderColor: theme.node.stroke, color: theme.node.text }}>
+                        <pre data-no-i18n="true" className="thin-scrollbar h-full overflow-auto rounded-lg border p-3 text-xs leading-5" style={{ background: theme.node.fill, borderColor: theme.node.stroke, color: theme.node.text }}>
                             {json}
                         </pre>
                     )}
@@ -294,11 +298,11 @@ function ToolbarAction({ title, label, icon, onClick, showLabel, active = false,
     );
 }
 
-function InfoRow({ label, value }: { label: string; value: ReactNode }) {
+function InfoRow({ label, value, noI18n = false }: { label: string; value: ReactNode; noI18n?: boolean }) {
     return (
         <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3">
             <span className="opacity-50">{label}</span>
-            <span className="min-w-0 whitespace-pre-wrap break-words">{value}</span>
+            <span data-no-i18n={noI18n ? "true" : undefined} className="min-w-0 whitespace-pre-wrap break-words">{value}</span>
         </div>
     );
 }
