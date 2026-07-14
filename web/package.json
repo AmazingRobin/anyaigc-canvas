@@ -7,8 +7,9 @@
         "dev": "next dev --webpack -H 0.0.0.0 -p 3000",
         "build": "next build",
         "start": "next start",
-        "check": "bunx tsc --noEmit && bun run test:i18n",
+        "check": "bunx tsc --noEmit && bun run test:i18n && bun run test:grok-video",
         "test:i18n": "bun scripts/test-i18n.ts && node scripts/audit-i18n.mjs",
+        "test:grok-video": "bun scripts/test-grok-video-contract.ts",
         "generate:prompt-covers": "node scripts/generate-relaybases-prompt-covers.mjs",
         "format": "prettier --write .",
         "format:check": "prettier --check ."

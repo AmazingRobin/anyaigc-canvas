@@ -1,4 +1,4 @@
-import { GROK_IMAGINE_VIDEO_MODEL, mediaModelName } from "@/lib/relaybases-media-models";
+import { GROK_IMAGINE_VIDEO_BASE_MODEL, GROK_IMAGINE_VIDEO_MODEL, isGrokImagineVideoFamilyModel, mediaModelName, normalizeGrokVideoMode, type GrokVideoMode } from "@/lib/relaybases-media-models";
 
 export type RelayBasesVideoTiming = {
     min: number;
@@ -21,17 +21,26 @@ const MODEL_TIMINGS: Record<string, RelayBasesVideoTiming> = {
     "video-pro-1080p": DEFAULT_TIMING,
     "video-standard-720p": { min: 15, max: 15, defaultValue: 15, options: [15], fixed: true },
     [GROK_IMAGINE_VIDEO_MODEL]: { min: 1, max: 15, defaultValue: 8, options: [1, 5, 8, 10, 15] },
+    [GROK_IMAGINE_VIDEO_BASE_MODEL]: { min: 1, max: 15, defaultValue: 8, options: [1, 5, 8, 10, 15] },
 };
 
-export function relayBasesVideoTiming(model: string): RelayBasesVideoTiming {
-    return MODEL_TIMINGS[mediaModelName(model)] || DEFAULT_TIMING;
+const GROK_MODE_TIMINGS: Partial<Record<GrokVideoMode, RelayBasesVideoTiming>> = {
+    "reference-to-video": { min: 1, max: 10, defaultValue: 8, options: [1, 5, 8, 10] },
+    "edit-video": { min: 0, max: 0, defaultValue: 0, options: [], fixed: true },
+    "extend-video": { min: 2, max: 10, defaultValue: 6, options: [2, 4, 6, 8, 10] },
+};
+
+export function relayBasesVideoTiming(model: string, mode?: unknown): RelayBasesVideoTiming {
+    const modelName = mediaModelName(model);
+    if (modelName === GROK_IMAGINE_VIDEO_BASE_MODEL) return GROK_MODE_TIMINGS[normalizeGrokVideoMode(modelName, mode)] || MODEL_TIMINGS[modelName];
+    return MODEL_TIMINGS[modelName] || DEFAULT_TIMING;
 }
 
-export function normalizeRelayBasesVideoDuration(value: string, model: string) {
+export function normalizeRelayBasesVideoDuration(value: string, model: string, mode?: unknown) {
     const modelName = mediaModelName(model);
-    const timing = relayBasesVideoTiming(modelName);
+    const timing = relayBasesVideoTiming(modelName, mode);
     if (timing.fixed) return timing.defaultValue;
     const numericValue = Number(value);
-    const seconds = modelName === GROK_IMAGINE_VIDEO_MODEL && (!Number.isFinite(numericValue) || numericValue < timing.min) ? timing.defaultValue : Math.floor(numericValue || timing.defaultValue);
+    const seconds = isGrokImagineVideoFamilyModel(modelName) && (!Number.isFinite(numericValue) || numericValue < timing.min) ? timing.defaultValue : Math.floor(numericValue || timing.defaultValue);
     return Math.max(timing.min, Math.min(timing.max, seconds));
 }

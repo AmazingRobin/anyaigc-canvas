@@ -1,3 +1,5 @@
+import type { GrokVideoMode } from "@/lib/relaybases-media-models";
+
 export type Position = {
     x: number;
     y: number;
@@ -36,6 +38,7 @@ export type CanvasNodeMetadata = {
     count?: number;
     seconds?: string;
     videoCallMode?: "sync" | "async";
+    videoOperation?: GrokVideoMode;
     vquality?: string;
     generateAudio?: string;
     watermark?: string;

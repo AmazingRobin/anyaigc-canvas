@@ -17,7 +17,16 @@ import {
     seedanceResolutionOptions,
 } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
-import { GROK_VIDEO_RESOLUTIONS, isGrokImagineVideoModel, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import {
+    GROK_VIDEO_MODES,
+    grokVideoModeLabel,
+    grokVideoResolutionOptions,
+    grokVideoUsesSourceOutput,
+    isGrokImagineVideoBaseModel,
+    isGrokImagineVideoFamilyModel,
+    normalizeGrokVideoMode,
+    normalizeGrokVideoResolution,
+} from "@/lib/relaybases-media-models";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { isRelayBasesVideoModel, modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
 import { workbenchText, type WorkbenchLanguage } from "@/lib/i18n-workbench";
@@ -28,8 +37,6 @@ const relayBasesAspectRatioOptions = [
     { value: "9:16", label: "竖屏", width: 9, height: 16 },
     { value: "1:1", label: "方形", width: 1, height: 1 },
 ];
-
-const grokVideoResolutionOptions = GROK_VIDEO_RESOLUTIONS.map((value) => ({ value, label: value }));
 
 const relayBasesVideoResolutionLabels: Record<string, string> = {
     "video-fast-480p": "480p",
@@ -42,7 +49,7 @@ const relayBasesVideoResolutionLabels: Record<string, string> = {
 
 type VideoSettingsPanelProps = {
     config: AiConfig;
-    onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoCallMode", value: string) => void;
+    onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoCallMode" | "videoOperation", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
@@ -57,12 +64,16 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
     }
 
     const selectedModel = modelOptionName(config.videoModel || config.model);
-    const grokVideo = isGrokImagineVideoModel(selectedModel);
-    const timing = relayBasesVideoTiming(selectedModel);
-    const seconds = String(normalizeRelayBasesVideoDuration(config.videoSeconds, selectedModel));
+    const grokVideo = isGrokImagineVideoFamilyModel(selectedModel);
+    const grokBaseVideo = isGrokImagineVideoBaseModel(selectedModel);
+    const grokOperation = normalizeGrokVideoMode(selectedModel, config.videoOperation);
+    const usesSourceOutput = grokVideoUsesSourceOutput(selectedModel, grokOperation);
+    const timing = relayBasesVideoTiming(selectedModel, grokOperation);
+    const seconds = String(normalizeRelayBasesVideoDuration(config.videoSeconds, selectedModel, grokOperation));
     const aspectRatio = normalizeRelayBasesVideoAspectRatio(config.size);
     const resolutionLabel = relayBasesVideoResolutionLabel(selectedModel, language);
-    const resolution = normalizeGrokVideoResolution(config.vquality);
+    const resolution = normalizeGrokVideoResolution(config.vquality, selectedModel);
+    const resolutionOptions = grokVideoResolutionOptions(selectedModel, grokOperation);
     const videoCallMode = normalizeVideoCallMode(config.videoCallMode);
     const showCallMode = isRelayBasesVideoModel(config.videoModel || config.model);
     const isPresetSecond = timing.options.some((value) => seconds === String(value));
@@ -71,6 +82,23 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
                 {showTitle ? <div className="text-lg font-semibold">{workbenchText("视频设置", "Video settings", language)}</div> : null}
+                {grokVideo ? (
+                    <SettingGroup title={workbenchText("生成模式", "Generation mode", language)} color={theme.node.muted}>
+                        {grokBaseVideo ? (
+                            <div className="grid grid-cols-2 gap-2.5">
+                                {GROK_VIDEO_MODES.map((mode) => (
+                                    <OptionPill key={mode} selected={grokOperation === mode} theme={theme} onClick={() => onConfigChange("videoOperation", mode)}>
+                                        {grokVideoModeLabel(mode, language)}
+                                    </OptionPill>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
+                                {grokVideoModeLabel(grokOperation, language)}
+                            </div>
+                        )}
+                    </SettingGroup>
+                ) : null}
                 {grokVideo ? (
                     <SettingGroup title={workbenchText("调用方式", "Call mode", language)} color={theme.node.muted}>
                         <div className="rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
@@ -90,11 +118,15 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     </SettingGroup>
                 ) : null}
                 <SettingGroup title={workbenchText("输出规格", "Output specs", language)} color={theme.node.muted}>
-                    {grokVideo ? (
-                        <div className="grid grid-cols-3 gap-2.5">
-                            {grokVideoResolutionOptions.map((item) => (
-                                <OptionPill key={item.value} selected={resolution === item.value} theme={theme} onClick={() => onConfigChange("vquality", item.value)}>
-                                    {item.label}
+                    {grokVideo && usesSourceOutput ? (
+                        <div className="rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: mutedBorderColor(theme) }}>
+                            {workbenchText("跟随源视频，最高 720p", "Matches the source video, capped at 720p", language)}
+                        </div>
+                    ) : grokVideo ? (
+                        <div className={`grid ${resolutionOptions.length === 2 ? "grid-cols-2" : "grid-cols-3"} gap-2.5`}>
+                            {resolutionOptions.map((value) => (
+                                <OptionPill key={value} selected={resolution === value} theme={theme} onClick={() => onConfigChange("vquality", value)}>
+                                    {value}
                                 </OptionPill>
                             ))}
                         </div>
@@ -107,34 +139,38 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         </div>
                     )}
                 </SettingGroup>
-                <SettingGroup title={workbenchText("画面比例", "Aspect ratio", language)} color={theme.node.muted}>
-                    <div className="grid grid-cols-3 gap-2.5">
-                        {relayBasesAspectRatioOptions.map((item) => (
-                            <button
-                                key={item.value}
-                                type="button"
-                                className="flex h-[78px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border text-sm transition hover:bg-stone-950/[0.03] hover:opacity-90 dark:hover:bg-white/[0.05]"
-                                style={mutedOptionStyle(theme, aspectRatio === item.value)}
-                                onMouseDown={(event) => event.stopPropagation()}
-                                onClick={() => onConfigChange("size", item.value)}
-                            >
-                                <SizePreview width={item.width} height={item.height} color={mutedPreviewColor(theme)} />
-                                <span>{workbenchText(item.label, undefined, language)}</span>
-                                <span className="text-[11px] leading-none opacity-55">{item.value}</span>
-                            </button>
-                        ))}
-                    </div>
-                </SettingGroup>
-                <SettingGroup title={workbenchText("秒数", "Duration", language)} color={theme.node.muted}>
-                    <div className="grid grid-cols-3 gap-2.5">
-                        {timing.options.map((value) => (
-                            <OptionPill key={value} selected={!editingSeconds && seconds === String(value)} theme={theme} onClick={() => onConfigChange("videoSeconds", String(value))}>
-                                {value}s
-                            </OptionPill>
-                        ))}
-                        <NumberInput value={timing.fixed ? seconds : config.videoSeconds || seconds} min={timing.min} max={timing.max} disabled={timing.fixed} selected={editingSeconds || !isPresetSecond} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} onEditingChange={setEditingSeconds} />
-                    </div>
-                </SettingGroup>
+                {!usesSourceOutput ? (
+                    <SettingGroup title={workbenchText("画面比例", "Aspect ratio", language)} color={theme.node.muted}>
+                        <div className="grid grid-cols-3 gap-2.5">
+                            {relayBasesAspectRatioOptions.map((item) => (
+                                <button
+                                    key={item.value}
+                                    type="button"
+                                    className="flex h-[78px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border text-sm transition hover:bg-stone-950/[0.03] hover:opacity-90 dark:hover:bg-white/[0.05]"
+                                    style={mutedOptionStyle(theme, aspectRatio === item.value)}
+                                    onMouseDown={(event) => event.stopPropagation()}
+                                    onClick={() => onConfigChange("size", item.value)}
+                                >
+                                    <SizePreview width={item.width} height={item.height} color={mutedPreviewColor(theme)} />
+                                    <span>{workbenchText(item.label, undefined, language)}</span>
+                                    <span className="text-[11px] leading-none opacity-55">{item.value}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </SettingGroup>
+                ) : null}
+                {grokOperation !== "edit-video" ? (
+                    <SettingGroup title={grokOperation === "extend-video" ? workbenchText("延长秒数", "Extension duration", language) : workbenchText("秒数", "Duration", language)} color={theme.node.muted}>
+                        <div className="grid grid-cols-3 gap-2.5">
+                            {timing.options.map((value) => (
+                                <OptionPill key={value} selected={!editingSeconds && seconds === String(value)} theme={theme} onClick={() => onConfigChange("videoSeconds", String(value))}>
+                                    {value}s
+                                </OptionPill>
+                            ))}
+                            <NumberInput value={timing.fixed ? seconds : config.videoSeconds || seconds} min={timing.min} max={timing.max} disabled={timing.fixed} selected={editingSeconds || !isPresetSecond} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} onEditingChange={setEditingSeconds} />
+                        </div>
+                    </SettingGroup>
+                ) : null}
             </div>
         </ImageSettingsTheme>
     );
@@ -208,13 +244,13 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
 }
 
 export function videoResolutionLabel(value: string, model?: string, language?: WorkbenchLanguage) {
-    if (model && isGrokImagineVideoModel(model)) return normalizeGrokVideoResolution(value);
+    if (model && isGrokImagineVideoFamilyModel(model)) return normalizeGrokVideoResolution(value, modelOptionName(model));
     if (model && isRelayBasesVideoModel(model)) return relayBasesVideoResolutionLabel(modelOptionName(model), language);
     return `${normalizeVideoResolutionValue(value)}p`;
 }
 
 export function videoSizeLabel(value: string, model?: string, language?: WorkbenchLanguage) {
-    if (model && isGrokImagineVideoModel(model)) return relayBasesAspectRatioLabel(value, language);
+    if (model && isGrokImagineVideoFamilyModel(model)) return relayBasesAspectRatioLabel(value, language);
     if (model && isRelayBasesVideoModel(model)) return relayBasesAspectRatioLabel(value, language);
     const ratio = normalizeSeedanceRatio(value);
     if (value === "adaptive" || value === "auto") return workbenchText("自适应", "Adaptive", language);

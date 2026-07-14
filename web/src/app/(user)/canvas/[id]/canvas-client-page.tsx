@@ -15,7 +15,14 @@ import { resolveImageUrl, uploadImage, type UploadedImage } from "@/services/ima
 import { resolveMediaUrl, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
 import { AZURE_IMAGE_EDIT_ACCEPT, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
-import { grokImageRequestError, grokVideoRequestError, isGrokImagineVideoModel } from "@/lib/relaybases-media-models";
+import {
+    grokImageRequestError,
+    grokVideoBillingSeconds,
+    grokVideoRequestError,
+    grokVideoUsesSourceOutput,
+    isGrokImagineVideoFamilyModel,
+    normalizeGrokVideoMode,
+} from "@/lib/relaybases-media-models";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { canvasText } from "@/lib/i18n-canvas";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
@@ -37,7 +44,7 @@ import { CanvasNodeCropDialog, type CanvasImageCropRect } from "../components/ca
 import { CanvasNodeMaskEditDialog, type CanvasImageMaskEditPayload } from "../components/canvas-node-mask-edit-dialog";
 import { CanvasNodeSplitDialog, type CanvasImageSplitParams } from "../components/canvas-node-split-dialog";
 import { CanvasNodeUpscaleDialog, type CanvasImageUpscaleParams } from "../components/canvas-node-upscale-dialog";
-import { buildNodeGenerationContext, buildNodeGenerationInputs, buildNodeResponseMessages, hydrateNodeGenerationContext, type NodeGenerationInput } from "../components/canvas-node-generation";
+import { buildNodeGenerationContext, buildNodeGenerationInputs, buildNodeResponseMessages, hydrateNodeGenerationContext, type NodeGenerationContext, type NodeGenerationInput } from "../components/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "../components/canvas-node-hover-toolbar";
 import { InfiniteCanvas } from "../components/infinite-canvas";
 import { Minimap } from "../components/canvas-mini-map";
@@ -68,7 +75,7 @@ import {
     type ViewportTransform,
 } from "../types";
 import type { ReferenceImage } from "@/types/image";
-import type { ReferenceAudio } from "@/types/media";
+import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
 type CanvasClipboard = {
     nodes: CanvasNodeData[];
@@ -1620,7 +1627,7 @@ function InfiniteCanvasPage() {
                     coverUrl: "",
                     tags: [],
                     source: "Canvas",
-                    data: { url: node.metadata.content, storageKey: node.metadata.storageKey, width: node.width, height: node.height, bytes: node.metadata.bytes || 0, mimeType: node.metadata.mimeType || "video/mp4" },
+                    data: { url: node.metadata.content, storageKey: node.metadata.storageKey, width: node.width, height: node.height, bytes: node.metadata.bytes || 0, mimeType: node.metadata.mimeType || "video/mp4", durationMs: node.metadata.durationMs },
                     metadata: { source: "canvas", nodeId: node.id, prompt: node.metadata?.prompt },
                 });
                 message.success("已加入我的素材");
@@ -2256,17 +2263,27 @@ function InfiniteCanvasPage() {
                 }
 
                 if (mode === "video") {
-                    const sourceReference: ReferenceImage[] =
-                        sourceNode?.type === CanvasNodeType.Image && sourceNode.metadata?.content
-                            ? [{ id: sourceNode.id, name: `${sourceNode.title || sourceNode.id}.png`, type: sourceNode.metadata.mimeType || "image/png", dataUrl: sourceNode.metadata.content, storageKey: sourceNode.metadata.storageKey }]
-                            : [];
-                    const videoGenerationContext = {
-                        ...generationContext,
-                        referenceImages: isGrokImagineVideoModel(generationConfig.model) && sourceReference.length ? sourceReference : generationContext.referenceImages,
-                    };
-                    const grokRequestError = grokVideoRequestError(generationConfig.model, videoGenerationContext.referenceImages.length, videoGenerationContext.referenceVideos.length, videoGenerationContext.referenceAudios.length);
+                    const videoOperation = normalizeGrokVideoMode(generationConfig.model, generationConfig.videoOperation);
+                    const videoGenerationContext = buildCanvasVideoGenerationContext(generationConfig, sourceNode, generationContext);
+                    const sourceVideo = videoGenerationContext.referenceVideos[0];
+                    const videoSeconds = videoOperation === "edit-video" ? String(grokVideoBillingSeconds(videoOperation, sourceVideo?.durationMs) || generationConfig.videoSeconds) : generationConfig.videoSeconds;
+                    const videoRequestConfig = { ...generationConfig, videoOperation, videoSeconds };
+                    const grokRequestError = grokVideoRequestError(
+                        generationConfig.model,
+                        videoOperation,
+                        {
+                            imageCount: videoGenerationContext.referenceImages.length,
+                            videoCount: videoGenerationContext.referenceVideos.length,
+                            audioCount: videoGenerationContext.referenceAudios.length,
+                            duration: Number(videoSeconds),
+                            sourceVideoDurationMs: sourceVideo?.durationMs,
+                            sourceVideoName: sourceVideo?.name,
+                            sourceVideoType: sourceVideo?.type,
+                        },
+                    );
                     if (grokRequestError) throw new Error(grokRequestError);
-                    const spec = nodeSizeFromRatio(generationConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
+                    const sourceOutput = grokVideoUsesSourceOutput(generationConfig.model, videoOperation);
+                    const spec = sourceOutput && sourceNode?.type === CanvasNodeType.Video ? { width: sourceNode.width, height: sourceNode.height } : nodeSizeFromRatio(generationConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
                     const isEmptyVideoNode = sourceNode?.type === CanvasNodeType.Video && !sourceNode.metadata?.content;
                     const videoId = isEmptyVideoNode ? nodeId : nanoid();
                     const parent = sourceNode?.position || { x: 0, y: 0 };
@@ -2282,7 +2299,9 @@ function InfiniteCanvasPage() {
                             status: NODE_STATUS_LOADING,
                             model: generationConfig.model,
                             size: generationConfig.size,
-                            seconds: generationConfig.videoSeconds,
+                            seconds: videoSeconds,
+                            videoCallMode: generationConfig.videoCallMode,
+                            videoOperation: isGrokImagineVideoFamilyModel(generationConfig.model) ? videoOperation : undefined,
                             vquality: generationConfig.vquality,
                             generateAudio: generationConfig.videoGenerateAudio,
                             watermark: generationConfig.videoWatermark,
@@ -2299,7 +2318,7 @@ function InfiniteCanvasPage() {
                     const controller = startGenerationRequest(videoId, nodeId, nodeId, runController);
                     try {
                         const video = await storeGeneratedVideo(
-                            await requestVideoGeneration(generationConfig, effectivePrompt, videoGenerationContext.referenceImages, videoGenerationContext.referenceVideos, videoGenerationContext.referenceAudios, { signal: controller.signal }),
+                            await requestVideoGeneration(videoRequestConfig, effectivePrompt, videoGenerationContext.referenceImages, videoGenerationContext.referenceVideos, videoGenerationContext.referenceAudios, { signal: controller.signal }),
                             { apiKey: generationConfig.apiKey, signal: controller.signal },
                         );
                         const videoSize = fitNodeSize(video.width || spec.width, video.height || spec.height, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
@@ -2317,7 +2336,9 @@ function InfiniteCanvasPage() {
                                               prompt: effectivePrompt,
                                               model: generationConfig.model,
                                               size: generationConfig.size,
-                                              seconds: generationConfig.videoSeconds,
+                                              seconds: videoSeconds,
+                                              videoCallMode: generationConfig.videoCallMode,
+                                              videoOperation: isGrokImagineVideoFamilyModel(generationConfig.model) ? videoOperation : undefined,
                                               vquality: generationConfig.vquality,
                                               generateAudio: generationConfig.videoGenerateAudio,
                                               watermark: generationConfig.videoWatermark,
@@ -2447,7 +2468,7 @@ function InfiniteCanvasPage() {
             const batchRoot = node.metadata?.batchRootId ? nodesRef.current.find((item) => item.id === node.metadata?.batchRootId) : null;
             const savedImageMetadata = node.type === CanvasNodeType.Image ? { ...batchRoot?.metadata, ...node.metadata } : undefined;
             const hasSavedImageMetadata = Boolean(savedImageMetadata?.generationType);
-            const generationConfig =
+            const baseGenerationConfig: AiConfig =
                 hasSavedImageMetadata && savedImageMetadata
                     ? {
                           ...effectiveConfig,
@@ -2457,12 +2478,26 @@ function InfiniteCanvasPage() {
                           count: "1",
                       }
                     : { ...buildCanvasGenerationConfig(effectiveConfig, sourceNode, node.type === CanvasNodeType.Text ? "text" : node.type === CanvasNodeType.Video ? "video" : node.type === CanvasNodeType.Audio ? "audio" : "image"), count: "1" };
+            const savedVideoModel = node.type === CanvasNodeType.Video ? node.metadata?.model || baseGenerationConfig.model : baseGenerationConfig.model;
+            const generationConfig: AiConfig =
+                node.type === CanvasNodeType.Video
+                    ? {
+                          ...baseGenerationConfig,
+                          model: savedVideoModel,
+                          videoModel: savedVideoModel,
+                          videoOperation: normalizeGrokVideoMode(savedVideoModel, node.metadata?.videoOperation || baseGenerationConfig.videoOperation),
+                          videoCallMode: isGrokImagineVideoFamilyModel(savedVideoModel) ? "async" : node.metadata?.videoCallMode || baseGenerationConfig.videoCallMode,
+                          size: node.metadata?.size || baseGenerationConfig.size,
+                          videoSeconds: node.metadata?.seconds || baseGenerationConfig.videoSeconds,
+                          vquality: node.metadata?.vquality || baseGenerationConfig.vquality,
+                      }
+                    : baseGenerationConfig;
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
                 return;
             }
 
-            const context = hasSavedImageMetadata ? null : await hydrateNodeGenerationContext(buildNodeGenerationContext(sourceNode.id, nodesRef.current, connectionsRef.current, sourceNode.metadata?.prompt || node.metadata?.prompt || ""));
+            const context = hasSavedImageMetadata ? null : await hydrateNodeGenerationContext(buildNodeGenerationContext(sourceNode.id, nodesRef.current, connectionsRef.current, node.metadata?.prompt || sourceNode.metadata?.prompt || ""));
             const prompt = (savedImageMetadata?.prompt || context?.prompt || "").trim();
             if (!prompt) {
                 message.warning("找不到提示词，无法重试");
@@ -2500,7 +2535,9 @@ function InfiniteCanvasPage() {
                     return;
                 }
                 if (node.type === CanvasNodeType.Video) {
-                    const video = await storeGeneratedVideo(await requestVideoGeneration(generationConfig, prompt, retryImages, context?.referenceVideos || [], context?.referenceAudios || [], { signal: controller.signal }), {
+                    if (!context) return;
+                    const retryVideoContext = buildCanvasVideoGenerationContext(generationConfig, sourceNode, context);
+                    const video = await storeGeneratedVideo(await requestVideoGeneration(generationConfig, prompt, retryVideoContext.referenceImages, retryVideoContext.referenceVideos, retryVideoContext.referenceAudios, { signal: controller.signal }), {
                         apiKey: generationConfig.apiKey,
                         signal: controller.signal,
                     });
@@ -2520,9 +2557,12 @@ function InfiniteCanvasPage() {
                                           model: generationConfig.model,
                                           size: generationConfig.size,
                                           seconds: generationConfig.videoSeconds,
+                                          videoCallMode: generationConfig.videoCallMode,
+                                          videoOperation: isGrokImagineVideoFamilyModel(generationConfig.model) ? generationConfig.videoOperation : undefined,
                                           vquality: generationConfig.vquality,
                                           generateAudio: generationConfig.videoGenerateAudio,
                                           watermark: generationConfig.videoWatermark,
+                                          references: generationReferenceUrls(retryVideoContext),
                                       },
                                   }
                                 : item,
@@ -2666,7 +2706,16 @@ function InfiniteCanvasPage() {
                         position: { x: center.x - nextSize.width / 2, y: center.y - nextSize.height / 2 },
                         width: nextSize.width,
                         height: nextSize.height,
-                        metadata: { content: payload.url, storageKey: payload.storageKey, status: NODE_STATUS_SUCCESS, naturalWidth: payload.width, naturalHeight: payload.height },
+                        metadata: {
+                            content: payload.url,
+                            storageKey: payload.storageKey,
+                            status: NODE_STATUS_SUCCESS,
+                            naturalWidth: payload.width,
+                            naturalHeight: payload.height,
+                            bytes: payload.bytes,
+                            mimeType: payload.mimeType || "video/mp4",
+                            durationMs: payload.durationMs,
+                        },
                     },
                 ]);
                 setSelectedNodeIds(new Set([id]));
@@ -3435,6 +3484,52 @@ function sourceNodeReferenceImages(node: CanvasNodeData | null) {
             storageKey: node.metadata.storageKey,
         },
     ];
+}
+
+function sourceNodeReferenceVideos(node: CanvasNodeData | null): ReferenceVideo[] {
+    if (!node || node.type !== CanvasNodeType.Video || !node.metadata?.content) return [];
+    return [
+        {
+            id: node.id,
+            name: `${node.title || node.id}.mp4`,
+            type: node.metadata.mimeType || "video/mp4",
+            url: node.metadata.content,
+            storageKey: node.metadata.storageKey,
+            bytes: node.metadata.bytes,
+            width: node.metadata.naturalWidth,
+            height: node.metadata.naturalHeight,
+            durationMs: node.metadata.durationMs,
+        },
+    ];
+}
+
+function buildCanvasVideoGenerationContext(config: AiConfig, sourceNode: CanvasNodeData | undefined, context: NodeGenerationContext): NodeGenerationContext {
+    if (!isGrokImagineVideoFamilyModel(config.model)) return context;
+    const operation = normalizeGrokVideoMode(config.model, config.videoOperation);
+    const sourceImages = sourceNodeReferenceImages(sourceNode || null);
+    const sourceVideos = sourceNodeReferenceVideos(sourceNode || null);
+    let referenceImages = context.referenceImages;
+    let referenceVideos = context.referenceVideos;
+    if (operation === "image-to-video") referenceImages = sourceImages.length ? sourceImages : referenceImages;
+    if (operation === "reference-to-video") referenceImages = uniqueCanvasReferenceImages([...sourceImages, ...referenceImages]);
+    if (operation === "edit-video" || operation === "extend-video") referenceVideos = sourceVideos.length ? sourceVideos : referenceVideos;
+    return {
+        ...context,
+        referenceImages,
+        referenceVideos,
+        imageCount: referenceImages.length,
+        videoCount: referenceVideos.length,
+    };
+}
+
+function uniqueCanvasReferenceImages(images: ReferenceImage[]) {
+    const seen = new Set<string>();
+    return images.filter((image) => {
+        const key = image.storageKey || image.url || image.dataUrl || image.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 function isAudioFile(file: File) {

@@ -17,7 +17,21 @@ import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolution
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
 import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
-import { GROK_VIDEO_RESOLUTIONS, grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import {
+    GROK_VIDEO_MODES,
+    grokVideoBillingSeconds,
+    grokVideoModeLabel,
+    grokVideoOperationCapability,
+    grokVideoRequestError,
+    grokVideoResolutionOptions,
+    grokVideoUsesSourceOutput,
+    isGrokImagineVideoBaseModel,
+    isGrokImagineVideoFamilyModel,
+    isGrokImagineVideoModel,
+    normalizeGrokVideoMode,
+    normalizeGrokVideoResolution,
+    type GrokVideoMode,
+} from "@/lib/relaybases-media-models";
 import { useI18n } from "@/lib/i18n";
 import { workbenchErrorText, workbenchFormatDate, workbenchPinLabel, workbenchText, workbenchTrashExpiry, workbenchTrashLabel, type WorkbenchLanguage } from "@/lib/i18n-workbench";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
@@ -102,7 +116,7 @@ type GenerationLog = {
     error?: string;
 };
 
-type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "videoCallMode" | "size" | "vquality" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark">;
+type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "videoCallMode" | "videoOperation" | "size" | "vquality" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark">;
 
 type PollGenerationOptions = { notify?: boolean; resultId?: string; startedAtMs?: number; runStarted?: boolean; request?: GenerationRequestSnapshot };
 
@@ -126,7 +140,6 @@ const RELAYBASES_VIDEO_RATIO_OPTIONS = [
     { value: "9:16", label: "竖屏" },
     { value: "1:1", label: "方形" },
 ];
-const GROK_VIDEO_RESOLUTION_OPTIONS = GROK_VIDEO_RESOLUTIONS.map((value) => ({ value, label: value }));
 const logStore = localforage.createInstance({ name: "infinite-canvas", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
@@ -175,16 +188,19 @@ export default function VideoPage() {
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const modelName = modelOptionName(model);
     const seedanceVideo = isSeedanceVideoConfig({ ...effectiveConfig, model });
-    const grokVideo = isGrokImagineVideoModel(modelName);
-    const referenceLimits = videoReferenceLimits(seedanceVideo, modelName);
+    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
+    const grokBaseVideo = isGrokImagineVideoBaseModel(modelName);
+    const grokOperation = normalizeGrokVideoMode(modelName, effectiveConfig.videoOperation);
+    const grokUsesSourceOutput = grokVideoUsesSourceOutput(modelName, grokOperation);
+    const referenceLimits = videoReferenceLimits(seedanceVideo, modelName, grokOperation);
     const relayBasesVideo = isRelayBasesVideoModel(model);
     const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
-    const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : grokVideo ? normalizeGrokVideoResolution(effectiveConfig.vquality) : "fixed";
-    const secondsValue = seedanceVideo ? String(normalizeSeedanceDuration(effectiveConfig.videoSeconds)) : String(normalizeRelayBasesVideoDuration(effectiveConfig.videoSeconds, modelName));
+    const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : grokVideo ? normalizeGrokVideoResolution(effectiveConfig.vquality, modelName) : "fixed";
+    const secondsValue = seedanceVideo ? String(normalizeSeedanceDuration(effectiveConfig.videoSeconds)) : String(normalizeRelayBasesVideoDuration(effectiveConfig.videoSeconds, modelName, grokOperation));
     const ratioOptions = videoRatioOptions(seedanceVideo, language);
-    const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, videoResolutionLabel(effectiveConfig.vquality, model, language), language);
-    const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, secondsValue, language);
-    const secondsTiming = seedanceVideo ? { min: 4, max: 15, defaultValue: 5, fixed: false } : relayBasesVideoTiming(modelName);
+    const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, grokOperation, videoResolutionLabel(effectiveConfig.vquality, model, language), language);
+    const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, grokOperation, secondsValue, language);
+    const secondsTiming = seedanceVideo ? { min: 4, max: 15, defaultValue: 5, fixed: false } : relayBasesVideoTiming(modelName, grokOperation);
     const canGenerate = Boolean(prompt.trim());
     const activeLogId = previewLog?.id || activeResultLogId;
     const activeRunning = activeLogId ? runningByLog[activeLogId] : undefined;
@@ -246,12 +262,14 @@ export default function VideoPage() {
     useEffect(() => {
         const handoff = consumeImageToVideoReferences();
         if (!handoff?.references.length) return;
-        const handoffLimits = videoReferenceLimits(seedanceVideo, modelName);
+        if (isGrokImagineVideoBaseModel(modelName)) updateConfig("videoOperation", "image-to-video");
+        const handoffMode = isGrokImagineVideoBaseModel(modelName) ? "image-to-video" : grokOperation;
+        const handoffLimits = videoReferenceLimits(seedanceVideo, modelName, handoffMode);
         setReferences((value) => mergeReferenceImages(handoff.references, value).slice(0, handoffLimits.images));
         if (handoff.prompt) setPrompt((value) => (value.trim() ? value : handoff.prompt || value));
         const importedCount = Math.min(handoff.references.length, handoffLimits.images);
         message.success(language === "en" ? `Imported ${importedCount} reference ${importedCount === 1 ? "image" : "images"}` : `已带入 ${importedCount} 张参考图`);
-    }, [message, modelName, seedanceVideo]);
+    }, [grokOperation, language, message, modelName, seedanceVideo, updateConfig]);
 
     useEffect(() => {
         if (!configHydrated || typeof window === "undefined") return;
@@ -416,6 +434,7 @@ export default function VideoPage() {
         const targetLog = previewLog;
         const logId = targetLog?.id || resultId;
         const requestSnapshot = buildVideoRequestSnapshot(snapshot, model);
+        const taskConfig: AiConfig = { ...snapshot.config, videoOperation: requestSnapshot.config.videoOperation, videoSeconds: requestSnapshot.config.videoSeconds };
         setElapsedMs(0);
         setActiveResultLogId(logId);
         if (!targetLog) setPreviewLog(null);
@@ -425,7 +444,7 @@ export default function VideoPage() {
         startLogRun(logId, batchStartedAt);
         try {
             const taskStartedAt = Date.now();
-            const createdTask = await createVideoGenerationTask(snapshot.config, snapshot.text, snapshot.references, snapshot.videoReferences, snapshot.audioReferences);
+            const createdTask = await createVideoGenerationTask(taskConfig, snapshot.text, snapshot.references, snapshot.videoReferences, snapshot.audioReferences);
             const task = { ...createdTask, startedAt: createdTask.startedAt || taskStartedAt };
             const log = buildLog({
                 id: logId,
@@ -434,7 +453,7 @@ export default function VideoPage() {
                 time: targetLog?.time,
                 prompt: snapshot.text,
                 model,
-                config: snapshot.config,
+                config: taskConfig,
                 references: snapshot.references,
                 videoReferences: snapshot.videoReferences,
                 audioReferences: snapshot.audioReferences,
@@ -452,7 +471,7 @@ export default function VideoPage() {
                 setVideoReferences([]);
                 setAudioReferences([]);
             }
-            void pollGenerationLog(log, snapshot.config, { resultId, startedAtMs: taskStartedAt, runStarted: true, request: requestSnapshot });
+            void pollGenerationLog(log, taskConfig, { resultId, startedAtMs: taskStartedAt, runStarted: true, request: requestSnapshot });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : workbenchText("生成失败", "Generation failed", language);
             updateLogResults(logId, (value) => updateVideoResultById(value, resultId, { status: "failed", error: errorMessage, request: requestSnapshot }));
@@ -464,7 +483,7 @@ export default function VideoPage() {
                     time: targetLog?.time,
                     prompt: snapshot.text,
                     model,
-                    config: snapshot.config,
+                    config: taskConfig,
                     references: snapshot.references,
                     videoReferences: snapshot.videoReferences,
                     audioReferences: snapshot.audioReferences,
@@ -505,14 +524,31 @@ export default function VideoPage() {
                 return null;
             }
         }
-        const grokRequestError = grokVideoRequestError(modelName, references.length, videoReferences.length, audioReferences.length, language);
+        const requestConfig = buildVideoConfig(effectiveConfig, model);
+        const requestOperation = normalizeGrokVideoMode(modelName, requestConfig.videoOperation);
+        const requestDuration = normalizeRelayBasesVideoDuration(requestConfig.videoSeconds, modelName, requestOperation);
+        const sourceVideo = videoReferences[0];
+        const grokRequestError = grokVideoRequestError(
+            modelName,
+            requestOperation,
+            {
+                imageCount: references.length,
+                videoCount: videoReferences.length,
+                audioCount: audioReferences.length,
+                duration: requestDuration,
+                sourceVideoDurationMs: sourceVideo?.durationMs,
+                sourceVideoName: sourceVideo?.name,
+                sourceVideoType: sourceVideo?.type,
+            },
+            language,
+        );
         if (grokRequestError) {
             message.error(grokRequestError);
             return null;
         }
         return {
             text,
-            config: buildVideoConfig(effectiveConfig, model),
+            config: requestConfig,
             references: references.slice(0, referenceLimits.images),
             videoReferences: videoReferences.slice(0, referenceLimits.videos),
             audioReferences: audioReferences.slice(0, referenceLimits.audios),
@@ -526,9 +562,13 @@ export default function VideoPage() {
             model: snapshot.config.model,
             videoModel: snapshot.config.videoModel || modelValue,
             videoCallMode: normalizeVideoCallMode(snapshot.config.videoCallMode),
+            videoOperation: normalizeGrokVideoMode(snapshot.config.videoModel || modelValue, snapshot.config.videoOperation),
             size: snapshot.config.size,
             vquality: normalizeResolution(snapshot.config.vquality),
-            videoSeconds: snapshot.config.videoSeconds,
+            videoSeconds:
+                normalizeGrokVideoMode(snapshot.config.videoModel || modelValue, snapshot.config.videoOperation) === "edit-video"
+                    ? String(grokVideoBillingSeconds("edit-video", snapshot.videoReferences[0]?.durationMs) || snapshot.config.videoSeconds)
+                    : snapshot.config.videoSeconds,
             videoGenerateAudio: snapshot.config.videoGenerateAudio,
             videoWatermark: snapshot.config.videoWatermark,
         },
@@ -547,7 +587,7 @@ export default function VideoPage() {
         if (recoverableLog?.task) {
             const task = recoverableLog.task;
             const recoveryLog = { ...recoverableLog, status: "生成中" as const, error: undefined };
-            void pollGenerationLog(recoveryLog, buildVideoConfig(effectiveConfig, task.model || recoveryLog.model), { notify: true });
+            void pollGenerationLog(recoveryLog, buildVideoConfig({ ...effectiveConfig, ...recoveryLog.config, videoOperation: recoveryLog.config.videoOperation || task.operation || effectiveConfig.videoOperation }, task.model || recoveryLog.model), { notify: true });
             return;
         }
         void generate();
@@ -598,17 +638,27 @@ export default function VideoPage() {
             coverUrl,
             tags: [],
             source: "视频创作台",
-            data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType },
+            data: { url: video.url, storageKey: video.storageKey, width: video.width, height: video.height, bytes: video.bytes, mimeType: video.mimeType, durationMs: video.videoDurationMs },
             metadata: { source: "video-page", prompt, sourceResultId: video.id, sourceStorageKey: video.storageKey || "", sourceUrl: video.url || "", thumbnail: coverUrl, thumbnailVersion: VIDEO_THUMBNAIL_VERSION },
         });
         message.success(workbenchText("已加入我的素材", "Added to My Assets", language));
     };
 
     const editResultVideo = (video: GeneratedVideo) => {
+        if (isGrokImagineVideoModel(modelName)) {
+            message.warning(workbenchText("grok-imagine-video-1.5 仅支持单图生视频，不能继续编辑视频", "grok-imagine-video-1.5 only supports single-image video generation and cannot edit a video.", language));
+            return;
+        }
+        const grokBaseEdit = isGrokImagineVideoBaseModel(modelName);
+        if (grokBaseEdit) {
+            updateConfig("videoOperation", "edit-video");
+            setReferences([]);
+            setAudioReferences([]);
+        }
         const reference: ReferenceVideo = { id: nanoid(), name: "generated-video.mp4", type: video.mimeType || "video/mp4", url: video.url, storageKey: video.storageKey, bytes: video.bytes, width: video.width, height: video.height, durationMs: video.videoDurationMs };
         const referenceKey = reference.storageKey || reference.url;
         const applyReference = (mode: "append" | "replace") => {
-            setVideoReferences((value) => (mode === "replace" ? [reference] : [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)]).slice(0, referenceLimits.videos || SEEDANCE_REFERENCE_LIMITS.videos));
+            setVideoReferences((value) => (mode === "replace" ? [reference] : [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)]).slice(0, grokBaseEdit ? 1 : referenceLimits.videos || SEEDANCE_REFERENCE_LIMITS.videos));
             message.success(workbenchText(mode === "replace" ? "已替换参考视频" : "已加入参考视频", mode === "replace" ? "Reference video replaced" : "Reference video added", language));
         };
         if (effectiveConfig.referenceEditMode === "ask" && videoReferences.length) {
@@ -681,7 +731,7 @@ export default function VideoPage() {
                 setAssetPickerOpen(false);
                 return;
             }
-            setVideoReferences((value) => [...value, { id: nanoid(), name: payload.title, type: "video/mp4", url: payload.url, storageKey: payload.storageKey, width: payload.width, height: payload.height }].slice(0, referenceLimits.videos));
+            setVideoReferences((value) => [...value, { id: nanoid(), name: payload.title, type: payload.mimeType || "video/mp4", url: payload.url, storageKey: payload.storageKey, bytes: payload.bytes, width: payload.width, height: payload.height, durationMs: payload.durationMs }].slice(0, referenceLimits.videos));
         }
         setAssetPickerOpen(false);
     };
@@ -892,6 +942,7 @@ export default function VideoPage() {
         setAudioReferences(log.audioReferences || []);
         if (log.config.videoModel || log.model) updateConfig("videoModel", log.config.videoModel || log.model);
         if (log.config.videoCallMode) updateConfig("videoCallMode", normalizeVideoCallMode(log.config.videoCallMode));
+        if (log.config.videoOperation) updateConfig("videoOperation", normalizeGrokVideoMode(log.config.videoModel || log.model, log.config.videoOperation));
         if (log.config.size) updateConfig("size", log.config.size);
         if (log.config.vquality) updateConfig("vquality", log.config.vquality);
         if (log.config.videoSeconds) updateConfig("videoSeconds", log.config.videoSeconds);
@@ -908,13 +959,16 @@ export default function VideoPage() {
             message.warning(workbenchText("这条结果缺少可复用的生成配置", "This result has no reusable generation configuration.", language));
             return;
         }
-        const limits = videoReferenceLimits(isSeedanceVideoConfig({ ...effectiveConfig, ...request.config, model: request.model }), modelOptionName(request.config.videoModel || request.model));
+        const requestModel = modelOptionName(request.config.videoModel || request.model);
+        const requestOperation = normalizeGrokVideoMode(requestModel, request.config.videoOperation);
+        const limits = videoReferenceLimits(isSeedanceVideoConfig({ ...effectiveConfig, ...request.config, model: request.model }), requestModel, requestOperation);
         setPrompt(request.prompt);
         setReferences((request.references || []).slice(0, limits.images));
         setVideoReferences((request.videoReferences || []).slice(0, limits.videos));
         setAudioReferences((request.audioReferences || []).slice(0, limits.audios));
         if (request.config.videoModel || request.model) updateConfig("videoModel", request.config.videoModel || request.model);
         if (request.config.videoCallMode) updateConfig("videoCallMode", normalizeVideoCallMode(request.config.videoCallMode));
+        if (request.config.videoOperation) updateConfig("videoOperation", requestOperation);
         if (request.config.size) updateConfig("size", request.config.size);
         if (request.config.vquality) updateConfig("vquality", request.config.vquality);
         if (request.config.videoSeconds) updateConfig("videoSeconds", request.config.videoSeconds);
@@ -928,6 +982,7 @@ export default function VideoPage() {
             language={language}
             seedance={seedanceVideo}
             modelName={modelName}
+            operation={grokOperation}
             limits={referenceLimits}
             references={references}
             videoReferences={videoReferences}
@@ -1086,13 +1141,14 @@ export default function VideoPage() {
                                 <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
                                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                                         <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
-                                        {grokVideo ? <VideoComposerMetric label={workbenchText("模式", "Mode", language)} value={workbenchText("异步", "Async", language)} /> : relayBasesVideo ? <VideoComposerSelect label={workbenchText("模式", "Mode", language)} value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
-                                        <VideoComposerSelect label={workbenchText("比例", "Aspect Ratio", language)} value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
-                                        {resolutionOptions.length > 1 ? <VideoComposerSelect label={workbenchText("清晰度", "Resolution", language)} value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label={workbenchText("清晰度", "Resolution", language)} value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model, language)} />}
-                                        {secondsTiming.fixed ? (
+                                        {grokVideo ? (grokBaseVideo ? <VideoComposerSelect label={workbenchText("生成模式", "Generation Mode", language)} value={grokOperation} options={grokVideoModeOptions(language)} onChange={(value) => updateConfig("videoOperation", normalizeGrokVideoMode(modelName, value))} /> : <VideoComposerMetric label={workbenchText("生成模式", "Generation Mode", language)} value={grokVideoModeLabel(grokOperation, language)} />) : null}
+                                        {grokVideo ? <VideoComposerMetric label={workbenchText("调用", "Call", language)} value={workbenchText("异步", "Async", language)} /> : relayBasesVideo ? <VideoComposerSelect label={workbenchText("模式", "Mode", language)} value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
+                                        {!grokUsesSourceOutput ? <VideoComposerSelect label={workbenchText("比例", "Aspect Ratio", language)} value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} /> : null}
+                                        {grokUsesSourceOutput ? <VideoComposerMetric label={workbenchText("输出", "Output", language)} value={workbenchText("跟随源视频 · 最高 720p", "Matches source · up to 720p", language)} /> : resolutionOptions.length > 1 ? <VideoComposerSelect label={workbenchText("清晰度", "Resolution", language)} value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label={workbenchText("清晰度", "Resolution", language)} value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model, language)} />}
+                                        {grokOperation === "edit-video" ? null : secondsTiming.fixed ? (
                                             <VideoComposerMetric label={workbenchText("时长", "Duration", language)} value={secondsOptions[0]?.label || (secondsValue === "-1" ? workbenchText("智能", "Auto", language) : `${secondsValue}s`)} />
                                         ) : (
-                                            <VideoComposerDurationControl value={secondsValue} options={secondsOptions} min={secondsTiming.min} max={secondsTiming.max} allowSmart={seedanceVideo} onChange={(value) => updateConfig("videoSeconds", value)} />
+                                            <VideoComposerDurationControl label={grokOperation === "extend-video" ? workbenchText("延长时长", "Extension", language) : undefined} value={secondsValue} options={secondsOptions} min={secondsTiming.min} max={secondsTiming.max} allowSmart={seedanceVideo} onChange={(value) => updateConfig("videoSeconds", value)} />
                                         )}
                                         {seedanceVideo ? (
                                             <>
@@ -1251,7 +1307,7 @@ function VideoComposerSelect({ label, value, options, onChange }: { label: strin
     );
 }
 
-function VideoComposerDurationControl({ value, options, min, max, allowSmart, onChange }: { value: string; options: Array<{ value: string; label: string; disabled?: boolean }>; min: number; max: number; allowSmart?: boolean; onChange: (value: string) => void }) {
+function VideoComposerDurationControl({ label, value, options, min, max, allowSmart, onChange }: { label?: string; value: string; options: Array<{ value: string; label: string; disabled?: boolean }>; min: number; max: number; allowSmart?: boolean; onChange: (value: string) => void }) {
     const [draft, setDraft] = useState(value === "-1" ? "" : value);
     const selected = options.find((item) => item.value === value);
     const customValue = "__custom_duration__";
@@ -1273,7 +1329,7 @@ function VideoComposerDurationControl({ value, options, min, max, allowSmart, on
 
     return (
         <div className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS} px-0`}>
-            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">{workbenchText("时长", "Duration")}</span>
+            <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">{label || workbenchText("时长", "Duration")}</span>
             <input
                 type="number"
                 min={min}
@@ -1333,7 +1389,7 @@ type VideoReferenceLimits = {
 
 const RELAYBASES_MULTI_REFERENCE_MODELS = new Set(["video-fast-480p", "video-fast-720p", "video-pro-480p", "video-pro-720p", "video-pro-1080p", "video-standard-720p"]);
 
-function videoReferenceLimits(seedance: boolean, model: string): VideoReferenceLimits {
+function videoReferenceLimits(seedance: boolean, model: string, operation?: GrokVideoMode): VideoReferenceLimits {
     const value = model.toLowerCase();
     const base = {
         imageMaxBytes: SEEDANCE_REFERENCE_LIMITS.imageMaxBytes,
@@ -1341,7 +1397,10 @@ function videoReferenceLimits(seedance: boolean, model: string): VideoReferenceL
         audioMaxBytes: SEEDANCE_REFERENCE_LIMITS.audioMaxBytes,
     };
     if (seedance) return { ...SEEDANCE_REFERENCE_LIMITS };
-    if (isGrokImagineVideoModel(value)) return { ...base, images: 1, videos: 0, audios: 0 };
+    if (isGrokImagineVideoFamilyModel(value)) {
+        const capability = grokVideoOperationCapability(value, operation);
+        return { ...base, images: capability?.maxReferenceImages || 0, videos: capability?.maxReferenceVideos || 0, audios: 0 };
+    }
     if (value === "veo-omni-flash-video-edit") return { ...base, images: 5, videos: 1, audios: 0 };
     if (value === "veo-omni-flash") return { ...base, images: 5, videos: 0, audios: 0 };
     if (value === "veo-3-1") return { ...base, images: 2, videos: 0, audios: 0 };
@@ -1379,7 +1438,7 @@ function videoReferenceLabel(kind: "image" | "video" | "audio", index: number, l
     return `${kind === "image" ? "Image" : kind === "video" ? "Video" : "Audio"} ${index + 1}`;
 }
 
-function videoReferenceRequirements(seedance: boolean, model: string, limits: VideoReferenceLimits, language: "zh" | "en" = "zh") {
+function videoReferenceRequirements(seedance: boolean, model: string, operation: GrokVideoMode, limits: VideoReferenceLimits, language: "zh" | "en" = "zh") {
     const value = model.toLowerCase();
     if (seedance) {
         return {
@@ -1388,10 +1447,18 @@ function videoReferenceRequirements(seedance: boolean, model: string, limits: Vi
             audio: language === "en" ? `MP3/WAV · 2–15s · max ${formatReferenceLimit(limits.audioMaxBytes)} each` : `MP3/WAV · 2-15s · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
         };
     }
-    if (isGrokImagineVideoModel(value)) {
+    if (isGrokImagineVideoFamilyModel(value)) {
+        const sourceMode = operation === "edit-video" || operation === "extend-video";
         return {
-            image: language === "en" ? `Exactly 1 PNG/JPG image is required · max ${formatReferenceLimit(limits.imageMaxBytes)}` : `必须且只能使用 1 张 PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: language === "en" ? "Not Supported" : "不支持",
+            image:
+                limits.images > 0
+                    ? language === "en"
+                        ? `${operation === "reference-to-video" ? "1-7 reference images" : "Exactly 1 source image"} · PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each`
+                        : `${operation === "reference-to-video" ? "1-7 张参考图" : "必须且只能使用 1 张源图片"} · PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`
+                    : language === "en"
+                      ? "Not used in this mode"
+                      : "当前模式不使用",
+            video: sourceMode ? (language === "en" ? `Exactly 1 MP4 · ${operation === "edit-video" ? "up to 8.7s" : "2-15s"} · max ${formatReferenceLimit(limits.videoMaxBytes)}` : `必须且只能使用 1 个 MP4 · ${operation === "edit-video" ? "最长 8.7 秒" : "2-15 秒"} · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`) : language === "en" ? "Not used in this mode" : "当前模式不使用",
             audio: language === "en" ? "Not Supported" : "不支持",
         };
     }
@@ -1427,6 +1494,7 @@ function VideoReferencePanel({
     language,
     seedance,
     modelName,
+    operation,
     limits,
     references,
     videoReferences,
@@ -1444,6 +1512,7 @@ function VideoReferencePanel({
     language: "zh" | "en";
     seedance: boolean;
     modelName: string;
+    operation: GrokVideoMode;
     limits: VideoReferenceLimits;
     references: ReferenceImage[];
     videoReferences: ReferenceVideo[];
@@ -1459,7 +1528,7 @@ function VideoReferencePanel({
     onRemoveAudio: (id: string) => void;
 }) {
     const summary = videoReferenceSummary(references, videoReferences, audioReferences, language);
-    const requirements = videoReferenceRequirements(seedance, modelName, limits, language);
+    const requirements = videoReferenceRequirements(seedance, modelName, operation, limits, language);
 
     return (
         <div className="space-y-3">
@@ -1593,14 +1662,18 @@ function videoRatioOptions(seedance: boolean, language?: WorkbenchLanguage) {
     return seedanceRatioOptions.map((item) => ({ value: item.value, label: item.value === "adaptive" ? workbenchText(item.label, "Adaptive", language) : `${workbenchText(item.label, undefined, language)} ${item.value}` }));
 }
 
-function videoResolutionOptions(seedance: boolean, model: string, fixedLabel: string, language?: WorkbenchLanguage) {
-    if (isGrokImagineVideoModel(model)) return GROK_VIDEO_RESOLUTION_OPTIONS;
+function grokVideoModeOptions(language?: WorkbenchLanguage) {
+    return GROK_VIDEO_MODES.map((value) => ({ value, label: grokVideoModeLabel(value, language) }));
+}
+
+function videoResolutionOptions(seedance: boolean, model: string, operation: GrokVideoMode, fixedLabel: string, language?: WorkbenchLanguage) {
+    if (isGrokImagineVideoFamilyModel(model)) return grokVideoResolutionOptions(model, operation).map((value) => ({ value, label: value }));
     if (!seedance) return [{ value: "fixed", label: fixedLabel }];
     return seedanceResolutionOptions.map((item) => ({ value: item.value, label: workbenchText(item.label, undefined, language), disabled: item.value === "1080p" && isSeedanceFastModel(model) }));
 }
 
-function videoSecondsOptions(seedance: boolean, model: string, currentValue: string, language?: WorkbenchLanguage) {
-    const options = seedance ? seedanceDurationOptions.map((value) => ({ value: String(value), label: value === -1 ? workbenchText("智能", "Auto", language) : `${value}s` })) : relayBasesVideoTiming(model).options.map((value) => ({ value: String(value), label: `${value}s` }));
+function videoSecondsOptions(seedance: boolean, model: string, operation: GrokVideoMode, currentValue: string, language?: WorkbenchLanguage) {
+    const options = seedance ? seedanceDurationOptions.map((value) => ({ value: String(value), label: value === -1 ? workbenchText("智能", "Auto", language) : `${value}s` })) : relayBasesVideoTiming(model, operation).options.map((value) => ({ value: String(value), label: `${value}s` }));
     if (currentValue && !options.some((item) => item.value === currentValue)) options.push({ value: currentValue, label: currentValue === "-1" ? workbenchText("智能", "Auto", language) : `${currentValue}s` });
     return uniqueVideoOptions(options);
 }
@@ -2084,8 +2157,12 @@ function TrashPanel({
                     const selected = selectedIds.includes(entry.id);
                     const videos = logVideos(entry.log);
                     const coverVideo = entry.log.video || videos[0];
-                    const sizeLabel = videoSizeLabel(entry.log.config?.size || entry.log.size, entry.log.model);
-                    const resolutionLabel = videoResolutionBadge(entry.log.config?.vquality || entry.log.resolution);
+                    const modelName = modelOptionName(entry.log.config?.videoModel || entry.log.model);
+                    const operation = normalizeGrokVideoMode(modelName, entry.log.config?.videoOperation);
+                    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
+                    const sourceOutput = grokVideoUsesSourceOutput(modelName, operation);
+                    const sizeLabel = sourceOutput ? workbenchText("跟随源", "Source") : videoSizeLabel(entry.log.config?.size || entry.log.size, entry.log.model);
+                    const resolutionLabel = sourceOutput ? workbenchText("最高 720p", "Up to 720p") : videoResolutionBadge(entry.log.config?.vquality || entry.log.resolution);
                     const expirePercent = trashRemainingPercent(entry);
                     return (
                         <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
@@ -2096,7 +2173,8 @@ function TrashPanel({
                                     <div data-no-i18n className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="模型"><span data-no-i18n>{entry.log.config?.videoModel || entry.log.model || workbenchText("默认", "Default")}</span></HistoryPill>
-                                        <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
+                                        {grokVideo ? <HistoryPill label="生成模式">{grokVideoModeLabel(operation)}</HistoryPill> : null}
+                                        <HistoryPill label={sourceOutput ? "输出" : "清晰度"}>{sourceOutput ? workbenchText("跟随源视频 · 最高 720p", "Matches source · up to 720p") : resolutionLabel}</HistoryPill>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="删除">{formatTrashDate(entry.deletedAt)}</HistoryPill>
@@ -2218,8 +2296,12 @@ function LogCard({
 }) {
     const promptPreview = log.prompt || log.title || "";
     const displayPromptPreview = !log.prompt && (!log.title || log.title === "未命名") ? workbenchText("未命名", "Untitled") : promptPreview || compactLogTitle(log.model || "");
-    const sizeLabel = videoSizeLabel(log.config.size || log.size, log.model);
-    const resolutionLabel = videoResolutionBadge(log.config.vquality || log.resolution);
+    const logModelName = modelOptionName(log.config.videoModel || log.model);
+    const grokVideo = isGrokImagineVideoFamilyModel(logModelName);
+    const videoOperation = normalizeGrokVideoMode(logModelName, log.config.videoOperation);
+    const sourceOutput = grokVideoUsesSourceOutput(logModelName, videoOperation);
+    const sizeLabel = sourceOutput ? workbenchText("跟随源", "Source", language) : videoSizeLabel(log.config.size || log.size, log.model);
+    const resolutionLabel = sourceOutput ? workbenchText("最高 720p", "Up to 720p", language) : videoResolutionBadge(log.config.vquality || log.resolution);
     const secondsLabel = videoSecondsBadge(log.config.videoSeconds || log.seconds);
     const videos = logVideos(log);
     const failCount = log.failures.length;
@@ -2269,8 +2351,8 @@ function LogCard({
                             <span data-no-i18n>{log.model || workbenchText("默认", "Default")}</span>
                         </HistoryPill>
                         <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode, log.model)}</HistoryPill>
-                        <HistoryPill label="比例">{sizeLabel}</HistoryPill>
-                        <HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
+                        {grokVideo ? <HistoryPill label="生成模式">{grokVideoModeLabel(videoOperation, language)}</HistoryPill> : null}
+                        {sourceOutput ? <HistoryPill label="输出">{workbenchText("跟随源视频 · 最高 720p", "Matches source · up to 720p", language)}</HistoryPill> : <><HistoryPill label="比例">{sizeLabel}</HistoryPill><HistoryPill label="清晰度">{resolutionLabel}</HistoryPill></>}
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1 pt-2">
                         <HistoryPill label="请求">{requestCount}</HistoryPill>
@@ -2280,7 +2362,7 @@ function LogCard({
                         <HistoryPill tone="info" label="总耗时">
                             {formatDuration(log.durationMs)}
                         </HistoryPill>
-                        <HistoryPill label="总时长">{secondsLabel}</HistoryPill>
+                        <HistoryPill label={videoOperation === "edit-video" ? "计费时长" : videoOperation === "extend-video" ? "延长时长" : "总时长"}>{secondsLabel}</HistoryPill>
                         <HistoryPill label="时间">{workbenchFormatDate(log.createdAt, { hour12: false })}</HistoryPill>
                     </div>
                 </div>
@@ -2656,10 +2738,12 @@ function videoLogRequestSnapshot(log: Partial<GenerationLog>, config: Generation
 }
 
 function normalizeVideoRequestSnapshot(value: Partial<GenerationRequestSnapshot> | undefined, fallback: GenerationRequestSnapshot): GenerationRequestSnapshot {
+    const videoModel = value?.config?.videoModel || value?.model || fallback.config.videoModel || fallback.model;
     const config = {
         ...fallback.config,
         ...(value?.config || {}),
         videoCallMode: normalizeVideoCallMode(value?.config?.videoCallMode || fallback.config.videoCallMode),
+        videoOperation: normalizeGrokVideoMode(videoModel, value?.config?.videoOperation || fallback.config.videoOperation),
         vquality: normalizeResolution(value?.config?.vquality || fallback.config.vquality || ""),
     };
     return {
@@ -2847,10 +2931,12 @@ function ReferenceOrderButtons({ index, total, onMove }: { index: number; total:
 }
 
 function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
+    const videoModel = log.config?.videoModel || log.model || "";
     return {
         model: log.config?.model || log.model || "",
-        videoModel: log.config?.videoModel || log.model || "",
+        videoModel,
         videoCallMode: normalizeVideoCallMode(log.config?.videoCallMode),
+        videoOperation: normalizeGrokVideoMode(videoModel, log.config?.videoOperation || log.task?.operation),
         size: log.config?.size || log.size || "",
         vquality: normalizeResolution(log.config?.vquality || log.resolution || ""),
         videoSeconds: log.config?.videoSeconds || log.seconds || "",
@@ -2900,6 +2986,7 @@ function buildLog({
         model: config.model,
         videoModel: config.videoModel,
         videoCallMode: normalizeVideoCallMode(config.videoCallMode),
+        videoOperation: normalizeGrokVideoMode(config.videoModel || model, config.videoOperation),
         size: config.size,
         vquality: normalizeResolution(config.vquality),
         videoSeconds: config.videoSeconds,
@@ -2967,15 +3054,18 @@ function dedupeVideos(videos: GeneratedVideo[]) {
 
 function buildVideoConfig(config: AiConfig, model: string): AiConfig {
     const seedance = isSeedanceVideoConfig({ ...config, model });
-    const grokVideo = isGrokImagineVideoModel(modelOptionName(model));
+    const modelName = modelOptionName(model);
+    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
+    const videoOperation = normalizeGrokVideoMode(modelName, config.videoOperation);
     return {
         ...config,
         model,
         videoModel: model,
         videoCallMode: grokVideo ? "async" : normalizeVideoCallMode(config.videoCallMode),
+        videoOperation,
         size: seedance ? normalizeSeedanceRatio(config.size) : normalizeVideoSize(config.size),
-        videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(config.videoSeconds, modelOptionName(model))) : normalizeVideoSeconds(config.videoSeconds),
-        vquality: grokVideo ? normalizeGrokVideoResolution(config.vquality) : normalizeResolution(config.vquality),
+        videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(config.videoSeconds, modelName, videoOperation)) : normalizeVideoSeconds(config.videoSeconds),
+        vquality: grokVideo ? normalizeGrokVideoResolution(config.vquality, modelName) : normalizeResolution(config.vquality),
         videoGenerateAudio: String(boolConfig(config.videoGenerateAudio, true)),
         videoWatermark: String(boolConfig(config.videoWatermark, false)),
     };
@@ -3054,7 +3144,7 @@ function updateVideoResultById(results: GenerationResult[], id: string, next: Pa
 }
 
 function videoModeLabel(value: AiConfig["videoCallMode"] | undefined, model = "") {
-    if (isGrokImagineVideoModel(modelOptionName(model))) return workbenchText("异步", "Async");
+    if (isGrokImagineVideoFamilyModel(modelOptionName(model))) return workbenchText("异步", "Async");
     return normalizeVideoCallMode(value) === "async" ? workbenchText("异步·4倍扣费", "Async · 4× billing") : workbenchText("同步", "Sync");
 }
 

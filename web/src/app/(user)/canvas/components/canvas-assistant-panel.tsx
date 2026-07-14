@@ -17,6 +17,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
+import { GROK_VIDEO_MODES, normalizeGrokVideoMode } from "@/lib/relaybases-media-models";
 import { DiaTextReveal } from "@/components/ui/dia-text-reveal";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { CanvasPromptLibrary } from "./canvas-prompt-library";
@@ -43,6 +44,7 @@ const GENERATION_OPTION_PROPERTIES = {
     quality: { type: "string" },
     count: { type: "number" },
     seconds: { type: "string" },
+    videoOperation: { type: "string", enum: [...GROK_VIDEO_MODES] },
     vquality: { type: "string" },
     generateAudio: { type: "string" },
     watermark: { type: "string" },
@@ -1153,6 +1155,7 @@ function textNodeOp(input: Record<string, unknown>, x: number, y: number): Canva
 function configNodeOp(id: string, input: Record<string, unknown>, x: number, y: number, config: AiConfig): CanvasAgentOp {
     const mode = generationMode(input.mode);
     const prompt = stringOptional(input.prompt);
+    const model = resolveGenerationModel(config, mode, stringOptional(input.model));
     return {
         type: "add_node",
         id,
@@ -1166,11 +1169,12 @@ function configNodeOp(id: string, input: Record<string, unknown>, x: number, y: 
             composerContent: prompt,
             prompt,
             status: "idle",
-            model: resolveGenerationModel(config, mode, stringOptional(input.model)),
+            model,
             size: stringOptional(input.size) || config.size,
             quality: stringOptional(input.quality) || config.quality,
             count: numberOptional(input.count) ?? generationCount(mode === "image" ? config.canvasImageCount || config.count : config.count),
             seconds: stringOptional(input.seconds) || config.videoSeconds,
+            videoOperation: mode === "video" ? normalizeGrokVideoMode(model, stringOptional(input.videoOperation) || config.videoOperation) : undefined,
             vquality: stringOptional(input.vquality) || config.vquality,
             generateAudio: stringOptional(input.generateAudio) || config.videoGenerateAudio,
             watermark: stringOptional(input.watermark) || config.videoWatermark,

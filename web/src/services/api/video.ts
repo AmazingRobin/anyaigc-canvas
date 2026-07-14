@@ -2,7 +2,15 @@ import axios from "axios";
 
 import { getDataUrlByteSize } from "@/lib/image-utils";
 import { workbenchText } from "@/lib/i18n-workbench";
-import { grokVideoRequestError, isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution, relayBasesMediaText } from "@/lib/relaybases-media-models";
+import {
+    buildGrokVideoRequestPayload,
+    grokVideoBillingSeconds,
+    grokVideoRequestError,
+    isGrokImagineVideoFamilyModel,
+    normalizeGrokVideoMode,
+    relayBasesMediaText,
+    type GrokVideoMode,
+} from "@/lib/relaybases-media-models";
 import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
 import { copyRelayBasesPublicMedia, isRelayBasesCanvasPublicMediaUrl, uploadRelayBasesPublicMedia } from "@/services/cloud-sync";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
@@ -55,7 +63,7 @@ const GENERATED_VIDEO_ARCHIVE_TIMEOUT_MS = 12000;
 const relayBasesPublicMediaUploads = new Map<string, Promise<string>>();
 
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
-export type VideoGenerationTask = { id: string; provider: "openai" | "seedance"; model: string; mode?: AiConfig["videoCallMode"]; startedAt?: number };
+export type VideoGenerationTask = { id: string; provider: "openai" | "seedance"; model: string; mode?: AiConfig["videoCallMode"]; operation?: GrokVideoMode; startedAt?: number };
 export type VideoGenerationTaskState = { status: "pending" } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
 export type VideoGenerationPollConfig = { attempts: number; delayMs: number; timeoutMessage: string };
 
@@ -145,13 +153,13 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
     const body = await buildRelayBasesVideoPayload(config, model, prompt, references, videoReferences, audioReferences, options);
     try {
         const isRelayBasesVideo = isRelayBasesVideoModel(model);
-        const grokVideo = isGrokImagineVideoModel(model);
+        const grokVideo = isGrokImagineVideoFamilyModel(model);
         const mode = grokVideo ? "async" : isRelayBasesVideo ? config.videoCallMode || "sync" : undefined;
         const path = grokVideo || !isRelayBasesVideo || mode === "async" ? "/videos" : "/video/generations";
         const created = unwrapVideoResponse((await axios.post<ApiVideoResponse>(aiApiUrl(config, path), body, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data);
         const id = created.task_id || created.id;
         if (!id) throw new Error(workbenchText("视频接口没有返回任务 ID"));
-        return { id, provider: "openai", model, mode };
+        return { id, provider: "openai", model, mode, operation: grokVideo ? normalizeGrokVideoMode(model, config.videoOperation) : undefined };
     } catch (error) {
         throw new Error(readAxiosError(error, workbenchText("视频任务创建失败")));
     }
@@ -159,7 +167,23 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
 
 async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions) {
     const modelName = modelOptionName(model);
-    const grokRequestError = grokVideoRequestError(modelName, references.length, videoReferences.length, audioReferences.length);
+    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
+    const grokOperation = normalizeGrokVideoMode(modelName, config.videoOperation);
+    const duration = normalizeRelayBasesVideoDuration(config.videoSeconds, modelName, grokOperation);
+    const sourceVideo = videoReferences[0];
+    const grokRequestError = grokVideoRequestError(
+        modelName,
+        grokOperation,
+        {
+            imageCount: references.length,
+            videoCount: videoReferences.length,
+            audioCount: audioReferences.length,
+            duration,
+            sourceVideoDurationMs: sourceVideo?.durationMs,
+            sourceVideoName: sourceVideo?.name,
+            sourceVideoType: sourceVideo?.type,
+        },
+    );
     if (grokRequestError) throw new Error(grokRequestError);
     const compressVeoImages = modelName.startsWith("veo-");
     const images = uniqueReferenceUrls(await Promise.all(references.map((image) => resolveRelayBasesImageUrl(config, image, compressVeoImages, options))));
@@ -168,7 +192,7 @@ async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prom
     const payload: Record<string, unknown> = {
         model: modelName,
         prompt,
-        duration: normalizeRelayBasesVideoDuration(config.videoSeconds, modelName),
+        duration,
         aspect_ratio: normalizeRelayBasesAspectRatio(config.size),
     };
 
@@ -189,12 +213,18 @@ async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prom
         return payload;
     }
 
-    if (isGrokImagineVideoModel(modelName)) {
-        if (images.length !== 1) throw new Error(relayBasesMediaText("grok-imagine-video-1.5 的参考图读取失败，请重新添加 1 张有效图片", "Failed to read the grok-imagine-video-1.5 reference image. Add 1 valid image again."));
-        payload.images = [images[0]];
-        payload.aspect_ratio = normalizeGrokVideoAspectRatio(config.size);
-        payload.resolution = normalizeGrokVideoResolution(config.vquality);
-        return payload;
+    if (grokVideo) {
+        if (grokOperation === "edit-video") {
+            const seconds = grokVideoBillingSeconds(grokOperation, sourceVideo?.durationMs);
+            if (!videos[0] || !seconds) throw new Error(relayBasesMediaText("Grok 视频编辑的源视频读取失败，请重新上传 MP4", "Failed to read the Grok source video. Upload the MP4 again."));
+        }
+        if (grokOperation === "extend-video") {
+            if (!videos[0]) throw new Error(relayBasesMediaText("Grok 视频延长的源视频读取失败，请重新上传 MP4", "Failed to read the Grok source video. Upload the MP4 again."));
+        }
+        if (grokOperation === "image-to-video" || grokOperation === "reference-to-video") {
+            if (!images.length) throw new Error(relayBasesMediaText("Grok 视频参考图读取失败，请重新添加有效图片", "Failed to read the Grok reference images. Add valid images again."));
+        }
+        return buildGrokVideoRequestPayload({ model: modelName, prompt, mode: grokOperation, duration, aspectRatio: config.size, resolution: config.vquality, imageUrls: images, videoUrls: videos, sourceVideoDurationMs: sourceVideo?.durationMs });
     }
 
     if (modelName === "video-fast-480p" || modelName === "video-fast-720p" || modelName === "video-pro-480p" || modelName === "video-pro-720p" || modelName === "video-pro-1080p" || modelName === "video-standard-720p") {

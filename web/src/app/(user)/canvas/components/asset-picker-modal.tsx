@@ -10,7 +10,7 @@ import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { useLanguageStore } from "@/stores/use-language-store";
 
 export type InsertAssetPayload =
-    { kind: "text"; content: string; title: string } | { kind: "image"; dataUrl: string; title: string; storageKey?: string } | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number };
+    { kind: "text"; content: string; title: string } | { kind: "image"; dataUrl: string; title: string; storageKey?: string } | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number; bytes?: number; mimeType?: string; durationMs?: number };
 
 type Props = {
     open: boolean;
@@ -88,7 +88,7 @@ function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => 
         } else {
             onInsert(
                 asset.kind === "video"
-                    ? { kind: "video", url: asset.data.url, storageKey: asset.data.storageKey, title, width: asset.data.width, height: asset.data.height }
+                    ? { kind: "video", url: asset.data.url, storageKey: asset.data.storageKey, title, width: asset.data.width, height: asset.data.height, bytes: asset.data.bytes, mimeType: asset.data.mimeType, durationMs: asset.data.durationMs }
                     : { kind: "image", dataUrl: asset.data.dataUrl, storageKey: asset.data.storageKey, title },
             );
         }

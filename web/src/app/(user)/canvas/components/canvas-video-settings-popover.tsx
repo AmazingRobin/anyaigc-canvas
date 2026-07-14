@@ -8,7 +8,7 @@ import { Button } from "antd";
 import { VideoSettingsPanel, videoResolutionLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasText } from "@/lib/i18n-canvas";
-import { isGrokImagineVideoModel } from "@/lib/relaybases-media-models";
+import { grokVideoModeLabel, grokVideoUsesSourceOutput, isGrokImagineVideoFamilyModel, normalizeGrokVideoMode } from "@/lib/relaybases-media-models";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useLanguageStore } from "@/stores/use-language-store";
 import { modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
@@ -28,11 +28,19 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClass
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
     const selectedModel = modelOptionName(config.videoModel || config.model);
-    const callModeLabel = isGrokImagineVideoModel(selectedModel)
+    const grokVideo = isGrokImagineVideoFamilyModel(selectedModel);
+    const grokOperation = normalizeGrokVideoMode(selectedModel, config.videoOperation);
+    const usesSourceOutput = grokVideoUsesSourceOutput(selectedModel, grokOperation);
+    const callModeLabel = grokVideo
         ? canvasText("异步", "Async", language)
         : normalizeVideoCallMode(config.videoCallMode) === "async"
           ? canvasText("异步·4倍扣费", "Async · 4x billing", language)
           : canvasText("同步", "Sync", language);
+    const detailLabel = grokVideo
+        ? usesSourceOutput
+            ? [grokVideoModeLabel(grokOperation, language), canvasText("跟随源视频·最高 720p", "Matches source · up to 720p", language), grokOperation === "extend-video" ? `${canvasText("延长", "Extend", language)} ${videoSecondsLabel(config.videoSeconds, language)}` : ""].filter(Boolean).join(" · ")
+            : [grokVideoModeLabel(grokOperation, language), videoResolutionLabel(config.vquality, config.videoModel || config.model, language), videoSizeLabel(config.size, config.videoModel || config.model, language), videoSecondsLabel(config.videoSeconds, language)].join(" · ")
+        : [videoResolutionLabel(config.vquality, config.videoModel || config.model, language), videoSizeLabel(config.size, config.videoModel || config.model, language), videoSecondsLabel(config.videoSeconds, language)].join(" · ");
 
     useEffect(() => {
         if (!open) return;
@@ -62,7 +70,7 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClass
             <span ref={buttonRef} className="inline-flex min-w-0">
                 <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[170px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => setOpen((current) => !current)}>
                     <span className="truncate">
-                        {callModeLabel} · {videoResolutionLabel(config.vquality, config.videoModel || config.model, language)} · {videoSizeLabel(config.size, config.videoModel || config.model, language)} · {videoSecondsLabel(config.videoSeconds, language)}
+                        {callModeLabel} · {detailLabel}
                     </span>
                 </Button>
             </span>

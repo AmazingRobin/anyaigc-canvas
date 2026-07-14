@@ -70,7 +70,10 @@ export function collectMediaStorageKeys(value: unknown, keys = new Set<string>()
 function readVideoMeta(url: string) {
     return new Promise<{ width: number; height: number; durationMs?: number }>((resolve) => {
         const video = document.createElement("video");
-        const done = () => resolve({ width: video.videoWidth || 1280, height: video.videoHeight || 720, durationMs: Number.isFinite(video.duration) ? Math.round(video.duration * 1000) : undefined });
+        // Preserve the browser's fractional duration here. Grok edit billing is
+        // ceil(real source seconds); rounding milliseconds before that ceil can
+        // understate a clip just above an integer boundary and trigger rejection.
+        const done = () => resolve({ width: video.videoWidth || 1280, height: video.videoHeight || 720, durationMs: Number.isFinite(video.duration) ? video.duration * 1000 : undefined });
         video.onloadedmetadata = done;
         video.onerror = done;
         video.src = url;

@@ -5,7 +5,16 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
-import { GROK_IMAGINE_EDIT_MODEL, GROK_IMAGINE_IMAGE_QUALITY_MODEL, GROK_IMAGINE_VIDEO_MODEL, grokMediaModelCapability, isGrokImagineVideoModel } from "@/lib/relaybases-media-models";
+import {
+    GROK_IMAGINE_EDIT_MODEL,
+    GROK_IMAGINE_IMAGE_QUALITY_MODEL,
+    GROK_IMAGINE_VIDEO_BASE_MODEL,
+    GROK_IMAGINE_VIDEO_MODEL,
+    grokMediaModelCapability,
+    isGrokImagineVideoFamilyModel,
+    normalizeGrokVideoMode,
+    type GrokVideoMode,
+} from "@/lib/relaybases-media-models";
 import { normalizeReferenceEditMode, normalizeSubmitTaskShortcut, type ReferenceEditMode, type SubmitTaskShortcut } from "@/lib/workbench-preferences";
 
 export type ApiCallFormat = "openai" | "gemini";
@@ -31,6 +40,7 @@ export type AiConfig = {
     imageModel: string;
     videoModel: string;
     videoCallMode: "sync" | "async";
+    videoOperation: GrokVideoMode;
     textModel: string;
     audioModel: string;
     audioVoice: string;
@@ -88,7 +98,7 @@ export const RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP = "media";
 export const RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP = "codex-pro";
 export const RELAYBASES_SYNC_IMAGE_MODELS = ["gpt-image-2", "nana-banana-2_sync", "nana-banana-pro_sync", GROK_IMAGINE_EDIT_MODEL, GROK_IMAGINE_IMAGE_QUALITY_MODEL] as const;
 export const RELAYBASES_ASYNC_IMAGE_MODELS = ["nana-banana-2", "nana-banana-pro"] as const;
-export const RELAYBASES_VIDEO_MODELS = ["veo-3-1", "veo-omni-flash", "veo-omni-flash-video-edit", "video-fast-480p", "video-fast-720p", "video-pro-480p", "video-pro-720p", "video-pro-1080p", "video-standard-720p", GROK_IMAGINE_VIDEO_MODEL] as const;
+export const RELAYBASES_VIDEO_MODELS = ["veo-3-1", "veo-omni-flash", "veo-omni-flash-video-edit", "video-fast-480p", "video-fast-720p", "video-pro-480p", "video-pro-720p", "video-pro-1080p", "video-standard-720p", GROK_IMAGINE_VIDEO_BASE_MODEL, GROK_IMAGINE_VIDEO_MODEL] as const;
 export const RELAYBASES_IMAGE_MODELS = [...RELAYBASES_SYNC_IMAGE_MODELS, ...RELAYBASES_ASYNC_IMAGE_MODELS] as const;
 export const RELAYBASES_MEDIA_MODELS = [...RELAYBASES_IMAGE_MODELS, ...RELAYBASES_VIDEO_MODELS] as const;
 export const RELAYBASES_MODELS = RELAYBASES_MEDIA_MODELS;
@@ -128,6 +138,7 @@ export const defaultConfig: AiConfig = {
     imageModel: RELAYBASES_DEFAULT_IMAGE_MODEL,
     videoModel: RELAYBASES_DEFAULT_VIDEO_MODEL,
     videoCallMode: "sync",
+    videoOperation: "text-to-video",
     textModel: "",
     audioModel: "",
     audioVoice: "alloy",
@@ -414,7 +425,7 @@ export function isRelayBasesAsyncTaskModel(model: string) {
 
 export function relayBasesModelBillingLabel(model: string) {
     if (isRelayBasesAsyncTaskModel(model)) return "异步·4倍扣费";
-    if (isGrokImagineVideoModel(model)) return "异步";
+    if (isGrokImagineVideoFamilyModel(model)) return "异步";
     if (isRelayBasesSyncImageModel(model)) return "同步";
     return "";
 }
@@ -517,6 +528,7 @@ function normalizeRelayBasesConfig(config: AiConfig): AiConfig {
         imageModel,
         videoModel,
         videoCallMode: normalizeVideoCallMode(config.videoCallMode),
+        videoOperation: normalizeGrokVideoMode(videoModel, config.videoOperation),
         textModel,
         audioModel: "",
         imageModels: RELAYBASES_IMAGE_MODEL_OPTIONS,

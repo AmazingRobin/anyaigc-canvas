@@ -8,6 +8,7 @@ import { ModelPicker } from "@/components/model-picker";
 import { normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasText } from "@/lib/i18n-canvas";
+import type { GrokVideoMode } from "@/lib/relaybases-media-models";
 import { useLanguageStore } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -167,6 +168,7 @@ function InputChip({ label, value, style }: { label: string; value: string; styl
 function videoConfigPatch(key: keyof AiConfig, value: string) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoCallMode") return { videoCallMode: normalizeVideoCallMode(value) };
+    if (key === "videoOperation") return { videoOperation: value as GrokVideoMode };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     return { [key]: value };

@@ -12,7 +12,7 @@ import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webd
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { sharedErrorText, sharedText } from "@/lib/i18n-shared";
 import { requestWorkbenchNotificationPermission } from "@/lib/workbench-preferences";
-import { isGrokImagineVideoModel } from "@/lib/relaybases-media-models";
+import { isGrokImagineVideoFamilyModel } from "@/lib/relaybases-media-models";
 import {
     encodeChannelModel,
     filterModelsByCapability,
@@ -99,7 +99,7 @@ export function AppConfigModal() {
     const clearPromptContinue = useConfigStore((state) => state.clearPromptContinue);
     const cloudSyncReady = hasCloudSyncKey(config.mediaApiKey, config.textApiKey);
     const webdavReady = Boolean(webdav.url.trim());
-    const grokVideoSelected = isGrokImagineVideoModel(modelOptionName(config.videoModel));
+    const grokVideoSelected = isGrokImagineVideoFamilyModel(modelOptionName(config.videoModel));
 
     const closeConfig = () => {
         setConfigDialogOpen(false);
@@ -310,7 +310,7 @@ export function AppConfigModal() {
                                         </div>
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
                                             <div className="font-semibold">{s("视频模型", "Video models")}</div>
-                                            <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">{language === "en" ? "Regular video models use sync calls by default and can switch to async at x4 cost. grok-imagine-video-1.5 is fixed to async with no x4 surcharge." : "普通视频模型默认同步调用，也可切换异步·4 倍扣费；grok-imagine-video-1.5 固定异步且不加收 4 倍费用。"}</div>
+                                            <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">{language === "en" ? "Regular video models use sync calls by default and can switch to async at x4 cost. Grok video models are fixed to async with no x4 surcharge." : "普通视频模型默认同步调用，也可切换异步·4 倍扣费；Grok 视频模型固定异步且不加收 4 倍费用。"}</div>
                                             <div className="mt-2 flex flex-wrap gap-1.5">
                                                 {RELAYBASES_VIDEO_MODELS.map((model) => (
                                                     <span key={model} className="rounded-md bg-stone-100 px-2 py-1 font-mono text-xs dark:bg-stone-900">

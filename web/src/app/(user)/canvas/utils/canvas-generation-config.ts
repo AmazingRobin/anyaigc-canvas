@@ -1,11 +1,19 @@
-import { isGrokImagineVideoModel, normalizeGrokVideoAspectRatio, normalizeGrokVideoResolution } from "@/lib/relaybases-media-models";
+import {
+    isGrokImagineVideoBaseModel,
+    isGrokImagineVideoFamilyModel,
+    normalizeGrokVideoAspectRatio,
+    normalizeGrokVideoMode,
+    normalizeGrokVideoResolution,
+    type GrokVideoMode,
+} from "@/lib/relaybases-media-models";
 import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
 import { defaultConfig, normalizeModelOptionValue, normalizeVideoCallMode, selectableModelsByCapability, type AiConfig } from "@/stores/use-config-store";
-import type { CanvasGenerationMode, CanvasNodeData } from "../types";
+import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "../types";
 
 export function buildCanvasGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasGenerationMode): AiConfig {
     const selectedModel = resolveModeModel(config, node?.metadata?.model, mode);
-    const grokVideo = mode === "video" && isGrokImagineVideoModel(selectedModel);
+    const grokVideo = mode === "video" && isGrokImagineVideoFamilyModel(selectedModel);
+    const videoOperation = grokVideo ? resolveGrokVideoOperation(selectedModel, node, config.videoOperation) : config.videoOperation;
     const storedSize = node?.metadata?.size || config.size || defaultConfig.size;
     const storedSeconds = node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds;
     const storedResolution = node?.metadata?.vquality || config.vquality || defaultConfig.vquality;
@@ -18,9 +26,10 @@ export function buildCanvasGenerationConfig(config: AiConfig, node: CanvasNodeDa
         audioModel: mode === "audio" ? selectedModel : config.audioModel,
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
         size: grokVideo ? normalizeGrokVideoAspectRatio(storedSize) : storedSize,
-        videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(storedSeconds, selectedModel)) : storedSeconds,
+        videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(storedSeconds, selectedModel, videoOperation)) : storedSeconds,
         videoCallMode: grokVideo ? "async" : normalizeVideoCallMode(node?.metadata?.videoCallMode || config.videoCallMode),
-        vquality: grokVideo ? normalizeGrokVideoResolution(storedResolution) : storedResolution,
+        videoOperation,
+        vquality: grokVideo ? normalizeGrokVideoResolution(storedResolution, selectedModel) : storedResolution,
         videoGenerateAudio: node?.metadata?.generateAudio || config.videoGenerateAudio || defaultConfig.videoGenerateAudio,
         videoWatermark: node?.metadata?.watermark || config.videoWatermark || defaultConfig.videoWatermark,
         audioVoice: node?.metadata?.audioVoice || config.audioVoice || defaultConfig.audioVoice,
@@ -29,6 +38,14 @@ export function buildCanvasGenerationConfig(config: AiConfig, node: CanvasNodeDa
         audioInstructions: node?.metadata?.audioInstructions || config.audioInstructions || defaultConfig.audioInstructions,
         count: String(node?.metadata?.count || (mode === "image" ? config.canvasImageCount || config.count : config.count) || defaultConfig.count),
     };
+}
+
+function resolveGrokVideoOperation(model: string, node: CanvasNodeData | undefined, configuredMode: GrokVideoMode) {
+    if (!isGrokImagineVideoBaseModel(model)) return normalizeGrokVideoMode(model, node?.metadata?.videoOperation || configuredMode);
+    if (node?.metadata?.videoOperation) return normalizeGrokVideoMode(model, node.metadata.videoOperation);
+    if (node?.type === CanvasNodeType.Image && node.metadata?.content) return "image-to-video";
+    if (node?.type === CanvasNodeType.Text) return "text-to-video";
+    return normalizeGrokVideoMode(model, configuredMode);
 }
 
 function resolveModeModel(config: AiConfig, storedModel: string | undefined, mode: CanvasGenerationMode) {
