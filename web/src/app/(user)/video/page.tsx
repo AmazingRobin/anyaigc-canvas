@@ -260,6 +260,7 @@ export default function VideoPage() {
     }, [configHydrated, effectiveConfig.restoreWorkbenchDraftOnStart, referenceLimits.audios, referenceLimits.images, referenceLimits.videos]);
 
     useEffect(() => {
+        if (!configHydrated) return;
         const handoff = consumeImageToVideoReferences();
         if (!handoff?.references.length) return;
         if (isGrokImagineVideoBaseModel(modelName)) updateConfig("videoOperation", "image-to-video");
@@ -269,7 +270,7 @@ export default function VideoPage() {
         if (handoff.prompt) setPrompt((value) => (value.trim() ? value : handoff.prompt || value));
         const importedCount = Math.min(handoff.references.length, handoffLimits.images);
         message.success(language === "en" ? `Imported ${importedCount} reference ${importedCount === 1 ? "image" : "images"}` : `已带入 ${importedCount} 张参考图`);
-    }, [grokOperation, language, message, modelName, seedanceVideo, updateConfig]);
+    }, [configHydrated, grokOperation, language, message, modelName, seedanceVideo, updateConfig]);
 
     useEffect(() => {
         if (!configHydrated || typeof window === "undefined") return;
@@ -427,13 +428,14 @@ export default function VideoPage() {
         }
     };
 
-    const generate = async () => {
-        const snapshot = buildRequestSnapshot();
-        if (!snapshot) return;
+    const submitGenerationSnapshot = async (
+        snapshot: { text: string; config: AiConfig; references: ReferenceImage[]; videoReferences: ReferenceVideo[]; audioReferences: ReferenceAudio[] },
+        requestModel: string,
+        requestSnapshot = buildVideoRequestSnapshot(snapshot, requestModel),
+    ) => {
         const resultId = nanoid();
         const targetLog = previewLog;
         const logId = targetLog?.id || resultId;
-        const requestSnapshot = buildVideoRequestSnapshot(snapshot, model);
         const taskConfig: AiConfig = { ...snapshot.config, videoOperation: requestSnapshot.config.videoOperation, videoSeconds: requestSnapshot.config.videoSeconds };
         setElapsedMs(0);
         setActiveResultLogId(logId);
@@ -452,7 +454,7 @@ export default function VideoPage() {
                 pinnedAt: targetLog?.pinnedAt,
                 time: targetLog?.time,
                 prompt: snapshot.text,
-                model,
+                model: requestModel,
                 config: taskConfig,
                 references: snapshot.references,
                 videoReferences: snapshot.videoReferences,
@@ -482,7 +484,7 @@ export default function VideoPage() {
                     pinnedAt: targetLog?.pinnedAt,
                     time: targetLog?.time,
                     prompt: snapshot.text,
-                    model,
+                    model: requestModel,
                     config: taskConfig,
                     references: snapshot.references,
                     videoReferences: snapshot.videoReferences,
@@ -500,6 +502,12 @@ export default function VideoPage() {
             notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频任务创建失败", "Failed to create video task", language), workbenchErrorText(errorMessage, language), { tag: `relaybases-video-create-${resultId}`, requireInteraction: true });
             finishLogRun(logId);
         }
+    };
+
+    const generate = async () => {
+        const snapshot = buildRequestSnapshot();
+        if (!snapshot) return;
+        await submitGenerationSnapshot(snapshot, model);
     };
 
     const buildRequestSnapshot = () => {
@@ -578,16 +586,83 @@ export default function VideoPage() {
         createdAt: Date.now(),
     });
 
+    const buildRetrySnapshot = async (request: GenerationRequestSnapshot) => {
+        const hydrated = await hydrateVideoRequestSnapshot(request);
+        const retryModel = hydrated.config.videoModel || hydrated.model;
+        const retryModelName = modelOptionName(retryModel);
+        const retryConfig = buildVideoConfig({ ...effectiveConfig, ...hydrated.config }, retryModel);
+        const text = hydrated.prompt.trim();
+        if (!text) {
+            message.error(workbenchText("请输入视频提示词", "Enter a video prompt.", language));
+            return null;
+        }
+        if (!isAiConfigReady(retryConfig, retryModel)) {
+            message.warning(workbenchText("请先完成配置", "Complete the configuration first.", language));
+            openConfigDialog(true);
+            return null;
+        }
+        if (retryModelName.toLowerCase() === "veo-omni-flash-video-edit" && !hydrated.videoReferences.length) {
+            message.error(workbenchText("当前模型需要 1 个参考视频", "The current model requires one reference video.", language));
+            return null;
+        }
+        if (isSeedanceVideoConfig({ ...retryConfig, model: retryModel })) {
+            const videoReferenceError = seedanceVideoReferenceError(hydrated.videoReferences, language);
+            if (videoReferenceError) {
+                message.error(`${videoReferenceError}${language === "en" ? ". " : "。"}${seedanceVideoReferenceHint(language)}${language === "en" ? "." : "。"}`);
+                return null;
+            }
+        }
+        const retryOperation = normalizeGrokVideoMode(retryModelName, retryConfig.videoOperation);
+        const sourceVideo = hydrated.videoReferences[0];
+        const grokRequestError = grokVideoRequestError(
+            retryModelName,
+            retryOperation,
+            {
+                imageCount: hydrated.references.length,
+                videoCount: hydrated.videoReferences.length,
+                audioCount: hydrated.audioReferences.length,
+                duration: normalizeRelayBasesVideoDuration(retryConfig.videoSeconds, retryModelName, retryOperation),
+                sourceVideoDurationMs: sourceVideo?.durationMs,
+                sourceVideoName: sourceVideo?.name,
+                sourceVideoType: sourceVideo?.type,
+            },
+            language,
+        );
+        if (grokRequestError) {
+            message.error(grokRequestError);
+            return null;
+        }
+        return {
+            model: retryModel,
+            snapshot: {
+                text,
+                config: retryConfig,
+                references: hydrated.references,
+                videoReferences: hydrated.videoReferences,
+                audioReferences: hydrated.audioReferences,
+            },
+        };
+    };
+
     const findRecoverableLogForResult = (items: GenerationLog[], resultId?: string) =>
         resultId ? items.find((log) => log.id === resultId && log.task && (log.status === "生成中" || log.error === "请先配置 API Key")) || null : null;
 
-    const retryResult = async (resultId?: string) => {
+    const retryResult = async (resultId?: string, request?: GenerationRequestSnapshot) => {
         let recoverableLog = resultId ? findRecoverableLogForResult(logs, resultId) : previewLog?.task ? previewLog : null;
         if (resultId && !recoverableLog) recoverableLog = findRecoverableLogForResult(await refreshLogs(), resultId);
         if (recoverableLog?.task) {
             const task = recoverableLog.task;
             const recoveryLog = { ...recoverableLog, status: "生成中" as const, error: undefined };
             void pollGenerationLog(recoveryLog, buildVideoConfig({ ...effectiveConfig, ...recoveryLog.config, videoOperation: recoveryLog.config.videoOperation || task.operation || effectiveConfig.videoOperation }, task.model || recoveryLog.model), { notify: true });
+            return;
+        }
+        if (request) {
+            try {
+                const retry = await buildRetrySnapshot(request);
+                if (retry) await submitGenerationSnapshot(retry.snapshot, retry.model);
+            } catch (error) {
+                message.error(error instanceof Error ? workbenchErrorText(error.message, language) : workbenchText("生成失败", "Generation failed", language));
+            }
             return;
         }
         void generate();
@@ -1059,7 +1134,7 @@ export default function VideoPage() {
                                         result.status === "success" && result.video ? (
                                             <ResultVideoCard key={resultIdentityKey(result)} video={result.video} previewSuspended={playerVideo?.id === result.video.id} selected={selectedResultIds.includes(resultIdentityKey(result))} savedToAsset={Boolean(findGeneratedVideoAsset(result.video, assets))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} onPlay={() => setPlayerVideo(result.video || null)} onReuse={() => reuseVideoRequest(result.video?.request || result.request)} onEdit={editResultVideo} onRegenerate={() => void generate()} onDownload={downloadVideo} onSaveAsset={saveResultToAssets} onDelete={() => requestDeleteResults([result])} />
                                         ) : result.status === "failed" ? (
-                                            <FailedVideoCard key={resultIdentityKey(result)} error={result.error || workbenchText("生成失败", "Generation failed", language)} request={result.request} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} retryLabel={workbenchText(findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试", findRecoverableLogForResult(logs, result.id) ? "Recover result" : "Retry", language)} onReuse={() => reuseVideoRequest(result.request)} onRetry={() => retryResult(result.id)} onDelete={() => requestDeleteResults([result])} />
+                                            <FailedVideoCard key={resultIdentityKey(result)} error={result.error || workbenchText("生成失败", "Generation failed", language)} request={result.request} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} retryLabel={workbenchText(findRecoverableLogForResult(logs, result.id) ? "恢复结果" : "重试", findRecoverableLogForResult(logs, result.id) ? "Recover result" : "Retry", language)} onReuse={() => reuseVideoRequest(result.request)} onRetry={() => retryResult(result.id, result.request)} onDelete={() => requestDeleteResults([result])} />
                                         ) : (
                                             <PendingVideoCard key={resultIdentityKey(result)} selected={selectedResultIds.includes(resultIdentityKey(result))} onSelectedChange={(checked) => setSelectedResultIds((ids) => (checked ? Array.from(new Set([...ids, resultIdentityKey(result)])) : ids.filter((id) => id !== resultIdentityKey(result))))} />
                                         ),

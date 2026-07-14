@@ -5,10 +5,13 @@ import {
     GROK_IMAGINE_VIDEO_BASE_MODEL,
     GROK_IMAGINE_VIDEO_MODEL,
     GROK_VIDEO_ASPECT_RATIOS,
+    GROK_VIDEO_MODES,
     buildGrokVideoRequestPayload,
     grokVideoBillingSeconds,
+    grokVideoModeLabel,
     grokVideoRequestError,
     grokVideoResolutionOptions,
+    grokVideoUsesSourceOutput,
     isGrokImagineVideoBaseModel,
     isGrokImagineVideoFamilyModel,
     isGrokImagineVideoModel,
@@ -16,6 +19,7 @@ import {
     normalizeGrokVideoMode,
     normalizeGrokVideoResolution,
 } from "@/lib/relaybases-media-models";
+import { relayBasesVideoTiming } from "@/lib/relaybases-video";
 import { buildCanvasGenerationConfig } from "@/app/(user)/canvas/utils/canvas-generation-config";
 import { CanvasNodeType, type CanvasNodeData } from "@/app/(user)/canvas/types";
 import { defaultConfig, type AiConfig } from "@/stores/use-config-store";
@@ -36,6 +40,7 @@ assert.equal(normalizeGrokVideoMode(GROK_IMAGINE_VIDEO_BASE_MODEL, "reference-to
 assert.equal(normalizeGrokVideoMode(GROK_IMAGINE_VIDEO_BASE_MODEL, "edit-video"), "edit-video");
 assert.equal(normalizeGrokVideoMode(GROK_IMAGINE_VIDEO_BASE_MODEL, "extend-video"), "extend-video");
 assert.equal(normalizeGrokVideoMode(GROK_IMAGINE_VIDEO_MODEL, "text-to-video"), "image-to-video", "1.5 remains strict single-image I2V");
+assert.deepEqual(GROK_VIDEO_MODES.map((mode) => grokVideoModeLabel(mode, "en")), ["Text to video", "Image to video", "Reference to video", "Edit video", "Extend video"]);
 
 const canvasConfig: AiConfig = { ...defaultConfig, model: `relaybases::${GROK_IMAGINE_VIDEO_BASE_MODEL}`, videoModel: `relaybases::${GROK_IMAGINE_VIDEO_BASE_MODEL}`, videoOperation: "text-to-video" };
 const canvasNode = (type: CanvasNodeType, metadata: CanvasNodeData["metadata"] = {}): CanvasNodeData => ({ id: `node-${type}`, type, title: type, position: { x: 0, y: 0 }, width: 320, height: 240, metadata });
@@ -49,6 +54,11 @@ assert.deepEqual(grokVideoResolutionOptions(GROK_IMAGINE_VIDEO_BASE_MODEL, "text
 assert.deepEqual(grokVideoResolutionOptions(GROK_IMAGINE_VIDEO_MODEL, "image-to-video"), ["480p", "720p", "1080p"]);
 assert.equal(normalizeGrokVideoResolution("1080p", GROK_IMAGINE_VIDEO_BASE_MODEL), "720p");
 assert.equal(normalizeGrokVideoResolution("1080p", GROK_IMAGINE_VIDEO_MODEL), "1080p");
+assert.equal(grokVideoUsesSourceOutput(GROK_IMAGINE_VIDEO_BASE_MODEL, "edit-video"), true);
+assert.equal(grokVideoUsesSourceOutput(GROK_IMAGINE_VIDEO_BASE_MODEL, "extend-video"), true);
+assert.deepEqual(grokVideoResolutionOptions(GROK_IMAGINE_VIDEO_BASE_MODEL, "edit-video"), []);
+assert.deepEqual(relayBasesVideoTiming(GROK_IMAGINE_VIDEO_BASE_MODEL, "edit-video"), { min: 0, max: 0, defaultValue: 0, options: [], fixed: true });
+assert.deepEqual(relayBasesVideoTiming(GROK_IMAGINE_VIDEO_BASE_MODEL, "extend-video"), { min: 2, max: 10, defaultValue: 6, options: [2, 4, 6, 8, 10] });
 
 const valid = (model: string, mode: string, state: Parameters<typeof grokVideoRequestError>[2]) => grokVideoRequestError(model, mode, state, "en");
 assert.equal(valid(GROK_IMAGINE_VIDEO_BASE_MODEL, "text-to-video", { imageCount: 0, duration: 15 }), "");
@@ -104,6 +114,9 @@ const assetPickerSource = readFileSync(new URL("../src/app/(user)/canvas/compone
 assert.match(assetPickerSource, /bytes:\s*asset\.data\.bytes/, "My Assets must forward the stored video byte size to Canvas");
 assert.match(assetPickerSource, /mimeType:\s*asset\.data\.mimeType/, "My Assets must forward the stored video MIME type to Canvas");
 assert.match(assetPickerSource, /durationMs:\s*asset\.data\.durationMs/, "My Assets must forward the stored video duration to Canvas");
+const videoStudioSource = readFileSync(new URL("../src/app/(user)/video/page.tsx", import.meta.url), "utf8");
+assert.match(videoStudioSource, /if\s*\(!configHydrated\)\s*return;\s*const handoff = consumeImageToVideoReferences\(\)/, "Image Studio handoff must wait for the persisted video model before choosing the mode");
+assert.match(videoStudioSource, /onRetry=\{\(\) => retryResult\(result\.id,\s*result\.request\)\}/, "failed Video Studio results must retry their persisted request snapshot");
 const fileStorageSource = readFileSync(new URL("../src/services/file-storage.ts", import.meta.url), "utf8");
 assert.match(fileStorageSource, /durationMs:\s*Number\.isFinite\(video\.duration\)\s*\?\s*video\.duration\s*\*\s*1000/, "video duration metadata must preserve precision before ceil-per-second edit billing");
 
