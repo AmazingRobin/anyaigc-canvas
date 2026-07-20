@@ -2,10 +2,10 @@
 
 import { App, Button, Form, Input, Modal, Progress, Segmented, Select, Switch, Tabs } from "antd";
 import { Cloud, RefreshCw, Wifi } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ModelPicker } from "@/components/model-picker";
-import { fetchChannelModels } from "@/services/api/image";
+import { fetchChannelModels, ModelDiscoveryError, responseCapableModelIds } from "@/services/api/image";
 import { getCloudSyncApiKey, hasCloudSyncKey } from "@/services/cloud-sync";
 import { syncAppDataToCloud, syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
@@ -14,17 +14,17 @@ import { sharedErrorText, sharedText } from "@/lib/i18n-shared";
 import { requestWorkbenchNotificationPermission } from "@/lib/workbench-preferences";
 import { isGrokImagineVideoFamilyModel } from "@/lib/relaybases-media-models";
 import {
-    encodeChannelModel,
     filterModelsByCapability,
+    isRelayBasesAsyncImageModel,
     modelOptionName,
-    preferredTextModelOption,
-    RELAYBASES_ASYNC_IMAGE_MODELS,
+    RELAYBASES_CHANNEL_ID,
+    RELAYBASES_MEDIA_BASE_URL,
+    RELAYBASES_MEDIA_MODELS,
     RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP,
     RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP,
-    RELAYBASES_SYNC_IMAGE_MODELS,
+    replaceChannelModels,
     RELAYBASES_TEXT_BASE_URL,
     RELAYBASES_TEXT_CHANNEL_ID,
-    RELAYBASES_VIDEO_MODELS,
     useConfigStore,
     type AiConfig,
     type ModelCapability,
@@ -78,7 +78,10 @@ export function AppConfigModal() {
     const [syncingCloud, setSyncingCloud] = useState(false);
     const [testingWebdav, setTestingWebdav] = useState(false);
     const [syncingWebdav, setSyncingWebdav] = useState(false);
+    const [loadingMediaModels, setLoadingMediaModels] = useState(false);
     const [loadingTextModels, setLoadingTextModels] = useState(false);
+    const mediaModelsRequest = useRef<AbortController | null>(null);
+    const textModelsRequest = useRef<AbortController | null>(null);
     const [cloudSyncStatus, setCloudSyncStatus] = useState("");
     const [cloudDomainProgress, setCloudDomainProgress] = useState(createWebdavDomainProgress);
     const [webdavSyncStatus, setWebdavSyncStatus] = useState("");
@@ -87,7 +90,6 @@ export function AppConfigModal() {
     const cloudSync = useConfigStore((state) => state.cloudSync);
     const webdav = useConfigStore((state) => state.webdav);
     const updateConfig = useConfigStore((state) => state.updateConfig);
-    const updateConfigValues = useConfigStore((state) => state.updateConfigValues);
     const updateCloudSyncConfig = useConfigStore((state) => state.updateCloudSyncConfig);
     const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
     const setCloudSyncActivity = useConfigStore((state) => state.setCloudSyncActivity);
@@ -100,6 +102,18 @@ export function AppConfigModal() {
     const cloudSyncReady = hasCloudSyncKey(config.mediaApiKey, config.textApiKey);
     const webdavReady = Boolean(webdav.url.trim());
     const grokVideoSelected = isGrokImagineVideoFamilyModel(modelOptionName(config.videoModel));
+    const mediaImageModels = config.imageModels.map(modelOptionName);
+    const mediaSyncImageModels = mediaImageModels.filter((model) => !isRelayBasesAsyncImageModel(model));
+    const mediaAsyncImageModels = mediaImageModels.filter(isRelayBasesAsyncImageModel);
+    const mediaVideoModels = config.videoModels.map(modelOptionName);
+
+    useEffect(
+        () => () => {
+            mediaModelsRequest.current?.abort();
+            textModelsRequest.current?.abort();
+        },
+        [],
+    );
 
     const closeConfig = () => {
         setConfigDialogOpen(false);
@@ -107,7 +121,7 @@ export function AppConfigModal() {
     };
 
     const finishConfig = () => {
-        const ready = Boolean(config.mediaApiKey.trim() || (config.textApiKey.trim() && config.textModel.trim()));
+        const ready = Boolean((config.mediaApiKey.trim() && (config.imageModel.trim() || config.videoModel.trim())) || (config.textApiKey.trim() && config.textModel.trim()));
         setConfigDialogOpen(false);
         if (!ready) {
             clearPromptContinue();
@@ -117,12 +131,80 @@ export function AppConfigModal() {
         clearPromptContinue();
     };
 
+    const replaceDiscoveredModels = (channelId: string, models: string[]) => {
+        const currentConfig = useConfigStore.getState().config;
+        updateConfig("channels", replaceChannelModels(currentConfig.channels, channelId, models));
+    };
+
+    const changeMediaApiKey = (apiKey: string) => {
+        mediaModelsRequest.current?.abort();
+        mediaModelsRequest.current = null;
+        setLoadingMediaModels(false);
+        updateConfig("mediaApiKey", apiKey);
+    };
+
+    const changeTextApiKey = (apiKey: string) => {
+        textModelsRequest.current?.abort();
+        textModelsRequest.current = null;
+        setLoadingTextModels(false);
+        updateConfig("textApiKey", apiKey);
+    };
+
+    const refreshMediaModels = async () => {
+        const apiKey = config.mediaApiKey.trim();
+        if (!apiKey) {
+            message.error(s("请先填写媒体 API Key", "Enter a media API key first"));
+            return;
+        }
+        mediaModelsRequest.current?.abort();
+        const controller = new AbortController();
+        mediaModelsRequest.current = controller;
+        setLoadingMediaModels(true);
+        try {
+            const channel: ModelChannel = {
+                id: RELAYBASES_CHANNEL_ID,
+                name: "RelayBases Media",
+                baseUrl: RELAYBASES_MEDIA_BASE_URL,
+                apiKey,
+                apiFormat: "openai",
+                models: [],
+            };
+            const discovered = await fetchChannelModels(channel, { signal: controller.signal });
+            if (controller.signal.aborted || useConfigStore.getState().config.mediaApiKey.trim() !== apiKey) return;
+            const returnedModels = new Set(discovered.map((model) => model.id));
+            const models = RELAYBASES_MEDIA_MODELS.filter((model) => returnedModels.has(model));
+            replaceDiscoveredModels(RELAYBASES_CHANNEL_ID, models);
+            if (!models.length) {
+                message.warning(s("Key 可用，但没有返回画布已支持的媒体模型", "The key is valid, but it returned no media models supported by Canvas"));
+                return;
+            }
+            const current = useConfigStore.getState().config;
+            message.success(
+                language === "en"
+                    ? `Loaded ${current.imageModels.length} image models and ${current.videoModels.length} video models from this key.`
+                    : `已从该 Key 获取 ${current.imageModels.length} 个图片模型和 ${current.videoModels.length} 个视频模型。`,
+            );
+        } catch (error) {
+            if (controller.signal.aborted || useConfigStore.getState().config.mediaApiKey.trim() !== apiKey) return;
+            if (error instanceof ModelDiscoveryError && error.clearModels) replaceDiscoveredModels(RELAYBASES_CHANNEL_ID, []);
+            message.error(error instanceof Error ? sharedErrorText(error.message, language) : s("读取媒体模型失败", "Failed to load media models"));
+        } finally {
+            if (mediaModelsRequest.current === controller) {
+                mediaModelsRequest.current = null;
+                setLoadingMediaModels(false);
+            }
+        }
+    };
+
     const refreshTextModels = async () => {
         const apiKey = config.textApiKey.trim();
         if (!apiKey) {
             message.error(s("请先填写文本 API Key", "Enter a text API key first"));
             return;
         }
+        textModelsRequest.current?.abort();
+        const controller = new AbortController();
+        textModelsRequest.current = controller;
         setLoadingTextModels(true);
         try {
             const channel: ModelChannel = {
@@ -133,23 +215,36 @@ export function AppConfigModal() {
                 apiFormat: "openai",
                 models: [],
             };
-            const models = filterModelsByCapability(await fetchChannelModels(channel), "text");
+            const discovered = await fetchChannelModels(channel, { signal: controller.signal });
+            if (controller.signal.aborted || useConfigStore.getState().config.textApiKey.trim() !== apiKey) return;
+            const models = filterModelsByCapability(responseCapableModelIds(discovered), "text");
+            replaceDiscoveredModels(RELAYBASES_TEXT_CHANNEL_ID, models);
             if (!models.length) {
-                updateConfigValues({ textModels: [], textModel: "" });
-                message.warning(s("未获取到可用的文本模型", "No available text models were returned"));
+                message.warning(s("Key 可用，但没有返回支持 Responses 的文本模型", "The key is valid, but it returned no text models that support Responses"));
                 return;
             }
-            const textModels = models.map((model) => encodeChannelModel(RELAYBASES_TEXT_CHANNEL_ID, model));
-            const recommendedTextModel = preferredTextModelOption(textModels);
-            const textModel = textModels.includes(config.textModel) ? config.textModel : recommendedTextModel;
-            updateConfigValues({ textModels, textModel });
+            const textModel = useConfigStore.getState().config.textModel;
             message.success(language === "en" ? `Loaded ${models.length} text models. ${modelOptionName(textModel)} is now the default. Use the ${RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP} group for the text key.` : `已获取 ${models.length} 个文本模型，默认使用 ${modelOptionName(textModel)}。建议文本 Key 使用 ${RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP} 分组。`);
         } catch (error) {
+            if (controller.signal.aborted || useConfigStore.getState().config.textApiKey.trim() !== apiKey) return;
+            if (error instanceof ModelDiscoveryError && error.clearModels) replaceDiscoveredModels(RELAYBASES_TEXT_CHANNEL_ID, []);
             message.error(error instanceof Error ? sharedErrorText(error.message, language) : s("读取文本模型失败", "Failed to load text models"));
         } finally {
-            setLoadingTextModels(false);
+            if (textModelsRequest.current === controller) {
+                textModelsRequest.current = null;
+                setLoadingTextModels(false);
+            }
         }
     };
+
+    useEffect(() => {
+        if (!isConfigOpen) return;
+        if (config.mediaApiKey.trim()) void refreshMediaModels();
+        if (config.textApiKey.trim()) void refreshTextModels();
+        // Refresh once whenever the settings dialog is opened. Key edits remain explicit
+        // so typing does not send one model request per character.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isConfigOpen]);
 
     const testWebdav = async () => {
         if (!webdavReady) {
@@ -282,41 +377,65 @@ export function AppConfigModal() {
                                     <div className="grid content-start gap-3">
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
                                             <Form.Item label={s("媒体 API Key", "Media API Key")} extra={language === "en" ? `Used for image and video generation. Create the media key from the ${RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP} group on RelayBases. Regular async image and video tasks cost x4; Grok video is async-only with no x4 surcharge.` : `用于图片和视频生成。请在主站选择 ${RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP} 分组创建媒体 Key；普通异步图片和异步视频任务按 4 倍扣费，Grok 视频仅支持异步且不加收 4 倍费用。`} className="mb-3">
-                                                <Input.Password value={config.mediaApiKey} allowClear autoComplete="new-password" onChange={(event) => updateConfig("mediaApiKey", event.target.value)} placeholder="sk-..." />
+                                                <div className="flex gap-2">
+                                                    <Input.Password className="min-w-0 flex-1" value={config.mediaApiKey} allowClear autoComplete="new-password" onChange={(event) => changeMediaApiKey(event.target.value)} placeholder="sk-..." />
+                                                    <Button icon={<RefreshCw className="size-4" />} disabled={!config.mediaApiKey.trim()} loading={loadingMediaModels} onClick={() => void refreshMediaModels()}>
+                                                        {s("获取模型", "Load models")}
+                                                    </Button>
+                                                </div>
                                             </Form.Item>
                                             <div className="flex flex-wrap gap-2 text-xs">
                                                 <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-100">{s("生图使用 media 分组", "Image generation uses the media group")}</span>
                                                 <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">{s("同步图默认 gpt-image-2", "Synchronous images default to gpt-image-2")}</span>
                                                 <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">{language === "en" ? "Regular async tasks cost x4; Grok video excluded" : "普通异步任务·4倍；Grok 视频除外"}</span>
                                             </div>
+                                            <div className="mt-3 text-xs text-stone-500">
+                                                {config.imageModels.length || config.videoModels.length
+                                                    ? language === "en"
+                                                        ? `Loaded ${config.imageModels.length} image models and ${config.videoModels.length} video models from this key.`
+                                                        : `已从该 Key 获取 ${config.imageModels.length} 个图片模型和 ${config.videoModels.length} 个视频模型。`
+                                                    : s("填写媒体 API Key 后获取该 Key 可用的模型。", "Enter a media API key to load the models available to that key.")}
+                                            </div>
                                         </div>
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
                                             <div className="font-semibold">{s("同步图片模型", "Synchronous image models")}</div>
                                             <div className="mt-2 flex flex-wrap gap-1.5">
-                                                {RELAYBASES_SYNC_IMAGE_MODELS.map((model) => (
-                                                    <span key={model} className="rounded-md bg-stone-100 px-2 py-1 font-mono text-xs dark:bg-stone-900">
-                                                        {model}
-                                                    </span>
-                                                ))}
+                                                {mediaSyncImageModels.length ? (
+                                                    mediaSyncImageModels.map((model) => (
+                                                        <span key={model} className="rounded-md bg-stone-100 px-2 py-1 font-mono text-xs dark:bg-stone-900">
+                                                            {model}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-stone-500">{s("暂无可用模型", "No available models")}</span>
+                                                )}
                                             </div>
                                             <div className="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-200">{s("异步图片任务", "Asynchronous image tasks")}</div>
                                             <div className="mt-2 flex flex-wrap gap-1.5">
-                                                {RELAYBASES_ASYNC_IMAGE_MODELS.map((model) => (
-                                                    <span key={model} className="rounded-md bg-amber-50 px-2 py-1 font-mono text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                                                        {model}
-                                                    </span>
-                                                ))}
+                                                {mediaAsyncImageModels.length ? (
+                                                    mediaAsyncImageModels.map((model) => (
+                                                        <span key={model} className="rounded-md bg-amber-50 px-2 py-1 font-mono text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                                                            {model}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-stone-500">{s("暂无可用模型", "No available models")}</span>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
                                             <div className="font-semibold">{s("视频模型", "Video models")}</div>
                                             <div className="mt-1 text-xs text-stone-500 dark:text-stone-400">{language === "en" ? "Regular video models use sync calls by default and can switch to async at x4 cost. Grok video models are fixed to async with no x4 surcharge." : "普通视频模型默认同步调用，也可切换异步·4 倍扣费；Grok 视频模型固定异步且不加收 4 倍费用。"}</div>
                                             <div className="mt-2 flex flex-wrap gap-1.5">
-                                                {RELAYBASES_VIDEO_MODELS.map((model) => (
-                                                    <span key={model} className="rounded-md bg-stone-100 px-2 py-1 font-mono text-xs dark:bg-stone-900">
-                                                        {model}
-                                                    </span>
-                                                ))}
+                                                {mediaVideoModels.length ? (
+                                                    mediaVideoModels.map((model) => (
+                                                        <span key={model} className="rounded-md bg-stone-100 px-2 py-1 font-mono text-xs dark:bg-stone-900">
+                                                            {model}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-stone-500">{s("暂无可用模型", "No available models")}</span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -324,7 +443,7 @@ export function AppConfigModal() {
                                         <div className="rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
                                             <Form.Item label={s("文本 API Key", "Text API Key")} extra={language === "en" ? `Used for agents, image-to-prompt, and text generation. Create the text key from the ${RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP} group; other text groups are also supported.` : `用于 Agent、图片反推提示词和文本生成。建议用 ${RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP} 分组创建文本 Key，其它文本分组也可用。`} className="mb-3">
                                                 <div className="flex gap-2">
-                                                    <Input.Password className="min-w-0 flex-1" value={config.textApiKey} allowClear autoComplete="new-password" onChange={(event) => updateConfigValues({ textApiKey: event.target.value, textModels: [], textModel: "" })} placeholder="sk-..." />
+                                                    <Input.Password className="min-w-0 flex-1" value={config.textApiKey} allowClear autoComplete="new-password" onChange={(event) => changeTextApiKey(event.target.value)} placeholder="sk-..." />
                                                     <Button icon={<RefreshCw className="size-4" />} disabled={!config.textApiKey.trim()} loading={loadingTextModels} onClick={() => void refreshTextModels()}>
                                                         {s("获取模型", "Load models")}
                                                     </Button>

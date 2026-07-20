@@ -1009,32 +1009,81 @@ export async function requestToolResponse(config: AiConfig, messages: ResponseIn
     }
 }
 
-export async function fetchImageModels(config: Pick<AiConfig, "baseUrl" | "apiKey" | "apiFormat">) {
-    try {
-        if (config.apiFormat === "gemini") {
-            const response = await axios.get<GeminiPayload>(geminiApiUrl({ ...defaultGeminiConfig, ...config }), { headers: geminiHeaders({ ...defaultGeminiConfig, ...config }) });
-            validateGeminiPayload(response.data);
-            return (response.data.models || [])
-                .map((model) => model.name?.replace(/^models\//, ""))
-                .filter((id): id is string => Boolean(id))
-                .sort((a, b) => a.localeCompare(b));
-        }
-        const response = await axios.get<{ data?: Array<{ id?: string }>; error?: { message?: string } }>(buildApiUrl(config.baseUrl, "/models"), {
-            headers: {
-                Authorization: `Bearer ${config.apiKey}`,
-            },
-        });
-        return (response.data.data || [])
-            .map((model) => model.id)
-            .filter((id): id is string => Boolean(id))
-            .sort((a, b) => a.localeCompare(b));
-    } catch (error) {
-        throw new Error(readAxiosError(error, workbenchText("读取模型失败")));
+export type DiscoveredModel = {
+    id: string;
+    supportedEndpointTypes: string[];
+};
+
+export class ModelDiscoveryError extends Error {
+    status?: number;
+    clearModels: boolean;
+
+    constructor(message: string, status?: number, clearModels = false) {
+        super(message);
+        this.name = "ModelDiscoveryError";
+        this.status = status;
+        this.clearModels = clearModels;
     }
 }
 
-export async function fetchChannelModels(channel: ModelChannel) {
-    return fetchImageModels({ baseUrl: channel.baseUrl, apiKey: channel.apiKey, apiFormat: channel.apiFormat });
+type FetchModelsOptions = { signal?: AbortSignal };
+
+export async function fetchImageModels(config: Pick<AiConfig, "baseUrl" | "apiKey" | "apiFormat">, options?: FetchModelsOptions): Promise<DiscoveredModel[]> {
+    try {
+        if (config.apiFormat === "gemini") {
+            const response = await axios.get<GeminiPayload>(geminiApiUrl({ ...defaultGeminiConfig, ...config }), {
+                headers: geminiHeaders({ ...defaultGeminiConfig, ...config }),
+                signal: options?.signal,
+                timeout: 15000,
+            });
+            validateGeminiPayload(response.data);
+            return normalizeDiscoveredModels((response.data.models || []).map((model) => ({ id: model.name?.replace(/^models\//, ""), supported_endpoint_types: ["gemini"] })));
+        }
+        const response = await axios.get<{
+            success?: boolean;
+            data?: Array<{ id?: string; supported_endpoint_types?: string[] }>;
+            message?: string;
+            error?: { message?: string };
+        }>(buildApiUrl(config.baseUrl, "/models"), {
+            headers: {
+                Authorization: `Bearer ${config.apiKey}`,
+            },
+            signal: options?.signal,
+            timeout: 15000,
+        });
+        if (response.data.success === false) throw new ModelDiscoveryError(response.data.message || response.data.error?.message || workbenchText("读取模型失败"));
+        if (!Array.isArray(response.data.data)) throw new Error(workbenchText("模型接口返回格式无效", "The model endpoint returned an invalid response"));
+        return normalizeDiscoveredModels(response.data.data);
+    } catch (error) {
+        if (error instanceof ModelDiscoveryError) throw error;
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        throw new ModelDiscoveryError(readAxiosError(error, workbenchText("读取模型失败")), status, status === 401 || status === 403);
+    }
+}
+
+export async function fetchChannelModels(channel: ModelChannel, options?: FetchModelsOptions) {
+    return fetchImageModels({ baseUrl: channel.baseUrl, apiKey: channel.apiKey, apiFormat: channel.apiFormat }, options);
+}
+
+export function responseCapableModelIds(models: DiscoveredModel[]) {
+    return models.filter((model) => model.supportedEndpointTypes.includes("openai-response")).map((model) => model.id);
+}
+
+export function normalizeDiscoveredModels(models: unknown[]) {
+    const byId = new Map<string, Set<string>>();
+    for (const model of models.slice(0, 1000)) {
+        if (!model || typeof model !== "object") continue;
+        const candidate = model as { id?: unknown; supported_endpoint_types?: unknown };
+        const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+        if (!id || id.length > 200 || id.includes("::")) continue;
+        const endpoints = byId.get(id) || new Set<string>();
+        for (const endpoint of Array.isArray(candidate.supported_endpoint_types) ? candidate.supported_endpoint_types : []) {
+            const normalized = typeof endpoint === "string" ? endpoint.trim().toLowerCase() : "";
+            if (normalized) endpoints.add(normalized);
+        }
+        byId.set(id, endpoints);
+    }
+    return Array.from(byId, ([id, endpoints]) => ({ id, supportedEndpointTypes: Array.from(endpoints).sort() })).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 const defaultGeminiConfig: Pick<AiConfig, "baseUrl" | "apiKey" | "apiFormat" | "model" | "systemPrompt"> = {
