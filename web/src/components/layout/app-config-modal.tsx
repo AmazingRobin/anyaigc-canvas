@@ -5,7 +5,7 @@ import { Cloud, RefreshCw, Wifi } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ModelPicker } from "@/components/model-picker";
-import { fetchChannelModels, ModelDiscoveryError, responseCapableModelIds } from "@/services/api/image";
+import { fetchChannelModels, ModelDiscoveryError } from "@/services/api/image";
 import { getCloudSyncApiKey, hasCloudSyncKey } from "@/services/cloud-sync";
 import { syncAppDataToCloud, syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
@@ -217,10 +217,12 @@ export function AppConfigModal() {
             };
             const discovered = await fetchChannelModels(channel, { signal: controller.signal });
             if (controller.signal.aborted || useConfigStore.getState().config.textApiKey.trim() !== apiKey) return;
-            const models = filterModelsByCapability(responseCapableModelIds(discovered), "text");
+            // 不按端点类型过滤:new-api 对模型标的是 supported_endpoint_types=["openai"],
+            // 不含 "openai-response",按 Responses 端点筛会把全部文本模型滤空(恢复改动前行为)。
+            const models = filterModelsByCapability(discovered.map((model) => model.id), "text");
             replaceDiscoveredModels(RELAYBASES_TEXT_CHANNEL_ID, models);
             if (!models.length) {
-                message.warning(s("Key 可用，但没有返回支持 Responses 的文本模型", "The key is valid, but it returned no text models that support Responses"));
+                message.warning(s("Key 可用，但没有返回可用的文本模型", "The key is valid, but it returned no usable text models"));
                 return;
             }
             const textModel = useConfigStore.getState().config.textModel;
