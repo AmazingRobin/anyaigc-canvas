@@ -1,701 +1,701 @@
 [
     {
-        "id": "rb-prompt-001",
+        "id": "prompt-001",
         "title": "雨夜玻璃窗人像",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-001.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-001.webp",
         "tags": ["人像", "电影感", "夜景"],
         "prompt": "生成一张电影感写实人像：年轻女性坐在雨夜咖啡馆窗边，玻璃上有细密雨滴和城市霓虹倒影，侧逆光勾勒轮廓，浅景深，肤色自然，情绪安静克制，构图留有呼吸感，真实摄影质感，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-002",
+        "id": "prompt-002",
         "title": "清晨陶艺师工作室",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-002.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-002.webp",
         "tags": ["人像", "手作", "自然光"],
         "prompt": "生成一张温暖纪实摄影：陶艺师在清晨工作室修整半干陶碗，木桌上有泥痕、釉料刷和未完成器皿，窗外柔和阳光斜射，尘埃微粒可见，色彩朴素，人物专注，画面真实细腻，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-003",
+        "id": "prompt-003",
         "title": "银发舞者后台",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-003.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-003.webp",
         "tags": ["人像", "舞台", "纪实"],
         "prompt": "生成一张优雅后台人像：银发舞者坐在剧场化妆镜前整理鞋带，镜灯形成柔和光环，背景可见模糊幕布和衣架，脸部有岁月纹理但神情坚定，胶片摄影颗粒，低饱和暖色，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-004",
+        "id": "prompt-004",
         "title": "高原骑行少年",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-004.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-004.webp",
         "tags": ["人像", "户外", "运动"],
         "prompt": "生成一张高原户外运动人像：骑行者停在山路弯道旁摘下头盔远望雪山，风吹起夹克，天空通透，地面有碎石和野草，广角低机位，阳光清冷，动感又宁静，真实摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-005",
+        "id": "prompt-005",
         "title": "复古理发店肖像",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-005.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-005.webp",
         "tags": ["人像", "复古", "室内"],
         "prompt": "生成一张复古理发店环境肖像：理发师站在老式皮椅旁擦拭剪刀，墙面有木框镜子和旧收音机，午后阳光穿过百叶窗形成条纹，色彩像经典胶片，人物沉稳可信，细节丰富，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-006",
+        "id": "prompt-006",
         "title": "城市天台爵士乐手",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-006.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-006.webp",
         "tags": ["人像", "音乐", "都市"],
         "prompt": "生成一张都市夜色人像：爵士萨克斯乐手站在天台边缘，远处高楼灯光虚化，金属乐器反射蓝紫霓虹，轻微薄雾，人物穿深色西装，姿态松弛自信，电影级布光，高清细节，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-007",
+        "id": "prompt-007",
         "title": "花房植物学家",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-007.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-007.webp",
         "tags": ["人像", "植物", "自然"],
         "prompt": "生成一张自然光环境人像：植物学家在玻璃温室中记录稀有叶片，周围有蕨类、藤蔓和水汽，阳光被叶影切碎落在白色衬衫上，色彩清新，质感真实，构图层次丰富，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-008",
+        "id": "prompt-008",
         "title": "黑白拳击训练",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-008.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-008.webp",
         "tags": ["人像", "黑白", "运动"],
         "prompt": "生成一张高反差黑白纪实摄影：拳击手在旧训练馆击打沙袋，汗水飞溅，窗外强光形成轮廓，空间里有绳索、木地板和灰尘，动态凝固，力量感强但不过度夸张，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-009",
+        "id": "prompt-009",
         "title": "古典油画感读书人",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-009.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-009.webp",
         "tags": ["人像", "油画", "古典"],
         "prompt": "生成一张古典油画感人物肖像：人物坐在深色书房中阅读厚书，烛光照亮侧脸和手部，背景有暗木书架与绿色天鹅绒椅，笔触细腻，明暗对比像博物馆肖像画，画面庄重，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-010",
+        "id": "prompt-010",
         "title": "极简白棚时尚大片",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-010.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-010.webp",
         "tags": ["人像", "时尚", "极简"],
         "prompt": "生成一张极简时尚棚拍：模特穿结构感白色外套站在浅灰无缝背景前，硬朗剪裁与柔和皮肤形成对比，单侧大柔光箱，阴影干净，姿态克制，杂志大片质感，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-011",
+        "id": "prompt-011",
         "title": "透明香水瓶广告",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-011.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-011.webp",
         "tags": ["产品", "广告", "玻璃"],
         "prompt": "生成一张高端香水产品摄影：透明玻璃香水瓶置于浅水面上，周围有白色花瓣和冰晶，清透蓝白色调，折射光斑精致，背景干净渐变，商业广告级布光，瓶身无文字品牌，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-012",
+        "id": "prompt-012",
         "title": "黑色机械腕表特写",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-012.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-012.webp",
         "tags": ["产品", "奢侈品", "机械"],
         "prompt": "生成一张机械腕表微距产品图：黑色金属表壳悬停在深灰石材台面上，齿轮与表盘纹理清晰，冷色轮廓光，少量金色反光点缀，画面硬朗精密，背景无品牌文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-013",
+        "id": "prompt-013",
         "title": "运动鞋沙漠日落",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-013.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-013.webp",
         "tags": ["产品", "运动", "户外"],
         "prompt": "生成一张运动鞋户外广告图：一双原创设计跑鞋立在沙漠岩石上，鞋底带少量尘土，远处日落橙光与蓝色阴影形成对比，低机位英雄构图，材质细节清晰，无品牌文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-014",
+        "id": "prompt-014",
         "title": "智能音箱晨间厨房",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-014.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-014.webp",
         "tags": ["产品", "科技", "生活方式"],
         "prompt": "生成一张生活方式产品摄影：圆润智能音箱放在晨间厨房岛台上，旁边有咖啡杯、柠檬和亚麻餐巾，窗外自然光柔和，产品表面磨砂质感，场景温馨现代，无屏幕文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-015",
+        "id": "prompt-015",
         "title": "护肤精华水波纹",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-015.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-015.webp",
         "tags": ["产品", "美妆", "清透"],
         "prompt": "生成一张护肤精华产品视觉：磨砂玻璃瓶立在透明亚克力台上，周围有水波纹光影、露珠和淡绿色植物影子，画面洁净高级，柔和高光，瓶身没有文字标识，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-016",
+        "id": "prompt-016",
         "title": "咖啡豆包装静物",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-016.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-016.webp",
         "tags": ["产品", "咖啡", "静物"],
         "prompt": "生成一张咖啡产品静物：无字牛皮纸咖啡袋半开，深烘咖啡豆散落在胡桃木桌面，旁边有陶瓷杯和铜色量勺，清晨侧光，色彩温暖，香气氛围强，商业摄影质感，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-017",
+        "id": "prompt-017",
         "title": "透明耳机冰蓝概念",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-017.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-017.webp",
         "tags": ["产品", "科技", "透明材质"],
         "prompt": "生成一张未来感耳机产品图：透明外壳无线耳机悬浮在冰蓝色光场中，内部微型结构若隐若现，背景有柔和体积光和细小粒子，构图干净，科技感高级，无品牌文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-018",
+        "id": "prompt-018",
         "title": "露营灯森林夜景",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-018.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-018.webp",
         "tags": ["产品", "露营", "夜景"],
         "prompt": "生成一张露营灯产品场景：暖黄色便携灯挂在森林帐篷外，木桌上有搪瓷杯和地图，背景是蓝色夜雾与树影，灯光形成温暖安全感，真实户外摄影，产品无文字标识，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-019",
+        "id": "prompt-019",
         "title": "设计椅博物馆展台",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-019.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-019.webp",
         "tags": ["产品", "家具", "极简"],
         "prompt": "生成一张家具产品摄影：一把原创曲木设计椅放在白色博物馆式展台，背景为米灰混凝土墙，光线从高侧方落下，椅子曲线优雅，阴影干净，空间留白高级，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-020",
+        "id": "prompt-020",
         "title": "户外背包雨林测试",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-020.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-020.webp",
         "tags": ["产品", "户外", "功能"],
         "prompt": "生成一张户外背包广告图：防水背包靠在雨林湿润岩石上，表面有水珠和泥点，远处瀑布虚化，绿色层次丰富，背包结构和材质清晰，冒险氛围强，无品牌文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-021",
+        "id": "prompt-021",
         "title": "峡谷玻璃住宅",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-021.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-021.webp",
         "tags": ["建筑", "现代", "自然"],
         "prompt": "生成一张现代建筑可视化：悬崖峡谷边的玻璃住宅，室内暖光透出，外部是红色岩层和星空蓝调，建筑线条简洁，材质真实，广角构图，环境与住宅融合，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-022",
+        "id": "prompt-022",
         "title": "日式茶室雨庭",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-022.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-022.webp",
         "tags": ["建筑", "东方", "庭院"],
         "prompt": "生成一张日式茶室空间图：低矮木质茶室面向雨中庭院，石灯笼、苔藓和竹帘细节清晰，室内榻榻米被暖光照亮，画面安静，材质自然，真实建筑摄影风格，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-023",
+        "id": "prompt-023",
         "title": "未来图书馆中庭",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-023.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-023.webp",
         "tags": ["建筑", "未来", "公共空间"],
         "prompt": "生成一张未来公共图书馆室内：巨大螺旋书架围绕明亮中庭，天窗洒下柔光，白色金属和浅木材质结合，人群尺度小而自然，空间宏大但不混乱，建筑摄影质感，不要可读文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-024",
+        "id": "prompt-024",
         "title": "北欧雪地小屋",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-024.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-024.webp",
         "tags": ["建筑", "北欧", "雪景"],
         "prompt": "生成一张北欧雪地小屋夜景：黑色木屋坐落在雪松林中，窗内火光温暖，天空可见淡淡极光，雪面反射蓝绿色光，构图舒适，真实摄影，安静治愈，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-025",
+        "id": "prompt-025",
         "title": "海边混凝土美术馆",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-025.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-025.webp",
         "tags": ["建筑", "美术馆", "海岸"],
         "prompt": "生成一张海边混凝土美术馆外观：几何体块嵌在礁石海岸，灰色清水混凝土与白色浪花对比，阴天柔光，人物很小用于尺度参照，画面冷静高级，建筑杂志风格，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-026",
+        "id": "prompt-026",
         "title": "旧厂房改造餐厅",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-026.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-026.webp",
         "tags": ["建筑", "室内", "工业风"],
         "prompt": "生成一张旧厂房改造餐厅室内：保留红砖墙、钢梁和高窗，加入木桌、绿植与暖色吊灯，晚餐前空场景，空间层次丰富，工业与温暖并存，真实室内摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-027",
+        "id": "prompt-027",
         "title": "地中海白色民宿",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-027.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-027.webp",
         "tags": ["建筑", "度假", "地中海"],
         "prompt": "生成一张地中海度假民宿：白色拱门、蓝色泳池和陶土花盆，远处是海平线，午后阳光明亮但不过曝，阴影干净，画面清爽惬意，真实旅游摄影感，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-028",
+        "id": "prompt-028",
         "title": "沙漠观星营地",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-028.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-028.webp",
         "tags": ["建筑", "营地", "星空"],
         "prompt": "生成一张沙漠观星营地建筑图：圆顶帐篷围绕低矮篝火区，周围是起伏沙丘和银河，帐篷透出暖光，天空壮丽，地面细节真实，梦幻但可信，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-029",
+        "id": "prompt-029",
         "title": "山谷可持续学校",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-029.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-029.webp",
         "tags": ["建筑", "教育", "可持续"],
         "prompt": "生成一张山谷中的可持续学校：木结构教室围绕开放庭院，屋顶有绿植和太阳能板，孩子们以远景剪影出现，清晨薄雾，色彩自然，建筑概念渲染精美，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-030",
+        "id": "prompt-030",
         "title": "地下温泉空间",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-030.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-030.webp",
         "tags": ["建筑", "温泉", "氛围"],
         "prompt": "生成一张地下温泉空间：拱形石室中有热气蒸腾的浅水池，顶部圆形天窗落下一束自然光，石材湿润，水面反光柔和，氛围安静神秘，电影级建筑可视化，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-031",
+        "id": "prompt-031",
         "title": "冰川蓝湖航拍",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-031.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-031.webp",
         "tags": ["风景", "航拍", "冰川"],
         "prompt": "生成一张极地航拍风景：蓝色冰川湖被白色冰裂纹包围，湖中漂浮碎冰，远处雪山层叠，俯视构图像抽象画，色彩冷冽纯净，超高清自然摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-032",
+        "id": "prompt-032",
         "title": "竹林晨雾小径",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-032.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-032.webp",
         "tags": ["风景", "东方", "晨雾"],
         "prompt": "生成一张东方竹林晨雾风景：石板小径穿过高竹，远处有轻薄雾气和柔金色阳光，地面湿润，叶片层次丰富，画面清幽空灵，真实摄影与水墨意境结合，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-033",
+        "id": "prompt-033",
         "title": "火山黑沙海岸",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-033.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-033.webp",
         "tags": ["风景", "海岸", "戏剧感"],
         "prompt": "生成一张火山黑沙海岸风景：深色沙滩、玄武岩柱和白色海浪形成强烈对比，天空乌云透出金色裂缝光，低机位广角，氛围壮阔，真实风光摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-034",
+        "id": "prompt-034",
         "title": "粉色盐湖日落",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-034.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-034.webp",
         "tags": ["风景", "色彩", "日落"],
         "prompt": "生成一张粉色盐湖日落：浅粉水面像镜子反射橙紫天空，远处有小小人物剪影和盐晶纹理，画面极简梦幻，色彩高级不过饱和，风光摄影质感，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-035",
+        "id": "prompt-035",
         "title": "雨林巨树光束",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-035.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-035.webp",
         "tags": ["风景", "雨林", "自然"],
         "prompt": "生成一张热带雨林深处风景：巨树根系盘绕，阳光从高处树冠穿透形成体积光，空气中有水汽和昆虫微粒，绿色层次丰富，神秘生机感，真实自然纪录片风格，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-036",
+        "id": "prompt-036",
         "title": "麦田风暴前夕",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-036.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-036.webp",
         "tags": ["风景", "乡野", "天空"],
         "prompt": "生成一张风暴前乡野风景：金色麦田延伸到地平线，远处深蓝风暴云压低，云缝中有斜射阳光照亮一小片田地，构图有张力，真实摄影，细节清晰，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-037",
+        "id": "prompt-037",
         "title": "高山湖泊星轨",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-037.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-037.webp",
         "tags": ["风景", "星空", "长曝光"],
         "prompt": "生成一张高山湖泊夜景长曝光：湖面倒映星轨和雪山轮廓，岸边有一顶微亮帐篷，天空深蓝，星轨细腻，画面宁静宏大，真实天文摄影质感，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-038",
+        "id": "prompt-038",
         "title": "秋天峡谷列车",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-038.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-038.webp",
         "tags": ["风景", "旅行", "秋色"],
         "prompt": "生成一张秋天峡谷旅行风景：红色复古列车穿过金黄树林与河谷，远处山体被薄雾包围，画面有电影旅行感，色彩温暖，速度轻微动感模糊，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-039",
+        "id": "prompt-039",
         "title": "月光雪原鹿影",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-039.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-039.webp",
         "tags": ["风景", "雪景", "梦幻"],
         "prompt": "生成一张月光雪原风景：银白雪地上有几只鹿的远景剪影，冷月悬在蓝色天空，雪面有细腻纹理和淡淡足迹，画面安静诗意，写实梦幻，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-040",
+        "id": "prompt-040",
         "title": "海底珊瑚花园",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-040.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-040.webp",
         "tags": ["风景", "海洋", "水下"],
         "prompt": "生成一张水下珊瑚花园：阳光穿过海面形成光柱，彩色珊瑚和小鱼群环绕，水体清澈，前景有细腻沙纹，画面生动但自然，纪录片级水下摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-041",
+        "id": "prompt-041",
         "title": "月亮邮局绘本",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-041.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-041.webp",
         "tags": ["插画", "绘本", "童话"],
         "prompt": "生成一张原创童话绘本插画：小小月亮邮局悬在云朵之间，穿斗篷的邮差整理发光信件，柔软粉蓝色调，圆润造型，纸张纹理，温暖梦幻，不含可读文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-042",
+        "id": "prompt-042",
         "title": "蘑菇市场水彩",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-042.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-042.webp",
         "tags": ["插画", "水彩", "奇幻"],
         "prompt": "生成一张水彩奇幻插画：森林里的蘑菇市场，矮小摊位摆满果实和发光瓶子，柔和湿润笔触，角色只作为小剪影出现，画面丰富但不拥挤，色彩清新，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-043",
+        "id": "prompt-043",
         "title": "午夜图书馆猫",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-043.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-043.webp",
         "tags": ["插画", "猫", "夜晚"],
         "prompt": "生成一张温柔插画：午夜图书馆里，一只黑猫坐在打开的天窗下看月光，书架高耸，萤火般尘埃漂浮，蓝金配色，细腻线条，安静治愈，不含可读文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-044",
+        "id": "prompt-044",
         "title": "海边风筝少年插画",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-044.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-044.webp",
         "tags": ["插画", "海边", "清新"],
         "prompt": "生成一张清新扁平插画：海边草坡上少年放一只鲸鱼形状风筝，远处有灯塔和白色浪花，几何化云朵，蓝白橙配色，画面开阔明亮，不含文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-045",
+        "id": "prompt-045",
         "title": "复古科普植物图",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-045.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-045.webp",
         "tags": ["插画", "植物", "复古"],
         "prompt": "生成一张复古植物科普插画：一株虚构热带花卉被优雅地拆分成花瓣、叶片、种子和根系，米色纸张背景，精细钢笔线稿与淡彩上色，像老式博物图谱但没有文字标注，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-046",
+        "id": "prompt-046",
         "title": "纸雕森林剧场",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-046.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-046.webp",
         "tags": ["插画", "纸雕", "舞台"],
         "prompt": "生成一张纸雕风格插画：层层纸片组成微型森林剧场，小舞台上有暖光，树叶和幕布呈立体剪纸效果，色彩柔和，阴影真实，精致手工质感，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-047",
+        "id": "prompt-047",
         "title": "像素夜市小巷",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-047.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-047.webp",
         "tags": ["插画", "像素", "城市"],
         "prompt": "生成一张高质量像素艺术：雨后夜市小巷，灯笼、摊车和湿润路面反光，人物以小像素剪影呈现，色彩丰富，透视清晰，复古游戏氛围，不含可读文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-048",
+        "id": "prompt-048",
         "title": "森林神庙线稿",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-048.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-048.webp",
         "tags": ["插画", "线稿", "奇幻"],
         "prompt": "生成一张精细黑白线稿插画：古老森林神庙被树根缠绕，石阶、藤蔓和符号纹理细密，中央有一束阳光照亮空地，构图对称，适合上色书风格，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-049",
+        "id": "prompt-049",
         "title": "蒸汽飞艇港",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-049.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-049.webp",
         "tags": ["插画", "蒸汽朋克", "城市"],
         "prompt": "生成一张蒸汽朋克城市插画：黄昏飞艇港停靠多艘原创飞艇，铜管、齿轮和玻璃天棚细节丰富，暖橙天空与青灰建筑对比，宏大但秩序清晰，不含文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-050",
+        "id": "prompt-050",
         "title": "暖色厨房绘本",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-050.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-050.webp",
         "tags": ["插画", "生活", "温暖"],
         "prompt": "生成一张温暖生活绘本插画：阳光厨房里，桌上有刚出炉面包、果酱和花瓶，窗边纱帘轻动，人物可不出现，整体色调奶油黄与浅绿色，笔触柔软治愈，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-051",
+        "id": "prompt-051",
         "title": "透明机械水母",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-051.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-051.webp",
         "tags": ["3D", "机械", "透明"],
         "prompt": "生成一张高级 3D 概念图：透明机械水母悬浮在深海蓝色背景中，内部微型齿轮和发光管线可见，触须像光纤一样柔和弯曲，材质真实，体积光细腻，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-052",
+        "id": "prompt-052",
         "title": "黏土小镇清晨",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-052.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-052.webp",
         "tags": ["3D", "黏土", "小镇"],
         "prompt": "生成一张黏土定格动画风格 3D 场景：圆润小镇街道在清晨醒来，面包店门口有小推车和盆栽，材质有手捏纹理，色彩明亮温柔，微缩景深，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-053",
+        "id": "prompt-053",
         "title": "等距未来农场",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-053.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-053.webp",
         "tags": ["3D", "等距", "农业"],
         "prompt": "生成一张等距 3D 未来农场：玻璃温室、垂直种植塔、机器人小车和水循环池组成整洁模块，颜色清新，结构清晰，像高质量产品说明图但没有文字标签，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-054",
+        "id": "prompt-054",
         "title": "金属折纸飞鸟",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-054.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-054.webp",
         "tags": ["3D", "抽象", "金属"],
         "prompt": "生成一张抽象 3D 艺术图：金属折纸飞鸟在黑色背景前展开翅膀，边缘有锋利高光，表面反射渐变彩色光带，构图居中，质感精密优雅，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-055",
+        "id": "prompt-055",
         "title": "微缩火星基地",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-055.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-055.webp",
         "tags": ["3D", "科幻", "微缩"],
         "prompt": "生成一张微缩模型风格 3D 火星基地：白色舱体、太阳能板、小型探测车和红色岩石地貌，低角度光线，细节可信，玩具比例但真实渲染，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-056",
+        "id": "prompt-056",
         "title": "玻璃立方体花园",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-056.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-056.webp",
         "tags": ["3D", "建筑", "玻璃"],
         "prompt": "生成一张 3D 概念装置：透明玻璃立方体中封存一个微型花园，苔藓、小树和水滴清晰可见，外部背景极简灰白，折射与焦散光真实，画面高级干净，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-057",
+        "id": "prompt-057",
         "title": "软糖材质机器人",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-057.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-057.webp",
         "tags": ["3D", "角色", "可爱"],
         "prompt": "生成一张可爱 3D 角色：原创小机器人由半透明软糖材质构成，圆润身体、发光眼睛，站在浅色摄影棚中，柔和阴影，色彩像水果糖但不过分鲜艳，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-058",
+        "id": "prompt-058",
         "title": "黑曜石能量球",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-058.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-058.webp",
         "tags": ["3D", "奇幻", "材质"],
         "prompt": "生成一张奇幻 3D 静物：黑曜石能量球悬浮在古老石台上，内部有紫蓝色光纹流动，周围有碎石和微尘，暗色背景，体积光戏剧化，材质细腻，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-059",
+        "id": "prompt-059",
         "title": "模块化太空厨房",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-059.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-059.webp",
         "tags": ["3D", "室内", "科幻"],
         "prompt": "生成一张 3D 科幻室内设计：模块化太空厨房，白色弧形柜体、磁吸餐具、窗外可见地球弧线，冷暖光平衡，空间真实可用，设计感强，不出现屏幕文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-060",
+        "id": "prompt-060",
         "title": "彩色气泡雕塑",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-060.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-060.webp",
         "tags": ["3D", "抽象", "色彩"],
         "prompt": "生成一张抽象 3D 雕塑：多层透明彩色气泡相互嵌套漂浮，背景为柔和浅灰，光线穿透形成彩虹焦散，构图简洁，适合作为高级视觉封面，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-061",
+        "id": "prompt-061",
         "title": "城市能源流可视化",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-061.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-061.webp",
         "tags": ["信息图", "城市", "科技"],
         "prompt": "生成一张无文字信息可视化海报：夜间城市俯视图上有蓝绿色能量流线连接建筑、地铁和河道，节点以发光点表现，结构清晰，科技感高级，不出现文字数字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-062",
+        "id": "prompt-062",
         "title": "海洋塑料循环图",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-062.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-062.webp",
         "tags": ["信息图", "环保", "海洋"],
         "prompt": "生成一张环保主题视觉图：以环形构图表现海洋塑料回收循环，海浪、碎片、清洁船、再生材料以图标化立体元素呈现，配色蓝白绿色，清楚美观但没有文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-063",
+        "id": "prompt-063",
         "title": "咖啡风味雷达",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-063.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-063.webp",
         "tags": ["信息图", "咖啡", "抽象"],
         "prompt": "生成一张抽象咖啡风味可视化：俯视咖啡杯中心向外扩散出几何色块、豆子、花香、坚果和水果元素，像精美雷达图但不出现文字数字，暖棕与柔彩搭配，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-064",
+        "id": "prompt-064",
         "title": "AI 工作流积木图",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-064.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-064.webp",
         "tags": ["信息图", "AI", "流程"],
         "prompt": "生成一张 AI 工作流概念图：多个发光立方体模块通过线缆连接，分别象征输入、理解、创作和输出，空间为深色科技背景，结构一目了然但无文字标签，精致 3D 风格，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-065",
+        "id": "prompt-065",
         "title": "睡眠周期视觉化",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-065.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-065.webp",
         "tags": ["信息图", "健康", "梦境"],
         "prompt": "生成一张睡眠周期抽象可视化：月亮、云朵、脑波曲线和渐变圆环组合成柔和图形，蓝紫夜色，层次清晰，像健康应用插画但没有文字数字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-066",
+        "id": "prompt-066",
         "title": "供应链节点地图",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-066.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-066.webp",
         "tags": ["信息图", "商业", "网络"],
         "prompt": "生成一张供应链网络视觉：港口、仓库、卡车、工厂和商店以等距小模型分布在抽象地图上，路线发光连接，配色清爽专业，没有文字标注，适合商业报告封面，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-067",
+        "id": "prompt-067",
         "title": "太阳能家庭系统",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-067.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-067.webp",
         "tags": ["信息图", "能源", "家庭"],
         "prompt": "生成一张太阳能家庭系统无字示意图：剖面小房子、屋顶光伏、电池、家电和电动车以清晰线条连接，白天阳光明亮，等距 3D 插画，专业干净，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-068",
+        "id": "prompt-068",
         "title": "茶叶香气层次",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-068.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-068.webp",
         "tags": ["信息图", "茶", "东方"],
         "prompt": "生成一张茶叶香气层次抽象图：茶杯蒸汽中浮现花、果、木质和矿物元素，围绕杯子形成半透明层级圆环，东方雅致配色，没有文字标签，细腻高级，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-069",
+        "id": "prompt-069",
         "title": "云服务架构岛屿",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-069.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-069.webp",
         "tags": ["信息图", "云计算", "等距"],
         "prompt": "生成一张云服务架构等距视觉：多个漂浮岛屿代表计算、存储、数据库和安全，桥梁与光束连接，整体像精致科技沙盘，无任何文字标签，蓝白灰专业配色，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-070",
+        "id": "prompt-070",
         "title": "城市雨洪海绵系统",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-070.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-070.webp",
         "tags": ["信息图", "城市", "环保"],
         "prompt": "生成一张海绵城市雨洪系统可视化：街道剖面展示雨水花园、渗透铺装、地下蓄水和河道，水流用透明蓝色表现，专业清晰但无文字数字，等距插画风格，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-071",
+        "id": "prompt-071",
         "title": "法式早餐桌",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-071.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-071.webp",
         "tags": ["美食", "生活", "早餐"],
         "prompt": "生成一张法式早餐生活摄影：木桌上有可颂、黄油、浆果、咖啡和亚麻餐巾，窗边阳光斜射，食物纹理诱人，色调温暖自然，构图像高级杂志，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-072",
+        "id": "prompt-072",
         "title": "深夜拉面吧",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-072.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-072.webp",
         "tags": ["美食", "夜景", "日式"],
         "prompt": "生成一张深夜拉面吧场景：热腾腾拉面放在木质吧台，汤面油花、溏心蛋和葱花清晰，背景暖灯与雨夜街景虚化，氛围治愈，真实美食摄影，不出现店名文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-073",
+        "id": "prompt-073",
         "title": "夏日水果冰块",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-073.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-073.webp",
         "tags": ["美食", "夏天", "清爽"],
         "prompt": "生成一张清爽夏日静物：透明冰块中封存草莓、柠檬片和薄荷叶，放在浅蓝背景上，水珠晶莹，硬光形成干净阴影，画面明亮高级，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-074",
+        "id": "prompt-074",
         "title": "手工披萨出炉",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-074.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-074.webp",
         "tags": ["美食", "手作", "烟火气"],
         "prompt": "生成一张手工披萨出炉瞬间：木火炉旁披萨铲托着焦香披萨，芝士微微拉丝，番茄与罗勒色彩鲜明，背景火光温暖，动作自然，真实餐饮摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-075",
+        "id": "prompt-075",
         "title": "茶点东方静物",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-075.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-075.webp",
         "tags": ["美食", "东方", "静物"],
         "prompt": "生成一张东方茶点静物：青瓷茶杯、桂花糕和竹叶摆在深色木案上，窗外竹影落下，蒸汽轻微，色彩雅致，构图留白，像高端茶品牌视觉但无文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-076",
+        "id": "prompt-076",
         "title": "农夫市集蔬菜篮",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-076.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-076.webp",
         "tags": ["美食", "市集", "自然"],
         "prompt": "生成一张农夫市集摄影：柳条篮里装满彩色番茄、胡萝卜、香草和泥土感根茎蔬菜，清晨自然光，背景摊位虚化，质感真实，新鲜生动，不出现价格文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-077",
+        "id": "prompt-077",
         "title": "黑森林蛋糕切面",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-077.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-077.webp",
         "tags": ["美食", "甜品", "微距"],
         "prompt": "生成一张黑森林蛋糕微距：切面展现巧克力蛋糕层、奶油和樱桃，顶部可可碎细腻，深色背景与柔和侧光，质感诱人但不油腻，高级甜品摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-078",
+        "id": "prompt-078",
         "title": "地中海晚餐露台",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-078.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-078.webp",
         "tags": ["美食", "晚餐", "度假"],
         "prompt": "生成一张地中海露台晚餐：白桌布上摆放烤鱼、橄榄、番茄沙拉和葡萄酒杯，远处海景日落，灯串微亮，氛围轻松高级，真实生活方式摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-079",
+        "id": "prompt-079",
         "title": "巧克力工坊",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-079.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-079.webp",
         "tags": ["美食", "工坊", "巧克力"],
         "prompt": "生成一张巧克力工坊场景：手工巧克力排列在大理石台上，旁边有熔化巧克力、坚果和金属刮刀，暖色工作灯，细节丰富，商业美食摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-080",
+        "id": "prompt-080",
         "title": "雨天热红酒",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-080.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-080.webp",
         "tags": ["美食", "饮品", "氛围"],
         "prompt": "生成一张雨天热红酒静物：玻璃杯中有橙片、肉桂和微热蒸汽，背景为雨窗和昏黄灯光，桌上有毛毯边缘，色调温暖治愈，浅景深摄影，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-081",
+        "id": "prompt-081",
         "title": "星际植物温室",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-081.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-081.webp",
         "tags": ["科幻", "植物", "太空"],
         "prompt": "生成一张科幻温室场景：宇宙飞船内部透明穹顶种满异星植物，窗外是星云和行星，植物散发柔光，科学设备整洁，氛围宁静壮丽，不出现屏幕文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-082",
+        "id": "prompt-082",
         "title": "沙丘上的机器人牧羊人",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-082.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-082.webp",
         "tags": ["科幻", "机器人", "沙漠"],
         "prompt": "生成一张原创科幻场景：机器人牧羊人站在橙色沙丘上，身旁是一群小型机械生物，远处双太阳落下，长影拉伸，画面辽阔孤独，电影概念艺术，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-083",
+        "id": "prompt-083",
         "title": "云端龙巢",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-083.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-083.webp",
         "tags": ["奇幻", "龙", "天空"],
         "prompt": "生成一张史诗奇幻场景：云端浮岛上有巨大的原创龙巢，幼龙在金色晨光中展开翅膀，远处山脉穿出云海，细节宏大，色彩柔和壮丽，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-084",
+        "id": "prompt-084",
         "title": "地下水晶城",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-084.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-084.webp",
         "tags": ["奇幻", "城市", "水晶"],
         "prompt": "生成一张地下水晶城概念图：巨型紫色水晶支撑城市桥梁与阶梯，地下湖反射光芒，人物如小剪影表现尺度，建筑原创，氛围神秘华丽，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-085",
+        "id": "prompt-085",
         "title": "赛博雨巷便利店",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-085.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-085.webp",
         "tags": ["科幻", "赛博", "夜景"],
         "prompt": "生成一张赛博城市夜景：雨巷尽头有一家无字便利店，霓虹反射在湿地面上，行人撑伞经过，电线和管道细节丰富，蓝粉光影，电影质感，不出现可读文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-086",
+        "id": "prompt-086",
         "title": "魔法药剂温室",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-086.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-086.webp",
         "tags": ["奇幻", "药剂", "温室"],
         "prompt": "生成一张奇幻温室静物：木桌上摆着发光药剂瓶、草药、玻璃器皿和月光花，背景为潮湿绿植，蓝绿与琥珀色光线交织，精致写实，不要任何文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-087",
+        "id": "prompt-087",
         "title": "深空维修员",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-087.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-087.webp",
         "tags": ["科幻", "太空", "职业"],
         "prompt": "生成一张深空维修场景：宇航维修员悬浮在巨大空间站外壳旁，地球或未知行星在远处，头盔反射星光，金属结构细节真实，画面宏大安静，不出现标识文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-088",
+        "id": "prompt-088",
         "title": "雪山女巫小屋",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-088.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-088.webp",
         "tags": ["奇幻", "雪景", "小屋"],
         "prompt": "生成一张奇幻雪山小屋：偏僻木屋坐落在暴雪后的森林边，烟囱冒出暖烟，窗内有柔光和草药影子，天空蓝紫，氛围神秘温暖，原创场景，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-089",
+        "id": "prompt-089",
         "title": "机械鲸穿越云海",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-089.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-089.webp",
         "tags": ["科幻", "机械", "云海"],
         "prompt": "生成一张梦幻科幻概念图：巨大机械鲸缓慢穿越金色云海，身体由银色金属和透明舱体构成，下方小型飞行器作为尺度，光线史诗，细节精美，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-090",
+        "id": "prompt-090",
         "title": "古代星图观测台",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-090.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-090.webp",
         "tags": ["奇幻", "天文", "古代"],
         "prompt": "生成一张古代观测台奇幻场景：石质圆形平台上有原创天文仪器，星空巨大清晰，远处山城灯火微弱，蓝金配色，神秘庄重，不出现符号文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-091",
+        "id": "prompt-091",
         "title": "无字音乐节主视觉",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-091.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-091.webp",
         "tags": ["海报", "音乐", "视觉"],
         "prompt": "生成一张无字音乐节主视觉：夜空下巨大的发光声波雕塑立在草地舞台中央，人群以剪影出现，紫橙激光和烟雾营造现场感，构图适合海报但不出现任何文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-092",
+        "id": "prompt-092",
         "title": "极简运动海报",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-092.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-092.webp",
         "tags": ["海报", "运动", "极简"],
         "prompt": "生成一张极简运动视觉海报：跑者剪影穿过几何色块和长阴影，背景大面积留白，红黑白配色，动势强烈，画面干净现代，不出现文字、数字、水印或 logo。"
     },
     {
-        "id": "rb-prompt-093",
+        "id": "prompt-093",
         "title": "复古旅行海报山城",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-093.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-093.webp",
         "tags": ["海报", "旅行", "复古"],
         "prompt": "生成一张复古旅行海报风格画面：山城依山而建，缆车穿过云雾，太阳低垂，色块平整，边缘微颗粒，构图有经典海报感但没有任何可读文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-094",
+        "id": "prompt-094",
         "title": "新中式香氛视觉",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-094.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-094.webp",
         "tags": ["海报", "新中式", "香氛"],
         "prompt": "生成一张新中式香氛视觉：无字瓷瓶放在水墨山石与烟雾之间，背景有淡金圆月和松枝剪影，材质高级，色彩黑白金克制，适合品牌海报但无文字标识，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-095",
+        "id": "prompt-095",
         "title": "未来汽车发布视觉",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-095.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-095.webp",
         "tags": ["海报", "汽车", "科技"],
         "prompt": "生成一张未来汽车发布视觉：原创概念车停在镜面黑色展台，车身线条低矮流畅，蓝色光带勾勒轮廓，背景为简洁光幕，无任何品牌文字，商业级渲染，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-096",
+        "id": "prompt-096",
         "title": "独立电影静帧海报",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-096.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-096.webp",
         "tags": ["海报", "电影", "情绪"],
         "prompt": "生成一张独立电影感无字海报：空旷公交站在清晨薄雾中，一个人背对镜头等待，远处城市轮廓模糊，冷暖光交界，情绪克制，画面有叙事悬念，不要文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-097",
+        "id": "prompt-097",
         "title": "潮流球鞋视觉装置",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-097.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-097.webp",
         "tags": ["海报", "潮流", "产品"],
         "prompt": "生成一张潮流视觉海报：原创球鞋漂浮在彩色亚克力装置之间，背景是硬朗几何阴影，红蓝黄撞色，质感清晰，构图适合社媒封面，不出现品牌文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-098",
+        "id": "prompt-098",
         "title": "环保公益海报视觉",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-098.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-098.webp",
         "tags": ["海报", "环保", "公益"],
         "prompt": "生成一张无字环保公益视觉：一棵小树从破裂的透明地球模型中生长出来，周围有水滴和泥土，背景纯净浅色，寓意清晰但不过度说教，不出现文字、水印、logo。"
     },
     {
-        "id": "rb-prompt-099",
+        "id": "prompt-099",
         "title": "数字艺术展入口",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-099.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-099.webp",
         "tags": ["海报", "展览", "数字艺术"],
         "prompt": "生成一张数字艺术展入口视觉：黑暗展厅中有巨大的互动光幕和粒子瀑布，观众剪影站在入口处，蓝紫色光照亮地面，空间高级沉浸，不出现展名文字，不要水印、logo。"
     },
     {
-        "id": "rb-prompt-100",
+        "id": "prompt-100",
         "title": "高端餐厅季节菜单视觉",
-        "coverUrl": "/prompt-covers/relaybases/rb-prompt-100.webp",
+        "coverUrl": "/prompt-covers/anyaigc/prompt-100.webp",
         "tags": ["海报", "餐饮", "高级"],
         "prompt": "生成一张高端餐厅季节视觉：深色石材台面上摆放精致摆盘、时令花草和银色餐具，顶部柔光强调纹理，构图像菜单封面但没有任何文字，低饱和高级色调，不要水印、logo。"
     }

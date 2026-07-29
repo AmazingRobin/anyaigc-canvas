@@ -8,7 +8,7 @@ type LanguageStore = {
     setLanguage: (language: LanguageName) => void;
 };
 
-export const LANGUAGE_STORE_NAME = "relaybases-canvas:language_store";
+export const LANGUAGE_STORE_NAME = "anyaigc-canvas:language_store";
 
 export function normalizeLanguage(value: string | null | undefined): LanguageName | undefined {
     if (!value) return undefined;
@@ -24,6 +24,6 @@ export const useLanguageStore = create<LanguageStore>()(
             language: "zh",
             setLanguage: (language) => set({ language }),
         }),
-        { name: LANGUAGE_STORE_NAME },
+        { name: LANGUAGE_STORE_NAME, skipHydration: true },
     ),
 );

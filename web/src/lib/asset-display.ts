@@ -10,7 +10,7 @@ const canonicalSources: Record<string, string> = {
     Manual: "手动添加",
     Canvas: "画布",
     "Prompt Library": "提示词库",
-    "RelayBases Curated": "RelayBases 精选",
+    "AnyAIGC Curated": "AnyAIGC 精选",
     "Image Studio": "生图工作台",
     "Video Studio": "视频创作台",
 };
@@ -28,7 +28,7 @@ export function assetDisplaySource(value: string | undefined, language: SharedLa
         手动添加: "Manual",
         画布: "Canvas",
         提示词库: "Prompt Library",
-        "RelayBases 精选": "RelayBases Curated",
+        "AnyAIGC 精选": "AnyAIGC Curated",
         生图工作台: "Image Studio",
         视频创作台: "Video Studio",
     };

@@ -42,9 +42,9 @@ export function notifyWorkbenchTask(enabled: boolean, title: string, body: strin
     try {
         const notification = new Notification(title, {
             body,
-            icon: "/relaybases-mark.svg",
-            badge: "/relaybases-mark.svg",
-            tag: options.tag || `relaybases-workbench-${Date.now()}`,
+            icon: "/anyaigc-canvas-logo.png",
+            badge: "/anyaigc-canvas-logo.png",
+            tag: options.tag || `anyaigc-workbench-${Date.now()}`,
             requireInteraction: options.requireInteraction ?? false,
         });
         notification.onclick = () => {
@@ -53,7 +53,7 @@ export function notifyWorkbenchTask(enabled: boolean, title: string, body: strin
         };
         return "sent";
     } catch (error) {
-        console.warn("[RelayBases] Workbench notification failed", error);
+        console.warn("[AnyAIGC] Workbench notification failed", error);
         return "failed";
     }
 }
@@ -76,7 +76,7 @@ export function safeArchiveName(value: string) {
         .replace(/[\\/:*?"<>|]+/g, "-")
         .replace(/\s+/g, " ")
         .trim()
-        .slice(0, 80) || "relaybases";
+        .slice(0, 80) || "anyaigc";
 }
 
 export function timestampForFileName() {

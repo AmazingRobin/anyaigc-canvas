@@ -7,8 +7,8 @@ import "./globals.css";
 import React from "react";
 
 export const metadata: Metadata = {
-    title: "RelayBases Infinite Canvas",
-    description: "RelayBases workspace for image, video, prompt, and agent creation.",
+    title: "AnyAIGC Canvas",
+    description: "AnyAIGC workspace for image, video, prompt, and agent creation.",
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
                     id="theme-script"
                     strategy="beforeInteractive"
                     dangerouslySetInnerHTML={{
-                        __html: `try{var p=new URLSearchParams(location.search);var q=p.get("theme");var s={};try{s=JSON.parse(localStorage.getItem("infinite-canvas:theme_store")||"{}")}catch(e){}var saved=s.state&&s.state.theme;var t=q==="light"||q==="dark"?q:saved==="light"||saved==="dark"?saved:"light";localStorage.setItem("infinite-canvas:theme_store",JSON.stringify({state:{theme:t},version:0}));document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.style.colorScheme=t;var lq=p.get("lang")||p.get("language")||p.get("locale");var ls={};try{ls=JSON.parse(localStorage.getItem("relaybases-canvas:language_store")||"{}")}catch(e){}var savedLang=ls.state&&ls.state.language;var nl=(navigator&&navigator.language)||"";var lang=/^zh|^cn/i.test(lq||"")?"zh":/^en/i.test(lq||"")?"en":savedLang==="zh"||savedLang==="en"?savedLang:/^en/i.test(nl)?"en":"zh";localStorage.setItem("relaybases-canvas:language_store",JSON.stringify({state:{language:lang},version:0}));document.documentElement.lang=lang==="zh"?"zh-CN":"en";document.documentElement.dataset.lang=lang}catch(e){document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light";document.documentElement.lang="zh-CN";document.documentElement.dataset.lang="zh"}`,
+                        __html: `try{var p=new URLSearchParams(location.search);var q=p.get("theme");var s={};try{s=JSON.parse(localStorage.getItem("infinite-canvas:theme_store")||"{}")}catch(e){}var saved=s.state&&s.state.theme;var t=q==="light"||q==="dark"?q:saved==="light"||saved==="dark"?saved:"light";localStorage.setItem("infinite-canvas:theme_store",JSON.stringify({state:{theme:t},version:0}));document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.style.colorScheme=t;var lq=p.get("lang")||p.get("language")||p.get("locale");var ls={};try{ls=JSON.parse(localStorage.getItem("anyaigc-canvas:language_store")||"{}")}catch(e){}var savedLang=ls.state&&ls.state.language;var nl=(navigator&&navigator.language)||"";var lang=/^zh|^cn/i.test(lq||"")?"zh":/^en/i.test(lq||"")?"en":savedLang==="zh"||savedLang==="en"?savedLang:/^en/i.test(nl)?"en":"zh";localStorage.setItem("anyaigc-canvas:language_store",JSON.stringify({state:{language:lang},version:0}));document.documentElement.lang=lang==="zh"?"zh-CN":"en";document.documentElement.dataset.lang=lang}catch(e){document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light";document.documentElement.lang="zh-CN";document.documentElement.dataset.lang="zh"}`,
                     }}
                 />
                 <AntdRegistry>

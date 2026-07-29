@@ -1,22 +1,26 @@
 ---
 title: 快速开始
-description: 用最少步骤把无限画布跑起来
+description: 用最少步骤启动和部署 AnyAIGC Canvas
 ---
 
 # 快速开始
 
-如果你只是想先把项目跑起来，优先部署或启动 `web/` 前端。
+AnyAIGC Canvas 是浏览器优先的 AI 创作工作台。部署或本地启动时，只需要运行 `web/` 前端。
 
 ## Vercel 部署
 
-在 Vercel 中导入仓库即可，根目录 `vercel.json` 会构建 `web/`。当前版本的 AI 请求由浏览器前台直连用户自己的 OpenAI 兼容地址，不需要额外配置服务端。
+1. 在 Vercel 中导入本仓库。
+2. 将 **Root Directory** 设为 `web`。
+3. 保持默认构建命令 `bun run build` 并部署。
+4. 在 Vercel 的 Domains 中添加 `canvas.anyaigc.com`，再按 Vercel 显示的记录配置 DNS。
+
+AI 请求由浏览器直接发往 `https://anyaigc.com`，无需配置服务端 API Key。
 
 ## 本地启动
 
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
-cd infinite-canvas
-cd web
+git clone https://github.com/AmazingRobin/anyaigc-canvas.git
+cd anyaigc-canvas/web
 bun install
 bun run dev
 ```
@@ -27,22 +31,13 @@ bun run dev
 http://localhost:3000
 ```
 
-## Docker 启动
-
-如果你需要基于当前源码构建镜像：
-
-```bash
-docker build -t infinite-canvas .
-docker run --rm -p 3000:3000 infinite-canvas
-```
-
 ## 首次使用建议
 
-- 先打开右上角配置弹窗，填入自己的 `Base URL`、`API Key` 和模型名。
-- 如果需要提示词仓库内容，打开 `/prompts` 会通过 Next.js route 拉取并缓存在内存中。
-- 如果需要跨设备同步画布、素材和生成记录，可在配置弹窗中填写 WebDAV。
+- 先打开右上角配置弹窗，分别填入自己的媒体 API Key 和文本 API Key；创建 Key 时推荐选择“智能自动 / Smart Auto”分组。
+- 点击“获取模型”。图片和视频仅显示当前媒体 Key 的 `/v1/models` 返回且 Canvas 已支持的模型。
+- 如果需要跨设备备份或同步画布、素材和生成记录，可自行配置 WebDAV。
 
 ## 说明
 
-- 当前画布项目和“我的素材”主要保存在浏览器本地，WebDAV 同步需要用户自行配置。
-- AI API Key 保存在浏览器本地，并由前端直接请求 OpenAI 兼容接口。
+- 当前画布项目、素材、生成记录和 API Key 均保存在浏览器本地。请只在受信任的设备和浏览器中填写自己的 Key。
+- WebDAV 为用户自有服务的可选同步方式；项目不提供云同步。

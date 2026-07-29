@@ -1,8 +1,8 @@
 services:
   app:
     build: .
-    image: relaybases-canvas:latest
-    container_name: relaybases-canvas
+    image: anyaigc-canvas:latest
+    container_name: anyaigc-canvas
     ports:
       - "${CANVAS_HOST_PORT:-3001}:3000"
     restart: unless-stopped

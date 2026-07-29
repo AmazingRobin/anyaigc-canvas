@@ -3,7 +3,7 @@ import { appName, gitConfig } from "./shared";
 import { ArrowUpRight } from "lucide-react";
 
 const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
-const canvasUrl = "https://canvas.relaybases.com/canvas?mode=new";
+const canvasUrl = "https://canvas.anyaigc.com/canvas?mode=new";
 
 export function baseOptions(): BaseLayoutProps {
   return {

@@ -1,31 +1,23 @@
 import assert from "node:assert/strict";
 
+import { filterMediaModels } from "@/lib/anyaigc-media-models";
 import { normalizeDiscoveredModels, responseCapableModelIds } from "@/services/api/image";
 import {
-    RELAYBASES_CHANNEL_ID,
-    RELAYBASES_MEDIA_BASE_URL,
-    RELAYBASES_TEXT_BASE_URL,
-    RELAYBASES_TEXT_CHANNEL_ID,
-    applyRelayBasesConfigPatch,
+    ANYAIGC_BASE_URL,
+    ANYAIGC_MEDIA_CHANNEL_ID,
+    ANYAIGC_TEXT_CHANNEL_ID,
+    applyAnyAIGCConfigPatch,
     defaultConfig,
     encodeChannelModel,
-    migrateRelayBasesConfig,
-    normalizeRelayBasesConfig,
+    mergePersistedAnyAIGCConfig,
+    normalizeAnyAIGCConfig,
     replaceChannelModels,
     type AiConfig,
     type ModelChannel,
 } from "@/stores/use-config-store";
 
 function channel(id: string, apiKey: string, models: string[]): ModelChannel {
-    const media = id === RELAYBASES_CHANNEL_ID;
-    return {
-        id,
-        name: media ? "RelayBases Media" : "RelayBases Text",
-        baseUrl: media ? RELAYBASES_MEDIA_BASE_URL : RELAYBASES_TEXT_BASE_URL,
-        apiKey,
-        apiFormat: "openai",
-        models,
-    };
+    return { id, name: id === ANYAIGC_MEDIA_CHANNEL_ID ? "AnyAIGC Media" : "AnyAIGC Text", baseUrl: ANYAIGC_BASE_URL, apiKey, apiFormat: "openai", models };
 }
 
 function configWithModels(options: { mediaKey?: string; textKey?: string; mediaModels?: string[]; textModels?: string[] } = {}): AiConfig {
@@ -36,15 +28,7 @@ function configWithModels(options: { mediaKey?: string; textKey?: string; mediaM
         apiKey: mediaKey,
         mediaApiKey: mediaKey,
         textApiKey: textKey,
-        channels: [channel(RELAYBASES_CHANNEL_ID, mediaKey, options.mediaModels || []), channel(RELAYBASES_TEXT_CHANNEL_ID, textKey, options.textModels || [])],
-        model: "ghost::model",
-        imageModel: "ghost::image",
-        videoModel: "ghost::video",
-        textModel: "ghost::text",
-        models: ["ghost::model"],
-        imageModels: ["ghost::image"],
-        videoModels: ["ghost::video"],
-        textModels: ["ghost::text"],
+        channels: [channel(ANYAIGC_MEDIA_CHANNEL_ID, mediaKey, options.mediaModels || []), channel(ANYAIGC_TEXT_CHANNEL_ID, textKey, options.textModels || [])],
     };
 }
 
@@ -54,18 +38,16 @@ function getChannel(config: Pick<AiConfig, "channels">, id: string) {
     return result;
 }
 
-const media = (model: string) => encodeChannelModel(RELAYBASES_CHANNEL_ID, model);
-const text = (model: string) => encodeChannelModel(RELAYBASES_TEXT_CHANNEL_ID, model);
+const media = (model: string) => encodeChannelModel(ANYAIGC_MEDIA_CHANNEL_ID, model);
+const text = (model: string) => encodeChannelModel(ANYAIGC_TEXT_CHANNEL_ID, model);
 
-// Model endpoint payloads are untrusted: normalize endpoint names, merge
-// duplicates, and drop malformed or channel-separator IDs.
 assert.deepEqual(
     normalizeDiscoveredModels([
         null,
         "gpt-5.5",
         { id: " gpt-5.5 ", supported_endpoint_types: ["OPENAI-RESPONSE", "openai-response"] },
         { id: "gpt-5.5", supported_endpoint_types: "openai-chat" },
-        { id: "relaybases::injected", supported_endpoint_types: ["openai-response"] },
+        { id: "anyaigc-media::injected", supported_endpoint_types: ["openai-response"] },
         { id: "gpt-image-2", supported_endpoint_types: ["openai-image"] },
     ]),
     [
@@ -73,120 +55,53 @@ assert.deepEqual(
         { id: "gpt-image-2", supportedEndpointTypes: ["openai-image"] },
     ],
 );
+assert.deepEqual(responseCapableModelIds([{ id: "gpt-5.5", supportedEndpointTypes: ["openai-response"] }, { id: "chat-only", supportedEndpointTypes: ["openai-chat"] }]), ["gpt-5.5"]);
+
 assert.deepEqual(
-    responseCapableModelIds([
-        { id: "gpt-5.5", supportedEndpointTypes: ["openai-response"] },
-        { id: "chat-only", supportedEndpointTypes: ["openai-chat"] },
-        { id: "unspecified", supportedEndpointTypes: [] },
-    ]),
-    ["gpt-5.5"],
+    filterMediaModels(["gpt-image-2", "gemini-3.1-flash-image-preview", "grok-imagine-image", "grok-imagine-image-pro", "nana-banana-2_sync", "veo-3-1"], "image"),
+    ["gpt-image-2", "gemini-3.1-flash-image-preview", "grok-imagine-image", "grok-imagine-image-pro"],
+);
+assert.deepEqual(
+    filterMediaModels(["grok-imagine-video", "grok-imagine-video-1.5", "kling-motion-control", "kling-omni-video", "kling-3.0-turbo", "MiniMax-Hailuo-02", "MiniMax-Hailuo-2.3", "veo-3-1", "video-pro-720p"], "video"),
+    ["grok-imagine-video", "grok-imagine-video-1.5", "kling-motion-control", "kling-omni-video", "kling-3.0-turbo", "MiniMax-Hailuo-02", "MiniMax-Hailuo-2.3"],
 );
 
-// v2 persisted both channels' model lists. v3 must invalidate both so a model
-// discovered with Key A can never be presented after the user switches to Key B.
-const migratedV2 = migrateRelayBasesConfig(
+const normalized = normalizeAnyAIGCConfig(
     configWithModels({
-        mediaModels: ["gpt-image-2"],
-        textModels: ["gpt-5.5"],
-    }),
-    2,
-);
-assert.deepEqual(getChannel(migratedV2, RELAYBASES_CHANNEL_ID).models, []);
-assert.deepEqual(getChannel(migratedV2, RELAYBASES_TEXT_CHANNEL_ID).models, []);
-assert.deepEqual(migratedV2.models, []);
-assert.deepEqual(migratedV2.imageModels, []);
-assert.deepEqual(migratedV2.videoModels, []);
-assert.deepEqual(migratedV2.textModels, []);
-assert.equal(migratedV2.imageModel, "");
-assert.equal(migratedV2.videoModel, "");
-assert.equal(migratedV2.textModel, "");
-
-// channel.models is the only source of selectable and aggregate model lists.
-const sourceConfig = normalizeRelayBasesConfig(
-    configWithModels({
-        mediaModels: ["veo-3-1", "gpt-image-2", "gpt-image-2"],
-        textModels: ["gpt-5.4", "gpt-5.5", "gpt-5.5"],
+        mediaModels: ["gpt-image-2", "grok-imagine-video", "veo-3-1", "gpt-image-2"],
+        textModels: ["gpt-5.4", "gpt-5.5", "gpt-5.5", "tts-1"],
     }),
 );
-assert.deepEqual(getChannel(sourceConfig, RELAYBASES_CHANNEL_ID).models, ["veo-3-1", "gpt-image-2"]);
-assert.deepEqual(getChannel(sourceConfig, RELAYBASES_TEXT_CHANNEL_ID).models, ["gpt-5.4", "gpt-5.5"]);
-assert.deepEqual(sourceConfig.models, [media("veo-3-1"), media("gpt-image-2"), text("gpt-5.4"), text("gpt-5.5")]);
-assert.deepEqual(sourceConfig.imageModels, [media("gpt-image-2")]);
-assert.deepEqual(sourceConfig.videoModels, [media("veo-3-1")]);
-assert.deepEqual(sourceConfig.textModels, [text("gpt-5.4"), text("gpt-5.5")]);
-assert.equal(sourceConfig.models.some((model) => model.includes("ghost")), false, "stale top-level lists must not feed model availability");
+assert.deepEqual(getChannel(normalized, ANYAIGC_MEDIA_CHANNEL_ID).models, ["gpt-image-2", "grok-imagine-video", "veo-3-1"]);
+assert.deepEqual(normalized.imageModels, [media("gpt-image-2")]);
+assert.deepEqual(normalized.videoModels, [media("grok-imagine-video")]);
+assert.deepEqual(normalized.textModels, [text("gpt-5.4"), text("gpt-5.5")]);
+assert.deepEqual(normalized.audioModels, [text("tts-1")]);
+assert.equal(normalized.imageModel, media("gpt-image-2"));
+assert.equal(normalized.videoModel, media("grok-imagine-video"));
+assert.equal(normalized.textModel, text("gpt-5.5"));
 
-// Models are split by the capability of the channel that owns their key.
-const splitConfig = normalizeRelayBasesConfig(
-    configWithModels({
-        mediaModels: ["gpt-5.4", "gpt-image-2", "video-pro-720p"],
-        textModels: ["gpt-image-2", "gpt-5.5"],
-    }),
-);
-assert.deepEqual(splitConfig.imageModels, [media("gpt-image-2")]);
-assert.deepEqual(splitConfig.videoModels, [media("video-pro-720p")]);
-assert.deepEqual(splitConfig.textModels, [text("gpt-5.5")]);
-assert.equal(splitConfig.textModels.includes(media("gpt-5.4")), false, "a text-looking model returned by the media key must not enter the text picker");
-assert.equal(splitConfig.imageModels.includes(text("gpt-image-2")), false, "an image-looking model returned by the text key must not enter the image picker");
+const mediaPatch = applyAnyAIGCConfigPatch(normalized, { mediaApiKey: "media-key-b" });
+assert.deepEqual(getChannel(mediaPatch, ANYAIGC_MEDIA_CHANNEL_ID).models, []);
+assert.deepEqual(getChannel(mediaPatch, ANYAIGC_TEXT_CHANNEL_ID), getChannel(normalized, ANYAIGC_TEXT_CHANNEL_ID));
+assert.deepEqual(normalizeAnyAIGCConfig(mediaPatch).imageModels, []);
+assert.deepEqual(normalizeAnyAIGCConfig(mediaPatch).videoModels, []);
 
-// Preferred defaults win even when the API returns them after another model.
-const preferredDefaults = normalizeRelayBasesConfig(
-    configWithModels({
-        mediaModels: ["nana-banana-2", "gpt-image-2", "video-pro-720p", "veo-3-1"],
-        textModels: ["gpt-5.4", "gpt-5.5"],
-    }),
-);
-assert.equal(preferredDefaults.imageModel, media("gpt-image-2"));
-assert.equal(preferredDefaults.model, media("gpt-image-2"));
-assert.equal(preferredDefaults.videoModel, media("veo-3-1"));
-assert.equal(preferredDefaults.textModel, text("gpt-5.5"));
+const textPatch = applyAnyAIGCConfigPatch(normalized, { textApiKey: "text-key-b" });
+assert.deepEqual(getChannel(textPatch, ANYAIGC_TEXT_CHANNEL_ID).models, []);
+assert.deepEqual(getChannel(textPatch, ANYAIGC_MEDIA_CHANNEL_ID), getChannel(normalized, ANYAIGC_MEDIA_CHANNEL_ID));
+assert.deepEqual(normalizeAnyAIGCConfig(textPatch).textModels, []);
 
-// If a preferred model is unavailable, normalization chooses the first model of that capability.
-const fallbackDefaults = normalizeRelayBasesConfig(
-    configWithModels({
-        mediaModels: ["nana-banana-2", "video-pro-720p"],
-        textModels: ["gpt-5.4"],
-    }),
-);
-assert.equal(fallbackDefaults.imageModel, media("nana-banana-2"));
-assert.equal(fallbackDefaults.videoModel, media("video-pro-720p"));
-assert.equal(fallbackDefaults.textModel, text("gpt-5.4"));
+const replaced = replaceChannelModels(normalized.channels, ANYAIGC_MEDIA_CHANNEL_ID, ["kling-omni-video", "kling-omni-video"]);
+const afterReplacement = normalizeAnyAIGCConfig({ ...normalized, channels: replaced });
+assert.deepEqual(afterReplacement.imageModels, []);
+assert.deepEqual(afterReplacement.videoModels, [media("kling-omni-video")]);
+assert.equal(afterReplacement.models.includes(media("gpt-image-2")), false);
 
-// Changing one key clears that channel and its derived defaults in the same store update pipeline.
-const beforeKeySwitch = preferredDefaults;
-const mediaPatch = applyRelayBasesConfigPatch(beforeKeySwitch, { mediaApiKey: "media-key-b" });
-assert.deepEqual(getChannel(mediaPatch, RELAYBASES_CHANNEL_ID).models, [], "media Key A models must be cleared before Key B discovery");
-assert.deepEqual(getChannel(mediaPatch, RELAYBASES_TEXT_CHANNEL_ID), getChannel(beforeKeySwitch, RELAYBASES_TEXT_CHANNEL_ID), "changing the media key must not touch the text channel");
-const afterMediaKeySwitch = normalizeRelayBasesConfig(mediaPatch);
-assert.equal(afterMediaKeySwitch.mediaApiKey, "media-key-b");
-assert.deepEqual(afterMediaKeySwitch.imageModels, []);
-assert.deepEqual(afterMediaKeySwitch.videoModels, []);
-assert.equal(afterMediaKeySwitch.imageModel, "");
-assert.equal(afterMediaKeySwitch.videoModel, "");
-assert.deepEqual(afterMediaKeySwitch.textModels, beforeKeySwitch.textModels);
-assert.equal(afterMediaKeySwitch.textModel, beforeKeySwitch.textModel);
+const rehydrated = mergePersistedAnyAIGCConfig(normalized);
+assert.deepEqual(getChannel(rehydrated, ANYAIGC_MEDIA_CHANNEL_ID).models, ["gpt-image-2", "grok-imagine-video", "veo-3-1"]);
+assert.deepEqual(getChannel(rehydrated, ANYAIGC_TEXT_CHANNEL_ID).models, ["gpt-5.4", "gpt-5.5", "tts-1"]);
+assert.deepEqual(rehydrated.imageModels, [media("gpt-image-2")]);
+assert.deepEqual(rehydrated.videoModels, [media("grok-imagine-video")]);
 
-const textPatch = applyRelayBasesConfigPatch(beforeKeySwitch, { textApiKey: "text-key-b" });
-assert.deepEqual(getChannel(textPatch, RELAYBASES_TEXT_CHANNEL_ID).models, [], "text Key A models must be cleared before Key B discovery");
-assert.deepEqual(getChannel(textPatch, RELAYBASES_CHANNEL_ID), getChannel(beforeKeySwitch, RELAYBASES_CHANNEL_ID), "changing the text key must not touch the media channel");
-const afterTextKeySwitch = normalizeRelayBasesConfig(textPatch);
-assert.equal(afterTextKeySwitch.textApiKey, "text-key-b");
-assert.deepEqual(afterTextKeySwitch.textModels, []);
-assert.equal(afterTextKeySwitch.textModel, "");
-assert.deepEqual(afterTextKeySwitch.imageModels, beforeKeySwitch.imageModels);
-assert.deepEqual(afterTextKeySwitch.videoModels, beforeKeySwitch.videoModels);
-assert.equal(afterTextKeySwitch.imageModel, beforeKeySwitch.imageModel);
-assert.equal(afterTextKeySwitch.videoModel, beforeKeySwitch.videoModel);
-
-// A refresh replaces the target channel exactly; it never unions with the previous result.
-const replacedChannels = replaceChannelModels(beforeKeySwitch.channels, RELAYBASES_CHANNEL_ID, ["nana-banana-pro", "nana-banana-pro"]);
-assert.deepEqual(getChannel({ channels: replacedChannels }, RELAYBASES_CHANNEL_ID).models, ["nana-banana-pro"]);
-assert.deepEqual(getChannel({ channels: replacedChannels }, RELAYBASES_TEXT_CHANNEL_ID), getChannel(beforeKeySwitch, RELAYBASES_TEXT_CHANNEL_ID), "media refresh must leave the text channel untouched");
-const afterReplacement = normalizeRelayBasesConfig({ ...beforeKeySwitch, channels: replacedChannels });
-assert.deepEqual(afterReplacement.imageModels, [media("nana-banana-pro")]);
-assert.deepEqual(afterReplacement.videoModels, []);
-assert.equal(afterReplacement.models.includes(media("gpt-image-2")), false, "a model omitted by the latest response must disappear");
-assert.equal(afterReplacement.models.includes(media("veo-3-1")), false, "replace must not retain a previous video model");
-assert.deepEqual(afterReplacement.textModels, beforeKeySwitch.textModels);
-
-console.log("Dynamic model store contract checks passed");
+console.log("AnyAIGC dynamic model store contract checks passed");

@@ -1,11 +1,11 @@
 import axios from "axios";
 
-import { buildApiUrl, isRelayBasesAsyncImageModel, isRelayBasesSyncImageModel, modelOptionName, resolveModelRequestConfig, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { buildApiUrl, modelOptionName, resolveModelRequestConfig, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { nanoid } from "nanoid";
 import { AZURE_IMAGE_MASK_MAX_BYTES, dataUrlToFile, validateAzureImageEditFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { workbenchText } from "@/lib/i18n-workbench";
-import { grokImageModelCapability, grokImageRequestError, relayBasesMediaText } from "@/lib/relaybases-media-models";
+import { isGeminiImageModel, mediaRequestError } from "@/lib/anyaigc-media-models";
 import { imageToDataUrl } from "@/services/image-storage";
 import type { ReferenceImage } from "@/types/image";
 
@@ -66,19 +66,6 @@ type ImageApiResponse = {
     code?: number;
     msg?: string;
 };
-type AsyncMediaTaskResponse = {
-    id?: string;
-    task_id?: string;
-    status?: string;
-    task_status?: string;
-    progress?: number;
-    image_url?: string | null;
-    video_url?: string | null;
-    url?: string | null;
-    result_urls?: string[];
-    error?: { message?: string };
-};
-type ApiAsyncMediaTaskResponse = AsyncMediaTaskResponse | { code?: number; data?: AsyncMediaTaskResponse | null; msg?: string };
 type GeminiPart = {
     text?: string;
     inlineData?: { mimeType?: string; data?: string };
@@ -214,98 +201,6 @@ function parseImagePayload(payload: ImageApiResponse) {
     return images;
 }
 
-function unwrapAsyncMediaTask(payload: ApiAsyncMediaTaskResponse) {
-    if (!payload) throw new Error(workbenchText("异步任务接口没有返回任务"));
-    if (typeof payload === "object" && "code" in payload && typeof payload.code === "number") {
-        if (payload.code !== 0) throw new Error(payload.msg || workbenchText("请求失败"));
-        if (!payload.data) throw new Error(workbenchText("异步任务接口没有返回任务"));
-        return payload.data;
-    }
-    return payload as AsyncMediaTaskResponse;
-}
-
-function readAsyncImageResultUrl(task: AsyncMediaTaskResponse) {
-    return task.image_url || task.result_urls?.find(Boolean) || task.url || "";
-}
-
-function isAsyncTaskCompleted(task: AsyncMediaTaskResponse) {
-    const status = task.task_status || task.status || "";
-    return status === "completed" || status === "succeeded";
-}
-
-function isAsyncTaskFailed(task: AsyncMediaTaskResponse) {
-    const status = task.task_status || task.status || "";
-    return status === "failed" || status === "cancelled" || status === "expired";
-}
-
-function asyncImageResolution(config: AiConfig) {
-    const quality = normalizeQuality(config.quality);
-    const dimensions = parseImageDimensions(config.size);
-    if (quality === "high" || quality === "medium") return "2k";
-    if (dimensions && Math.max(dimensions.width, dimensions.height) >= 1536) return "2k";
-    return "1k";
-}
-
-async function resolveAsyncImageReferenceUrl(image: ReferenceImage) {
-    const directUrl = image.url || image.dataUrl || "";
-    if (/^https?:\/\//i.test(directUrl) || directUrl.startsWith("asset://")) return directUrl;
-    const dataUrl = directUrl.startsWith("data:") ? directUrl : await imageToDataUrl(image);
-    if (!dataUrl) throw new Error(workbenchText("参考图读取失败，请换一张图片或重新上传"));
-    return dataUrl;
-}
-
-async function createAsyncImageTask(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions) {
-    const images = await Promise.all(references.slice(0, 5).map(resolveAsyncImageReferenceUrl));
-    const response = await axios.post<ApiAsyncMediaTaskResponse>(
-        aiApiUrl(config, "/videos"),
-        {
-            model: modelOptionName(config.model),
-            prompt: withSystemPrompt(config, prompt),
-            duration: 4,
-            resolution: asyncImageResolution(config),
-            ...(images.length ? { images } : {}),
-        },
-        {
-            headers: aiHeaders(config, "application/json"),
-            signal: options?.signal,
-        },
-    );
-    const task = unwrapAsyncMediaTask(response.data);
-    const id = task.task_id || task.id;
-    if (!id) throw new Error(workbenchText("异步图片任务没有返回 task_id"));
-    return id;
-}
-
-async function pollAsyncImageTask(config: AiConfig, taskId: string, options?: RequestOptions) {
-    const response = await axios.get<ApiAsyncMediaTaskResponse>(aiApiUrl(config, `/videos/${encodeURIComponent(taskId)}`), { headers: aiHeaders(config), signal: options?.signal });
-    const task = unwrapAsyncMediaTask(response.data);
-    if (isAsyncTaskCompleted(task)) {
-        const url = readAsyncImageResultUrl(task);
-        if (!url) throw new Error(workbenchText("异步图片任务完成但没有返回图片 URL"));
-        return { id: nanoid(), dataUrl: url };
-    }
-    if (isAsyncTaskFailed(task)) throw new Error(task.error?.message || workbenchText("异步图片任务生成失败"));
-    return null;
-}
-
-async function requestAsyncRelayBasesImages(config: AiConfig, prompt: string, references: ReferenceImage[], count: number, options?: RequestOptions) {
-    const tasks = await Promise.all(Array.from({ length: count }, () => createAsyncImageTask(config, prompt, references, options)));
-    const results: Array<{ id: string; dataUrl: string }> = [];
-    for (const taskId of tasks) {
-        for (let attempt = 0; attempt < 120; attempt += 1) {
-            if (options?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-            const result = await pollAsyncImageTask(config, taskId, options);
-            if (result) {
-                results.push(result);
-                break;
-            }
-            if (attempt === 119) throw new Error(workbenchText("异步图片任务超时，请稍后重试"));
-            await delay(2500, options?.signal);
-        }
-    }
-    return results;
-}
-
 function readAxiosError(error: unknown, fallback: string) {
     if (axios.isCancel(error)) return workbenchText("请求已取消");
     if (axios.isAxiosError<{ error?: { message?: string }; msg?: string; code?: number }>(error)) {
@@ -316,23 +211,6 @@ function readAxiosError(error: unknown, fallback: string) {
     return error instanceof Error ? error.message : fallback;
 }
 
-function delay(ms: number, signal?: AbortSignal) {
-    return new Promise<void>((resolve, reject) => {
-        if (signal?.aborted) {
-            reject(new DOMException("Aborted", "AbortError"));
-            return;
-        }
-        const timer = setTimeout(resolve, ms);
-        signal?.addEventListener(
-            "abort",
-            () => {
-                clearTimeout(timer);
-                reject(new DOMException("Aborted", "AbortError"));
-            },
-            { once: true },
-        );
-    });
-}
 
 function readStatusError(status: number | undefined, fallback: string) {
     if (status === 401 || status === 403) return workbenchText("鉴权失败，请检查 API Key、套餐权限或模型权限");
@@ -343,11 +221,6 @@ function readStatusError(status: number | undefined, fallback: string) {
 function withSystemPrompt(config: AiConfig, prompt: string) {
     const systemPrompt = config.systemPrompt.trim();
     return systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
-}
-
-function isRelayBasesNanaSyncModel(model: string) {
-    const name = modelOptionName(model);
-    return isRelayBasesSyncImageModel(name) && name.includes("nana-banana");
 }
 
 function aiApiUrl(config: AiConfig, path: string) {
@@ -828,20 +701,13 @@ function parseGeminiImagePayload(payload: GeminiPayload) {
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
-    const grokRequestError = grokImageRequestError(requestConfig.model, 0, n);
-    if (grokRequestError) throw new Error(grokRequestError);
-    if (requestConfig.apiFormat === "gemini") {
+    const capabilityError = mediaRequestError(requestConfig.model, { imageCount: 0 });
+    if (capabilityError) throw new Error(capabilityError);
+    if (isGeminiImageModel(requestConfig.model)) {
         try {
             return await requestGeminiImages(requestConfig, prompt, [], n, options);
         } catch (error) {
             throw new Error(readAxiosError(error, workbenchText("请求失败")));
-        }
-    }
-    if (isRelayBasesAsyncImageModel(requestConfig.model)) {
-        try {
-            return await requestAsyncRelayBasesImages(requestConfig, prompt, [], n, options);
-        } catch (error) {
-            throw new Error(readAxiosError(error, workbenchText("异步图片任务创建失败", "Failed to create the async image task")));
         }
     }
     const quality = normalizeQuality(config.quality);
@@ -872,14 +738,11 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
 
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], mask?: ReferenceImage, options?: RequestOptions) {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
-    const grokCapability = grokImageModelCapability(requestConfig.model);
-    if (grokCapability && !references.length) throw new Error(relayBasesMediaText("Grok 图片编辑需要添加 1-3 张参考图", "Grok image editing requires 1-3 reference images."));
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
-    const grokRequestError = grokImageRequestError(requestConfig.model, references.length, n);
-    if (grokRequestError) throw new Error(grokRequestError);
-    if (grokCapability && mask) throw new Error(relayBasesMediaText("Grok Imagine 暂不支持蒙版编辑", "Grok Imagine does not currently support mask editing."));
+    const capabilityError = mediaRequestError(requestConfig.model, { imageCount: references.length, hasMask: Boolean(mask) });
+    if (capabilityError) throw new Error(capabilityError);
     const requestPrompt = buildImageReferencePromptText(prompt, references);
-    if (requestConfig.apiFormat === "gemini") {
+    if (isGeminiImageModel(requestConfig.model)) {
         if (mask) throw new Error(workbenchText("Gemini 调用格式暂不支持蒙版编辑", "The Gemini API format does not currently support mask editing"));
         try {
             return await requestGeminiImages(requestConfig, requestPrompt, references, n, options);
@@ -889,37 +752,6 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     }
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(quality, config.size);
-    if (isRelayBasesAsyncImageModel(requestConfig.model)) {
-        if (mask) throw new Error(workbenchText("异步 Nana Banana 图片任务暂不支持蒙版编辑", "Async Nana Banana image tasks do not currently support mask editing"));
-        try {
-            return await requestAsyncRelayBasesImages(requestConfig, requestPrompt, references, n, options);
-        } catch (error) {
-            throw new Error(readAxiosError(error, workbenchText("异步图片任务创建失败", "Failed to create the async image task")));
-        }
-    }
-    if (isRelayBasesNanaSyncModel(requestConfig.model)) {
-        if (mask) throw new Error(workbenchText("Nana Banana 同步图片暂不支持蒙版编辑，请改用 gpt-image-2 编辑", "Nana Banana sync images do not support mask editing. Use gpt-image-2 for editing."));
-        const images = await Promise.all(references.map((image) => imageToDataUrl(image)));
-        try {
-            const response = await axios.post<ImageApiResponse>(
-                aiApiUrl(requestConfig, "/images/generations"),
-                {
-                    model: modelOptionName(requestConfig.model),
-                    prompt: withSystemPrompt(requestConfig, requestPrompt),
-                    n,
-                    images,
-                    ...(requestSize ? { size: requestSize } : {}),
-                },
-                {
-                    headers: aiHeaders(requestConfig, "application/json"),
-                    signal: options?.signal,
-                },
-            );
-            return parseImagePayload(response.data);
-        } catch (error) {
-            throw new Error(readAxiosError(error, workbenchText("请求失败")));
-        }
-    }
     const formData = new FormData();
     formData.set("model", requestConfig.model);
     formData.set("prompt", withSystemPrompt(requestConfig, requestPrompt));

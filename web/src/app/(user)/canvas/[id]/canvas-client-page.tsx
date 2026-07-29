@@ -16,13 +16,11 @@ import { resolveMediaUrl, uploadMediaFile, type UploadedFile } from "@/services/
 import { nanoid } from "nanoid";
 import { AZURE_IMAGE_EDIT_ACCEPT, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
 import {
-    grokImageRequestError,
-    grokVideoBillingSeconds,
-    grokVideoRequestError,
-    grokVideoUsesSourceOutput,
-    isGrokImagineVideoFamilyModel,
-    normalizeGrokVideoMode,
-} from "@/lib/relaybases-media-models";
+    isKling3TurboVideoModel,
+    mediaModelCapability,
+    mediaRequestError,
+    normalizeVideoOperation,
+} from "@/lib/anyaigc-media-models";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { canvasText } from "@/lib/i18n-canvas";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
@@ -2104,8 +2102,8 @@ function InfiniteCanvasPage() {
                             ? [{ id: sourceNode.id, name: `${sourceNode.title || sourceNode.id}.png`, type: sourceNode.metadata.mimeType || "image/png", dataUrl: sourceNode.metadata.content, storageKey: sourceNode.metadata.storageKey }]
                             : [];
                     const referenceImages = sourceReference.length ? sourceReference : generationContext.referenceImages;
-                    const grokRequestError = grokImageRequestError(generationConfig.model, referenceImages.length);
-                    if (grokRequestError) throw new Error(grokRequestError);
+                    const imageRequestError = mediaRequestError(generationConfig.model, { imageCount: referenceImages.length });
+                    if (imageRequestError) throw new Error(imageRequestError);
                     const generationType = referenceImages.length ? ("edit" as const) : ("generation" as const);
                     const generationMetadata = buildImageGenerationMetadata(generationType, generationConfig, count, referenceImages);
                     const parentConfig = NODE_DEFAULT_SIZE[isConfigNode ? CanvasNodeType.Config : isImageNode ? CanvasNodeType.Image : CanvasNodeType.Text];
@@ -2263,27 +2261,13 @@ function InfiniteCanvasPage() {
                 }
 
                 if (mode === "video") {
-                    const videoOperation = normalizeGrokVideoMode(generationConfig.model, generationConfig.videoOperation);
                     const videoGenerationContext = buildCanvasVideoGenerationContext(generationConfig, sourceNode, generationContext);
-                    const sourceVideo = videoGenerationContext.referenceVideos[0];
-                    const videoSeconds = videoOperation === "edit-video" ? String(grokVideoBillingSeconds(videoOperation, sourceVideo?.durationMs) || generationConfig.videoSeconds) : generationConfig.videoSeconds;
+                    const videoOperation = isKling3TurboVideoModel(generationConfig.model) ? (videoGenerationContext.referenceImages.length ? "image-to-video" : "text-to-video") : normalizeVideoOperation(generationConfig.model, generationConfig.videoOperation);
+                    const videoSeconds = generationConfig.videoSeconds;
                     const videoRequestConfig = { ...generationConfig, videoOperation, videoSeconds };
-                    const grokRequestError = grokVideoRequestError(
-                        generationConfig.model,
-                        videoOperation,
-                        {
-                            imageCount: videoGenerationContext.referenceImages.length,
-                            videoCount: videoGenerationContext.referenceVideos.length,
-                            audioCount: videoGenerationContext.referenceAudios.length,
-                            duration: Number(videoSeconds),
-                            sourceVideoDurationMs: sourceVideo?.durationMs,
-                            sourceVideoName: sourceVideo?.name,
-                            sourceVideoType: sourceVideo?.type,
-                        },
-                    );
-                    if (grokRequestError) throw new Error(grokRequestError);
-                    const sourceOutput = grokVideoUsesSourceOutput(generationConfig.model, videoOperation);
-                    const spec = sourceOutput && sourceNode?.type === CanvasNodeType.Video ? { width: sourceNode.width, height: sourceNode.height } : nodeSizeFromRatio(generationConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
+                    const videoRequestError = mediaRequestError(generationConfig.model, { imageCount: videoGenerationContext.referenceImages.length, videoCount: videoGenerationContext.referenceVideos.length, operation: videoOperation });
+                    if (videoRequestError) throw new Error(videoRequestError);
+                    const spec = nodeSizeFromRatio(generationConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
                     const isEmptyVideoNode = sourceNode?.type === CanvasNodeType.Video && !sourceNode.metadata?.content;
                     const videoId = isEmptyVideoNode ? nodeId : nanoid();
                     const parent = sourceNode?.position || { x: 0, y: 0 };
@@ -2301,7 +2285,7 @@ function InfiniteCanvasPage() {
                             size: generationConfig.size,
                             seconds: videoSeconds,
                             videoCallMode: generationConfig.videoCallMode,
-                            videoOperation: isGrokImagineVideoFamilyModel(generationConfig.model) ? videoOperation : undefined,
+                            videoOperation,
                             vquality: generationConfig.vquality,
                             generateAudio: generationConfig.videoGenerateAudio,
                             watermark: generationConfig.videoWatermark,
@@ -2319,7 +2303,6 @@ function InfiniteCanvasPage() {
                     try {
                         const video = await storeGeneratedVideo(
                             await requestVideoGeneration(videoRequestConfig, effectivePrompt, videoGenerationContext.referenceImages, videoGenerationContext.referenceVideos, videoGenerationContext.referenceAudios, { signal: controller.signal }),
-                            { apiKey: generationConfig.apiKey, signal: controller.signal },
                         );
                         const videoSize = fitNodeSize(video.width || spec.width, video.height || spec.height, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
                         setNodes((prev) =>
@@ -2338,7 +2321,7 @@ function InfiniteCanvasPage() {
                                               size: generationConfig.size,
                                               seconds: videoSeconds,
                                               videoCallMode: generationConfig.videoCallMode,
-                                              videoOperation: isGrokImagineVideoFamilyModel(generationConfig.model) ? videoOperation : undefined,
+                                              videoOperation,
                                               vquality: generationConfig.vquality,
                                               generateAudio: generationConfig.videoGenerateAudio,
                                               watermark: generationConfig.videoWatermark,
@@ -2485,8 +2468,8 @@ function InfiniteCanvasPage() {
                           ...baseGenerationConfig,
                           model: savedVideoModel,
                           videoModel: savedVideoModel,
-                          videoOperation: normalizeGrokVideoMode(savedVideoModel, node.metadata?.videoOperation || baseGenerationConfig.videoOperation),
-                          videoCallMode: isGrokImagineVideoFamilyModel(savedVideoModel) ? "async" : node.metadata?.videoCallMode || baseGenerationConfig.videoCallMode,
+                          videoOperation: normalizeVideoOperation(savedVideoModel, node.metadata?.videoOperation || baseGenerationConfig.videoOperation),
+                          videoCallMode: "async",
                           size: node.metadata?.size || baseGenerationConfig.size,
                           videoSeconds: node.metadata?.seconds || baseGenerationConfig.videoSeconds,
                           vquality: node.metadata?.vquality || baseGenerationConfig.vquality,
@@ -2537,10 +2520,7 @@ function InfiniteCanvasPage() {
                 if (node.type === CanvasNodeType.Video) {
                     if (!context) return;
                     const retryVideoContext = buildCanvasVideoGenerationContext(generationConfig, sourceNode, context);
-                    const video = await storeGeneratedVideo(await requestVideoGeneration(generationConfig, prompt, retryVideoContext.referenceImages, retryVideoContext.referenceVideos, retryVideoContext.referenceAudios, { signal: controller.signal }), {
-                        apiKey: generationConfig.apiKey,
-                        signal: controller.signal,
-                    });
+                    const video = await storeGeneratedVideo(await requestVideoGeneration(generationConfig, prompt, retryVideoContext.referenceImages, retryVideoContext.referenceVideos, retryVideoContext.referenceAudios, { signal: controller.signal }));
                     const videoSize = fitNodeSize(video.width || node.width, video.height || node.height, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
                     setNodes((prev) =>
                         prev.map((item) =>
@@ -2558,7 +2538,7 @@ function InfiniteCanvasPage() {
                                           size: generationConfig.size,
                                           seconds: generationConfig.videoSeconds,
                                           videoCallMode: generationConfig.videoCallMode,
-                                          videoOperation: isGrokImagineVideoFamilyModel(generationConfig.model) ? generationConfig.videoOperation : undefined,
+                                          videoOperation: normalizeVideoOperation(generationConfig.model, generationConfig.videoOperation),
                                           vquality: generationConfig.vquality,
                                           generateAudio: generationConfig.videoGenerateAudio,
                                           watermark: generationConfig.videoWatermark,
@@ -3504,15 +3484,18 @@ function sourceNodeReferenceVideos(node: CanvasNodeData | null): ReferenceVideo[
 }
 
 function buildCanvasVideoGenerationContext(config: AiConfig, sourceNode: CanvasNodeData | undefined, context: NodeGenerationContext): NodeGenerationContext {
-    if (!isGrokImagineVideoFamilyModel(config.model)) return context;
-    const operation = normalizeGrokVideoMode(config.model, config.videoOperation);
+    const capability = mediaModelCapability(config.model);
+    if (!capability || capability.kind !== "video") return context;
+    const operation = normalizeVideoOperation(config.model, config.videoOperation);
     const sourceImages = sourceNodeReferenceImages(sourceNode || null);
     const sourceVideos = sourceNodeReferenceVideos(sourceNode || null);
     let referenceImages = context.referenceImages;
     let referenceVideos = context.referenceVideos;
-    if (operation === "image-to-video") referenceImages = sourceImages.length ? sourceImages : referenceImages;
-    if (operation === "reference-to-video") referenceImages = uniqueCanvasReferenceImages([...sourceImages, ...referenceImages]);
-    if (operation === "edit-video" || operation === "extend-video") referenceVideos = sourceVideos.length ? sourceVideos : referenceVideos;
+    if (operation === "image-to-video" || operation === "first-last-frame" || isKling3TurboVideoModel(config.model)) referenceImages = sourceImages.length ? sourceImages : referenceImages;
+    if (operation === "motion-control") {
+        referenceImages = sourceImages.length ? sourceImages : referenceImages;
+        referenceVideos = sourceVideos.length ? sourceVideos : referenceVideos;
+    }
     return {
         ...context,
         referenceImages,
@@ -3520,16 +3503,6 @@ function buildCanvasVideoGenerationContext(config: AiConfig, sourceNode: CanvasN
         imageCount: referenceImages.length,
         videoCount: referenceVideos.length,
     };
-}
-
-function uniqueCanvasReferenceImages(images: ReferenceImage[]) {
-    const seen = new Set<string>();
-    return images.filter((image) => {
-        const key = image.storageKey || image.url || image.dataUrl || image.id;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
 }
 
 function isAudioFile(file: File) {

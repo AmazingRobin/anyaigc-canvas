@@ -4,8 +4,6 @@
   "defaultOpen": true,
   "pages": [
     "[更新日志](/docs/progress/changelog)",
-    "grok-media-integration-plan",
-    "grok-imagine-video-integration-plan",
     "local-agent-integration-plan",
     "pending-test",
     "todo"

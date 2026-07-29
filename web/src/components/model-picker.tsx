@@ -6,7 +6,7 @@ import { Cpu } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { sharedText } from "@/lib/i18n-shared";
 import { cn } from "@/lib/utils";
-import { modelOptionLabel, modelOptionName, relayBasesModelBillingLabel, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
+import { modelOptionLabel, modelOptionName, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 
 type ModelPickerProps = {
@@ -100,21 +100,10 @@ function emptyModelLabel(config: AiConfig, capability: ModelCapability | undefin
 }
 
 function ModelLabel({ config, model }: { config: AiConfig; model: string }) {
-    const billing = relayBasesModelBillingLabel(model);
     return (
         <span className="flex min-w-0 items-center gap-2">
             <ModelIcon model={model} />
             <span className="truncate">{modelOptionLabel(config, model)}</span>
-            {billing ? (
-                <span
-                    className={cn(
-                        "ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] leading-none",
-                        billing.includes("异步") ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-100" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100",
-                    )}
-                >
-                    {billing}
-                </span>
-            ) : null}
         </span>
     );
 }

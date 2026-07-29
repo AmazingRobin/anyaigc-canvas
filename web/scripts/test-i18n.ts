@@ -1,15 +1,13 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 
 import { assetDisplaySource, assetDisplayTitle } from "@/lib/asset-display";
 import { canvasAgentErrorText, canvasAgentTitleText, canvasAgentToolText, canvasErrorText, canvasText } from "@/lib/i18n-canvas";
 import { translateLooseText, translateText, zhToEn } from "@/lib/i18n";
 import { workbenchErrorText, workbenchPinLabel, workbenchQualityLabel, workbenchText, workbenchTrashLabel } from "@/lib/i18n-workbench";
-import { promptTagEnByZh } from "@/local-prompts/relaybases-prompt-translations";
+import { promptTagEnByZh } from "@/local-prompts/anyaigc-prompt-translations";
 import { canvasResourceDisplayLabel, type CanvasResourceReference } from "@/app/(user)/canvas/utils/canvas-resource-references";
-import { normalizeGrokVideoAspectRatio } from "@/lib/relaybases-media-models";
 import { summarizeCanvasAgentOps } from "@/app/(user)/canvas/utils/canvas-agent-ops";
-import { seedanceVideoReferenceError, seedanceVideoReferenceHint } from "@/lib/seedance-video";
-import type { ReferenceVideo } from "@/types/media";
 
 const invalid = Object.entries(zhToEn).filter(([, value]) => /[\u3400-\u9fff]/u.test(value));
 assert.deepEqual(invalid, [], "English dictionary values must not contain Chinese characters");
@@ -32,6 +30,10 @@ assert.equal(translateText("反 选", "en"), "Invert Selection");
 
 assert.equal(translateText("Settings", "zh"), "Settings");
 assert.equal(translateText("配置", "zh"), "配置");
+assert.match(readFileSync(new URL("../src/components/layout/app-config-modal.tsx", import.meta.url), "utf8"), /sharedText\("获取模型", "Load models", language\)/, "Model loading button must follow the selected language");
+assert.match(readFileSync(new URL("../src/components/layout/app-config-modal.tsx", import.meta.url), "utf8"), /智能自动分组可能不返回 Gemini 图片模型/, "Media API key settings must explain Gemini model discovery requirements");
+assert.match(readFileSync(new URL("../src/stores/use-language-store.ts", import.meta.url), "utf8"), /skipHydration:\s*true/, "Language persistence must not alter the first client render");
+assert.match(readFileSync(new URL("../src/components/layout/client-root-init.tsx", import.meta.url), "utf8"), /useLanguageStore\.persist\.rehydrate\(\)/, "Language persistence must resume after the app mounts");
 
 assert.equal(workbenchText("生成失败", "Generation failed", "en"), "Generation failed");
 assert.equal(workbenchText("生成失败", "Generation failed", "zh"), "生成失败");
@@ -45,19 +47,8 @@ assert.equal(canvasText("删除画布？", "Delete Canvas?", "zh"), "删除画�
 assert.equal(workbenchErrorText("生成失败", "en"), "Generation failed");
 assert.equal(workbenchErrorText("Generation failed", "zh"), "生成失败");
 assert.equal(workbenchErrorText("Service temporarily unavailable", "en"), "Service temporarily unavailable");
-const seedanceReference = { id: "video-1", name: "reference.mp4", type: "video/mp4", url: "blob:reference" } satisfies ReferenceVideo;
-assert.equal(seedanceVideoReferenceError([{ ...seedanceReference, bytes: 51 * 1024 * 1024 }], "en"), "Video 1 exceeds 50 MB; compress it before uploading again");
-assert.equal(seedanceVideoReferenceError([{ ...seedanceReference, durationMs: 1000 }], "en"), "Video 1 must be 2-15 seconds long");
-assert.equal(seedanceVideoReferenceError([{ ...seedanceReference, width: 200, height: 720 }], "en"), "Video 1 width and height must each be 300-6000 px");
-assert.equal(seedanceVideoReferenceError([{ ...seedanceReference, width: 2000, height: 400 }], "en"), "Video 1 aspect ratio must be between 0.4 and 2.5");
-assert.equal(seedanceVideoReferenceError([{ ...seedanceReference, width: 640, height: 300 }], "en"), "Video 1 pixel count does not meet Seedance requirements; convert it to 480p, 720p, or 1080p before uploading again");
-assert.equal(seedanceVideoReferenceError([{ ...seedanceReference, durationMs: 8000 }, { ...seedanceReference, id: "video-2", durationMs: 8000 }], "en"), "Seedance reference videos cannot exceed 15 seconds in total");
-assert.equal(seedanceVideoReferenceHint("en"), "Reference videos must be MP4/MOV, H.264/H.265, and 24-60 FPS; for media containing real faces, use an authorized Volcengine asset:// asset");
 assert.equal(workbenchErrorText("视频2 宽高比需要在 0.4-2.5 之间", "en"), "Video 2 aspect ratio must be between 0.4 and 2.5");
 assert.equal(workbenchErrorText("Video 2 aspect ratio must be between 0.4 and 2.5", "zh"), "视频2 宽高比需要在 0.4-2.5 之间");
-assert.equal(workbenchErrorText("Seedance 参考视频总时长不能超过 15 秒", "en"), "Seedance reference videos cannot exceed 15 seconds in total");
-assert.equal(workbenchErrorText("Seedance reference videos cannot exceed 15 seconds in total", "zh"), "Seedance 参考视频总时长不能超过 15 秒");
-assert.equal(workbenchErrorText("Seedance upstream rejected 视频2", "en"), "Seedance upstream rejected 视频2");
 assert.equal(workbenchErrorText("Gemini 拒绝了本次请求：SAFETY", "en"), "Gemini rejected this request: SAFETY");
 assert.equal(workbenchErrorText("Gemini rejected this request: SAFETY", "zh"), "Gemini 拒绝了本次请求：SAFETY");
 assert.equal(workbenchErrorText("Gemini upstream rejected this request: SAFETY", "en"), "Gemini upstream rejected this request: SAFETY");
@@ -92,8 +83,8 @@ assert.equal(promptTagEnByZh["透明"], "Transparent");
 const imageReference = { kind: "image", label: "图片1" } as CanvasResourceReference;
 assert.equal(canvasResourceDisplayLabel(imageReference, "en"), "Image 1");
 assert.equal(canvasResourceDisplayLabel(imageReference, "zh"), "图片1");
-assert.equal(normalizeGrokVideoAspectRatio("16:9"), "16:9");
-assert.equal(normalizeGrokVideoAspectRatio("9:16"), "9:16");
-assert.equal(normalizeGrokVideoAspectRatio("1:1"), "1:1");
+assert.equal(canvasResourceDisplayLabel({ kind: "video", label: "视频1" } as CanvasResourceReference, "en"), "Video 1");
+assert.equal(canvasResourceDisplayLabel({ kind: "audio", label: "音频1" } as CanvasResourceReference, "en"), "Audio 1");
+assert.equal(existsSync(new URL("../src/lib/seedance-video.ts", import.meta.url)), false, "Seedance media support must be removed");
 
 console.log(`i18n contract passed (${Object.keys(zhToEn).length} dictionary entries).`);

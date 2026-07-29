@@ -5,7 +5,7 @@ import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
-import { relayBasesLinks } from "@/constant/relaybases-links";
+import { anyaigcLinks } from "@/constant/anyaigc-links";
 import { sharedText } from "@/lib/i18n-shared";
 import { cn } from "@/lib/utils";
 import { useLanguageStore } from "@/stores/use-language-store";
@@ -41,9 +41,9 @@ export function MobileNavDrawer({ open, activeToolSlug, onClose }: MobileNavDraw
                 })}
             </div>
             <div className="mt-6 border-t border-stone-200 pt-4 dark:border-stone-800">
-                <p className="px-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-400">RelayBases</p>
+                <p className="px-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-400">AnyAIGC</p>
                 <div className="mt-2 space-y-1">
-                    {relayBasesLinks.map((link) => (
+                    {anyaigcLinks.map((link) => (
                         <a
                             key={link.href}
                             href={link.href}

@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 
 import type { ReferenceImage } from "@/types/image";
 
-const IMAGE_TO_VIDEO_REFERENCES_KEY = "relaybases-canvas:image-to-video-references";
+const IMAGE_TO_VIDEO_REFERENCES_KEY = "anyaigc-canvas:image-to-video-references";
 
 type ImageToVideoReferenceHandoff = {
     createdAt: number;

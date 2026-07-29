@@ -17,7 +17,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
-import { GROK_VIDEO_MODES, normalizeGrokVideoMode } from "@/lib/relaybases-media-models";
+import { normalizeVideoOperation } from "@/lib/anyaigc-media-models";
 import { DiaTextReveal } from "@/components/ui/dia-text-reveal";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { CanvasPromptLibrary } from "./canvas-prompt-library";
@@ -44,7 +44,7 @@ const GENERATION_OPTION_PROPERTIES = {
     quality: { type: "string" },
     count: { type: "number" },
     seconds: { type: "string" },
-    videoOperation: { type: "string", enum: [...GROK_VIDEO_MODES] },
+    videoOperation: { type: "string", enum: ["text-to-video", "image-to-video", "first-last-frame", "motion-control", "omni-video"] },
     vquality: { type: "string" },
     generateAudio: { type: "string" },
     watermark: { type: "string" },
@@ -1174,7 +1174,7 @@ function configNodeOp(id: string, input: Record<string, unknown>, x: number, y: 
             quality: stringOptional(input.quality) || config.quality,
             count: numberOptional(input.count) ?? generationCount(mode === "image" ? config.canvasImageCount || config.count : config.count),
             seconds: stringOptional(input.seconds) || config.videoSeconds,
-            videoOperation: mode === "video" ? normalizeGrokVideoMode(model, stringOptional(input.videoOperation) || config.videoOperation) : undefined,
+            videoOperation: mode === "video" ? normalizeVideoOperation(model, stringOptional(input.videoOperation) || config.videoOperation) : undefined,
             vquality: stringOptional(input.vquality) || config.vquality,
             generateAudio: stringOptional(input.generateAudio) || config.videoGenerateAudio,
             watermark: stringOptional(input.watermark) || config.videoWatermark,

@@ -8,7 +8,7 @@ import { Button } from "antd";
 import { VideoSettingsPanel, videoResolutionLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasText } from "@/lib/i18n-canvas";
-import { grokVideoModeLabel, grokVideoUsesSourceOutput, isGrokImagineVideoFamilyModel, normalizeGrokVideoMode } from "@/lib/relaybases-media-models";
+import { isKling3TurboVideoModel, mediaModelCapability, normalizeAspectRatio, normalizeKling3TurboResolution, normalizeVideoDurationForModel, normalizeVideoOperation } from "@/lib/anyaigc-media-models";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useLanguageStore } from "@/stores/use-language-store";
 import { modelOptionName, normalizeVideoCallMode, type AiConfig } from "@/stores/use-config-store";
@@ -28,19 +28,15 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClass
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
     const selectedModel = modelOptionName(config.videoModel || config.model);
-    const grokVideo = isGrokImagineVideoFamilyModel(selectedModel);
-    const grokOperation = normalizeGrokVideoMode(selectedModel, config.videoOperation);
-    const usesSourceOutput = grokVideoUsesSourceOutput(selectedModel, grokOperation);
-    const callModeLabel = grokVideo
+    const video = mediaModelCapability(selectedModel)?.kind === "video";
+    const callModeLabel = video
         ? canvasText("异步", "Async", language)
         : normalizeVideoCallMode(config.videoCallMode) === "async"
           ? canvasText("异步·4倍扣费", "Async · 4x billing", language)
           : canvasText("同步", "Sync", language);
-    const detailLabel = grokVideo
-        ? usesSourceOutput
-            ? [grokVideoModeLabel(grokOperation, language), canvasText("跟随源视频·最高 720p", "Matches source · up to 720p", language), grokOperation === "extend-video" ? `${canvasText("延长", "Extend", language)} ${videoSecondsLabel(config.videoSeconds, language)}` : ""].filter(Boolean).join(" · ")
-            : [grokVideoModeLabel(grokOperation, language), videoResolutionLabel(config.vquality, config.videoModel || config.model, language), videoSizeLabel(config.size, config.videoModel || config.model, language), videoSecondsLabel(config.videoSeconds, language)].join(" · ")
-        : [videoResolutionLabel(config.vquality, config.videoModel || config.model, language), videoSizeLabel(config.size, config.videoModel || config.model, language), videoSecondsLabel(config.videoSeconds, language)].join(" · ");
+    const detailLabel = video
+        ? [canvasText("AnyAIGC 视频", "AnyAIGC video", language), videoOperationLabel(normalizeVideoOperation(selectedModel, config.videoOperation), language), isKling3TurboVideoModel(selectedModel) ? normalizeKling3TurboResolution(config.vquality) : "", normalizeAspectRatio(config.size), `${normalizeVideoDurationForModel(selectedModel, config.videoSeconds)}s`].filter(Boolean).join(" · ")
+        : [videoResolutionLabel(config.vquality, config.videoModel || config.model, language), videoSizeLabel(config.size, config.videoModel || config.model, language), videoSecondsLabel(config.videoSeconds, config.videoModel || config.model, language)].join(" · ");
 
     useEffect(() => {
         if (!open) return;
@@ -77,6 +73,11 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClass
             {panel}
         </>
     );
+}
+
+function videoOperationLabel(operation: string, language: "zh" | "en") {
+    const labels: Record<string, [string, string]> = { "text-to-video": ["文生", "Text"], "image-to-video": ["图生", "Image"], "first-last-frame": ["首尾帧", "First & last frame"], "motion-control": ["动作控制", "Motion"], "omni-video": ["全能", "Omni"] };
+    return (labels[operation] || labels["text-to-video"])[language === "en" ? 1 : 0];
 }
 
 function VideoSettingsPortal({

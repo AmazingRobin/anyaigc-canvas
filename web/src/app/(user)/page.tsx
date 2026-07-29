@@ -4,30 +4,30 @@ import { ArrowRight, ExternalLink, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { App, Image, Tag } from "antd";
 
-import { RelayBasesCanvasIcon } from "@/components/brand/relaybases-canvas-icon";
+import { AnyAIGCCanvasLogo } from "@/components/brand/anyaigc-canvas-logo";
 import { navigationTools } from "@/constant/navigation-tools";
-import { RELAYBASES_HOME_URL, RELAYBASES_KEYS_URL } from "@/constant/relaybases-links";
+import { ANYAIGC_HOME_URL, ANYAIGC_KEYS_URL } from "@/constant/anyaigc-links";
 import { sharedErrorText, sharedText } from "@/lib/i18n-shared";
-import { englishPromptFor, promptTagEnByZh, promptTitleEnById } from "@/local-prompts/relaybases-prompt-translations";
+import { englishPromptFor, promptTagEnByZh, promptTitleEnById } from "@/local-prompts/anyaigc-prompt-translations";
 import { fetchPrompts, type Prompt } from "@/services/api/prompts";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 
-const heroPromptIds = ["rb-prompt-001", "rb-prompt-011", "rb-prompt-021", "rb-prompt-031", "rb-prompt-041", "rb-prompt-051", "rb-prompt-061", "rb-prompt-071", "rb-prompt-081", "rb-prompt-091"];
+const heroPromptIds = ["prompt-001", "prompt-011", "prompt-021", "prompt-031", "prompt-041", "prompt-051", "prompt-061", "prompt-071", "prompt-081", "prompt-091"];
 
 const fallbackPrompts: Prompt[] = [
-    createFallbackPrompt("rb-prompt-001", "雨夜玻璃窗人像", "/prompt-covers/relaybases/rb-prompt-001.webp", ["人像", "电影感"]),
-    createFallbackPrompt("rb-prompt-011", "透明香水瓶广告", "/prompt-covers/relaybases/rb-prompt-011.webp", ["产品", "广告"]),
-    createFallbackPrompt("rb-prompt-021", "峡谷玻璃住宅", "/prompt-covers/relaybases/rb-prompt-021.webp", ["建筑", "现代"]),
-    createFallbackPrompt("rb-prompt-031", "冰川蓝湖航拍", "/prompt-covers/relaybases/rb-prompt-031.webp", ["风景", "航拍"]),
-    createFallbackPrompt("rb-prompt-041", "月亮邮局绘本", "/prompt-covers/relaybases/rb-prompt-041.webp", ["插画", "绘本"]),
-    createFallbackPrompt("rb-prompt-051", "透明机械水母", "/prompt-covers/relaybases/rb-prompt-051.webp", ["3D", "机械"]),
-    createFallbackPrompt("rb-prompt-061", "城市能源流可视化", "/prompt-covers/relaybases/rb-prompt-061.webp", ["信息图", "科技"]),
-    createFallbackPrompt("rb-prompt-071", "法式早餐桌", "/prompt-covers/relaybases/rb-prompt-071.webp", ["美食", "生活"]),
-    createFallbackPrompt("rb-prompt-081", "星际植物温室", "/prompt-covers/relaybases/rb-prompt-081.webp", ["科幻", "植物"]),
-    createFallbackPrompt("rb-prompt-091", "无字音乐节主视觉", "/prompt-covers/relaybases/rb-prompt-091.webp", ["海报", "音乐"]),
-    createFallbackPrompt("rb-prompt-012", "黑色机械腕表特写", "/prompt-covers/relaybases/rb-prompt-012.webp", ["产品", "机械"]),
-    createFallbackPrompt("rb-prompt-032", "竹林晨雾小径", "/prompt-covers/relaybases/rb-prompt-032.webp", ["风景", "东方"]),
+    createFallbackPrompt("prompt-001", "雨夜玻璃窗人像", "/prompt-covers/anyaigc/prompt-001.webp", ["人像", "电影感"]),
+    createFallbackPrompt("prompt-011", "透明香水瓶广告", "/prompt-covers/anyaigc/prompt-011.webp", ["产品", "广告"]),
+    createFallbackPrompt("prompt-021", "峡谷玻璃住宅", "/prompt-covers/anyaigc/prompt-021.webp", ["建筑", "现代"]),
+    createFallbackPrompt("prompt-031", "冰川蓝湖航拍", "/prompt-covers/anyaigc/prompt-031.webp", ["风景", "航拍"]),
+    createFallbackPrompt("prompt-041", "月亮邮局绘本", "/prompt-covers/anyaigc/prompt-041.webp", ["插画", "绘本"]),
+    createFallbackPrompt("prompt-051", "透明机械水母", "/prompt-covers/anyaigc/prompt-051.webp", ["3D", "机械"]),
+    createFallbackPrompt("prompt-061", "城市能源流可视化", "/prompt-covers/anyaigc/prompt-061.webp", ["信息图", "科技"]),
+    createFallbackPrompt("prompt-071", "法式早餐桌", "/prompt-covers/anyaigc/prompt-071.webp", ["美食", "生活"]),
+    createFallbackPrompt("prompt-081", "星际植物温室", "/prompt-covers/anyaigc/prompt-081.webp", ["科幻", "植物"]),
+    createFallbackPrompt("prompt-091", "无字音乐节主视觉", "/prompt-covers/anyaigc/prompt-091.webp", ["海报", "音乐"]),
+    createFallbackPrompt("prompt-012", "黑色机械腕表特写", "/prompt-covers/anyaigc/prompt-012.webp", ["产品", "机械"]),
+    createFallbackPrompt("prompt-032", "竹林晨雾小径", "/prompt-covers/anyaigc/prompt-032.webp", ["风景", "东方"]),
 ];
 
 function localizedFallbackPrompts(language: LanguageName): Prompt[] {
@@ -56,9 +56,9 @@ function createFallbackPrompt(id: string, title: string, coverUrl: string, tags:
         id,
         title,
         coverUrl,
-        prompt: "RelayBases 精选视觉提示词示例，适合直接加入画布继续改写、延展和生成。",
+        prompt: "AnyAIGC 精选视觉提示词示例，适合直接加入画布继续改写、延展和生成。",
         tags,
-        category: "RelayBases",
+        category: "AnyAIGC",
         githubUrl: "",
         preview: coverUrl,
         createdAt: "",
@@ -115,13 +115,13 @@ export default function IndexPage() {
                     <div className="max-w-3xl">
                         <div className="mb-7 sm:mb-8">
                             <a
-                                href={RELAYBASES_HOME_URL}
+                                href={ANYAIGC_HOME_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/80 py-1.5 pl-1.5 pr-3 text-sm font-medium text-stone-700 shadow-[0_10px_30px_rgba(20,25,40,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:border-black/20 hover:bg-white hover:text-stone-950 dark:border-white/10 dark:bg-white/[0.08] dark:text-stone-200 dark:shadow-black/20 dark:hover:border-white/20 dark:hover:bg-white/[0.12] dark:hover:text-white"
                             >
-                                <RelayBasesCanvasIcon className="size-8 transition duration-300 group-hover:scale-105" />
-                                <span className="font-semibold tracking-tight">RelayBases Canvas</span>
+                                <AnyAIGCCanvasLogo className="h-8 w-auto transition duration-300 group-hover:scale-105" />
+                                <span className="font-semibold tracking-tight">AnyAIGC Canvas</span>
                                 <ExternalLink className="size-3.5 opacity-60 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-90" />
                             </a>
                         </div>
@@ -139,7 +139,7 @@ export default function IndexPage() {
                         </div>
                         <div className="mt-8 flex flex-wrap gap-3">
                             <a
-                                href={RELAYBASES_KEYS_URL}
+                                href={ANYAIGC_KEYS_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-stone-950 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-stone-800 dark:bg-white dark:text-stone-950 dark:hover:bg-stone-200"
@@ -156,7 +156,7 @@ export default function IndexPage() {
                             <button
                                 type="button"
                                 onClick={() => openConfigDialog(false)}
-                                className="group relative isolate inline-flex h-11 items-center justify-center gap-2 overflow-hidden rounded-full border border-emerald-400/70 bg-white px-5 text-sm font-semibold text-emerald-950 shadow-[0_0_0_4px_rgba(16,185,129,0.10),0_10px_24px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-[0_0_0_5px_rgba(16,185,129,0.14),0_14px_30px_rgba(15,23,42,0.14)] dark:border-emerald-300/40 dark:bg-white/10 dark:text-emerald-50 dark:shadow-[0_0_0_4px_rgba(110,231,183,0.10),0_10px_24px_rgba(0,0,0,0.24)] dark:hover:bg-emerald-300/15"
+                                className="group relative isolate inline-flex h-11 items-center justify-center gap-2 overflow-hidden rounded-full border border-emerald-400/70 bg-white px-5 text-sm font-semibold text-emerald-950 shadow-[0_0_0_4px_rgba(16,185,129,0.10),0_10px_24px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-[0_0_0_5px_rgba(16,185,129,0.14),0_14px_30px_rgba(15,23,42,0.14)] dark:border-emerald-300/40 dark:bg-white/10 dark:text-emerald-50 dark:shadow-[0_0_0_4px_rgba(110,231,183,0.10),0_10px_24px_rgba(0,0,0,0.24)] dark:hover:bg-emerald-300/15" style={{ overflow : "hidden" }}
                             >
                                 <span className="absolute inset-y-0 -left-16 -z-10 w-12 skew-x-[-18deg] bg-white/70 opacity-0 transition duration-700 group-hover:translate-x-48 group-hover:opacity-80 dark:bg-white/20" />
                                 <span className="flex size-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm dark:bg-emerald-400 dark:text-stone-950">
@@ -168,20 +168,20 @@ export default function IndexPage() {
                         <div className="mt-5 max-w-2xl rounded-2xl border border-stone-300/70 bg-white/55 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.07]">
                             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="text-sm font-semibold text-stone-950 dark:text-white">Key 准备</div>
-                                <div className="text-xs text-stone-500 dark:text-stone-400">在配置面板分别填写媒体 Key 和文本 Key</div>
+                                <div className="text-xs text-stone-500 dark:text-stone-400">在配置面板填写 API Key，推荐选择“智能自动”分组</div>
                             </div>
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-50/55 px-3 py-2.5 dark:border-emerald-300/15 dark:bg-emerald-300/10">
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="text-xs font-medium text-emerald-700 dark:text-emerald-200">媒体 Key</span>
-                                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-300/15 dark:text-emerald-100">media 分组</span>
+                                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-300/15 dark:text-emerald-100">智能自动</span>
                                     </div>
                                     <p className="mt-1 text-xs leading-5 text-stone-600 dark:text-stone-300">图片和视频生成</p>
                                 </div>
                                 <div className="rounded-xl border border-sky-500/20 bg-sky-50/55 px-3 py-2.5 dark:border-sky-300/15 dark:bg-sky-300/10">
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="text-xs font-medium text-sky-700 dark:text-sky-200">文本 Key</span>
-                                        <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:bg-sky-300/15 dark:text-sky-100">codex-pro 分组</span>
+                                        <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:bg-sky-300/15 dark:text-sky-100">智能自动</span>
                                     </div>
                                     <p className="mt-1 text-xs leading-5 text-stone-600 dark:text-stone-300">Agent 和文本模型</p>
                                 </div>

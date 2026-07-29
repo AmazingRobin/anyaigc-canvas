@@ -1,0 +1,497 @@
+# AnyAIGC API 接口对接
+
+## Docs
+- [引言](https://anyaigc.apifox.cn/doc-8877492.md): 
+- [在线调试说明](https://anyaigc.apifox.cn/doc-8877493.md): 
+- [发出请求](https://anyaigc.apifox.cn/doc-8877494.md): 
+- 中转站基本介绍 [API 快速开始指南](https://anyaigc.apifox.cn/doc-8877495.md): 
+- 中转站基本介绍 [联系客服](https://anyaigc.apifox.cn/doc-8877496.md): 
+- 中转站基本介绍 [分组详细表格](https://anyaigc.apifox.cn/doc-8877497.md): 
+- 中转站基本介绍 [分组的特殊性及价格差异](https://anyaigc.apifox.cn/doc-8877498.md): 
+- 中转站基本介绍 [如何新建指定分组的令牌](https://anyaigc.apifox.cn/doc-8877499.md): 
+- 中转站基本介绍 [API Key 额度查询服务](https://anyaigc.apifox.cn/doc-8877500.md): 
+- 中转站基本介绍 [免费AI聊天项目导航](https://anyaigc.apifox.cn/doc-8877501.md): 
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [聊天完成对象](https://anyaigc.apifox.cn/doc-8877502.md): 
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [聊天完成块对象](https://anyaigc.apifox.cn/doc-8877503.md): 
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT自动补全（Completions） [完成对象](https://anyaigc.apifox.cn/doc-8877504.md): 
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT嵌入（Embeddings） [嵌入对象](https://anyaigc.apifox.cn/doc-8877505.md): 
+- 聊天(Chat) > Anthropic Claude 接口 [聊天完成对象](https://anyaigc.apifox.cn/doc-8877506.md): 
+- 聊天(Chat) > Anthropic Claude 接口 [聊天完成块对象](https://anyaigc.apifox.cn/doc-8877507.md): 
+- 聊天(Responses) [Responses API与Chat API对比](https://anyaigc.apifox.cn/doc-8877508.md): 
+- 绘画模型 [README](https://anyaigc.apifox.cn/doc-8877509.md): 
+- 绘画模型 [图像对象](https://anyaigc.apifox.cn/doc-8877510.md): 
+- 绘画模型 > FLUX 系列 > Replicate 官方格式 [Flux 分辨率](https://anyaigc.apifox.cn/doc-8877511.md): 
+- 绘画模型 > FLUX 系列 > Replicate 官方格式 [接入教程 ](https://anyaigc.apifox.cn/doc-8877512.md): 
+- 绘画模型 > Fal.ai平台 [状态码](https://anyaigc.apifox.cn/doc-8877513.md): 
+- 绘画模型 > 腾讯AIGC生图 [状态码](https://anyaigc.apifox.cn/doc-8877514.md): 
+- 视频模型 > veo 视频生成 > 视频统一格式 [状态码](https://anyaigc.apifox.cn/doc-8877515.md): 
+- 视频模型 > luma 视频生成 > 官方API格式 [状态码](https://anyaigc.apifox.cn/doc-8877516.md): 
+- 视频模型 > Kling 快手可灵 [Callback协议](https://anyaigc.apifox.cn/doc-8877517.md): 
+- 视频模型 > Runway 视频生成 [状态码](https://anyaigc.apifox.cn/doc-8877518.md): 
+- 视频模型 > 即梦 视频生成 [状态码](https://anyaigc.apifox.cn/doc-8877519.md): 
+- 视频模型 > 即梦 视频生成 > 视频统一格式 [状态码](https://anyaigc.apifox.cn/doc-8877520.md): 
+- 视频模型 > 即梦 视频生成 > 官方格式 [添加中](https://anyaigc.apifox.cn/doc-8877521.md): 
+- 视频模型 > 海螺 视频生成 [状态码](https://anyaigc.apifox.cn/doc-8877522.md): 
+- 视频模型 > grok 视频生成 > 视频统一格式 [状态码](https://anyaigc.apifox.cn/doc-8877523.md): 
+- 视频模型 > TC-Vidu视频生成 > 视频统一格式 [状态码](https://anyaigc.apifox.cn/doc-8877524.md): 
+- 视频模型 > 腾讯AIGC视频生成 [状态码](https://anyaigc.apifox.cn/doc-8877525.md): 
+- GPTs 相关 [简介](https://anyaigc.apifox.cn/doc-8877526.md): 
+- 文生音乐 Suno [说明](https://anyaigc.apifox.cn/doc-8877527.md): 
+- 文生音乐 Suno [参数](https://anyaigc.apifox.cn/doc-8877528.md): 
+- Python配置方式 [python 使用 语音转文本](https://anyaigc.apifox.cn/doc-8877529.md): 
+- Python配置方式 [python 使用文本转语音](https://anyaigc.apifox.cn/doc-8877530.md): 
+- Python配置方式 [python 使用Embeddings 向量化](https://anyaigc.apifox.cn/doc-8877531.md): 
+- Python配置方式 [python 调用DALL·E](https://anyaigc.apifox.cn/doc-8877532.md): 
+- Python配置方式 [python简单调用 openai function-calling demo](https://anyaigc.apifox.cn/doc-8877533.md): 
+- Python配置方式 [python 简单langchain 调用openai demo](https://anyaigc.apifox.cn/doc-8877534.md): 
+- Python配置方式 [python llama_index 配置](https://anyaigc.apifox.cn/doc-8877535.md): 
+- Python配置方式 [Python基础对话](https://anyaigc.apifox.cn/doc-8877536.md): 
+- Python配置方式 [Python使用gpt-4o识别图片-本地图片](https://anyaigc.apifox.cn/doc-8877537.md): 
+- Python配置方式 [Python使用gpt-4o识别图片](https://anyaigc.apifox.cn/doc-8877538.md): 
+- Python配置方式 [Python使用Claude识别图片](https://anyaigc.apifox.cn/doc-8877539.md): 
+- Python配置方式 [python 库流式输出](https://anyaigc.apifox.cn/doc-8877540.md): 
+- Python配置方式 [gpt realtime模型调用](https://anyaigc.apifox.cn/doc-8877541.md): 
+- Python配置方式 [python request 请求 流式输出demo](https://anyaigc.apifox.cn/doc-8877542.md): 
+- Python配置方式 [python 使用gpt-image-1 创建编辑图片](https://anyaigc.apifox.cn/doc-8877543.md): 
+- Python配置方式 [python openai官方库（使用AutoGPT，langchain等）](https://anyaigc.apifox.cn/doc-8877544.md): 
+- Python配置方式 [python 连续对话](https://anyaigc.apifox.cn/doc-8877545.md): 
+- 可灵 Kling 平台 [Callback协议](https://anyaigc.apifox.cn/doc-8877546.md): 
+- Replicate 聚合平台 [接入教程  ](https://anyaigc.apifox.cn/doc-8877547.md): 
+- Replicate 聚合平台 [Flux 分辨率 ](https://anyaigc.apifox.cn/doc-8877548.md): 
+- 官方VIDU视频生成、图片生成、音频生成 [状态码](https://anyaigc.apifox.cn/doc-8877549.md): 
+- Fal-ai 聚合平台 [接入教程](https://anyaigc.apifox.cn/doc-8877550.md): 
+- php配置方式 [php使用图片编辑demo](https://anyaigc.apifox.cn/doc-8877551.md): 
+- nodejs 配置方式  [nodejs 基础对话](https://anyaigc.apifox.cn/doc-8877552.md): 
+- 各种插件/软件使用教程 [Codex 配置教程](https://anyaigc.apifox.cn/doc-8877553.md): 
+- 各种插件/软件使用教程 [OpenClaw  Clawdbot 自定义中转站配置教程](https://anyaigc.apifox.cn/doc-8877554.md): 
+- 各种插件/软件使用教程 [N8N 工作流使用中转API 教程](https://anyaigc.apifox.cn/doc-8877555.md): 
+- 各种插件/软件使用教程 [opencode 配置教程](https://anyaigc.apifox.cn/doc-8877556.md): 
+- 各种插件/软件使用教程 [Gemini CLI 中转站配置使用教程](https://anyaigc.apifox.cn/doc-8877557.md): 
+- 各种插件/软件使用教程 [Claude Code 安装使用教程](https://anyaigc.apifox.cn/doc-8877558.md): 
+- 各种插件/软件使用教程 [CherryStudio调用cluade MCP](https://anyaigc.apifox.cn/doc-8877559.md): 
+- 各种插件/软件使用教程 [Cherry Studio配置教程](https://anyaigc.apifox.cn/doc-8877560.md): 
+- 各种插件/软件使用教程 [Cherry Studio配置 banana pro 4K和分辨率教程](https://anyaigc.apifox.cn/doc-8877561.md): 
+- 各种插件/软件使用教程 [CherryStudio配置o4推理级别](https://anyaigc.apifox.cn/doc-8877562.md): 
+- 各种插件/软件使用教程 [扣子工作流简单配置从输入到获取url](https://anyaigc.apifox.cn/doc-8877563.md): 
+- 各种插件/软件使用教程 [dify添加模型](https://anyaigc.apifox.cn/doc-8877564.md): 
+- 各种插件/软件使用教程 [cline 配置教程](https://anyaigc.apifox.cn/doc-8877565.md): 
+- 各种插件/软件使用教程 [aider 配置教程](https://anyaigc.apifox.cn/doc-8877566.md): 
+- 各种插件/软件使用教程 [Cursor 配置教程](https://anyaigc.apifox.cn/doc-8877567.md): 
+- 各种插件/软件使用教程 [lobechat 设置教程](https://anyaigc.apifox.cn/doc-8877568.md): 
+- 各种插件/软件使用教程 [ChatBox(推荐使用)](https://anyaigc.apifox.cn/doc-8877569.md): 
+- 各种插件/软件使用教程 [开源gpt_academic](https://anyaigc.apifox.cn/doc-8877570.md): 
+- 各种插件/软件使用教程 [nextchat 设置教程](https://anyaigc.apifox.cn/doc-8877571.md): 
+- 各种插件/软件使用教程 [zotero gpt 配置方法](https://anyaigc.apifox.cn/doc-8877572.md): 
+- 各种插件/软件使用教程 [CLAUDE DEV 配置教程](https://anyaigc.apifox.cn/doc-8877573.md): 
+- 各种插件/软件使用教程 [沉浸式翻译 设置gpt翻译](https://anyaigc.apifox.cn/doc-8877574.md): 
+- 各种插件/软件使用教程 [浏览器插件ChatGPT Sidebar](https://anyaigc.apifox.cn/doc-8877575.md): 
+- 各种插件/软件使用教程 [chatgpt-on-wechat 配置教程](https://anyaigc.apifox.cn/doc-8877576.md): 
+- 各种插件/软件使用教程 [chatgpt GPT Academic 学术优化配置gpt教程](https://anyaigc.apifox.cn/doc-8877577.md): 
+- 各种插件/软件使用教程 [RikkaHub 配置教程](https://anyaigc.apifox.cn/doc-8877578.md): 
+- 各种插件/软件使用教程 [coze 工作流使用中转API 教程 ](https://anyaigc.apifox.cn/doc-8877579.md): 
+- 各种插件/软件使用教程 [n8n 工作流获取本地图片生成视频例子](https://anyaigc.apifox.cn/doc-8877580.md): 
+- 各种插件/软件使用教程 [OpenClaw 最新版本 自定义中转站配置教程](https://anyaigc.apifox.cn/doc-8877581.md): 
+- 各种插件/软件使用教程 [OpenClaw配合CC switch自定义中转站配置教程](https://anyaigc.apifox.cn/doc-8877582.md): 
+- 帮助中心 [AI返回字段: 思考相关](https://anyaigc.apifox.cn/doc-8877583.md): 
+- 帮助中心 [HTTP状态码及其含义](https://anyaigc.apifox.cn/doc-8877584.md): 
+- 帮助中心 [自建图床API](https://anyaigc.apifox.cn/doc-8877585.md): 
+
+## API Docs
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT音频（Audio） [GPT-4o-audio](https://anyaigc.apifox.cn/api-465322595.md): 官方文档：https://platform.openai.com/docs/api-reference/chat/create
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT音频（Audio） [音频转文字 whisper-1](https://anyaigc.apifox.cn/api-465322596.md): 官方文档：https://platform.openai.com/docs/guides/speech-to-text
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT音频（Audio） [音频转文字 gpt-4o-transcribe](https://anyaigc.apifox.cn/api-465322597.md): 官方文档：https://platform.openai.com/docs/guides/speech-to-text
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT音频（Audio） [创建语音 gpt-4o-mini-tts](https://anyaigc.apifox.cn/api-465322598.md): 官方文档：https://platform.openai.com/docs/guides/text-to-speech
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT音频（Audio） [创建翻译 (不支持)](https://anyaigc.apifox.cn/api-465322599.md): 
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天补全 （流式）](https://anyaigc.apifox.cn/api-465322600.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天补全 （非流） ](https://anyaigc.apifox.cn/api-465322601.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天识图 （流式）](https://anyaigc.apifox.cn/api-465322602.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天识图 （流式） best64](https://anyaigc.apifox.cn/api-465322603.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天识图 （非流） ](https://anyaigc.apifox.cn/api-465322604.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天创作图 （非流）](https://anyaigc.apifox.cn/api-465322605.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [官方Function calling调用](https://anyaigc.apifox.cn/api-465322606.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [官方N测试](https://anyaigc.apifox.cn/api-465322607.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [列出模型](https://anyaigc.apifox.cn/api-465322608.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天函数调用](https://anyaigc.apifox.cn/api-465322609.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建结构化输出](https://anyaigc.apifox.cn/api-465322610.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [控制推理模型努力程度](https://anyaigc.apifox.cn/api-465322611.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天补全 qwen-mt-turbo](https://anyaigc.apifox.cn/api-465322612.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [创建聊天补全  deepseek v3.1思考程度 (流式）](https://anyaigc.apifox.cn/api-465322613.md): 
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT聊天（Chat） [deepseek-ocr 识别](https://anyaigc.apifox.cn/api-465322614.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT自动补全（Completions） [创建完成](https://anyaigc.apifox.cn/api-465322615.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > ChatGpt 接口 > ChatGPT嵌入（Embeddings） [创建嵌入](https://anyaigc.apifox.cn/api-465322616.md): 获取给定输入的矢量表示，机器学习模型和算法可以轻松使用该表示。
+- 聊天(Chat) > ChatGpt 接口 > Web 搜索 [web搜索](https://anyaigc.apifox.cn/api-465322617.md): 参考文档：https://platform.openai.com/docs/api-reference/chat/create
+- 聊天(Chat) > ChatGpt 接口 > Web 搜索 [deepseek-联网搜索](https://anyaigc.apifox.cn/api-465322618.md): 
+- 聊天(Chat) > Anthropic Claude 接口 > 原生格式 [创建格式化输出 ](https://anyaigc.apifox.cn/api-465322629.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 > 原生格式 [联网搜索](https://anyaigc.apifox.cn/api-465322630.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建聊天补全 （流式）](https://anyaigc.apifox.cn/api-465322619.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建思考聊天 ](https://anyaigc.apifox.cn/api-465322620.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建聊天补全 （流式） [原生格式]](https://anyaigc.apifox.cn/api-465322621.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建函数调用 （流式） [原生格式] ](https://anyaigc.apifox.cn/api-465322622.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建思考聊天  [原生格式]  ](https://anyaigc.apifox.cn/api-465322623.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [PDF支持  [原生格式]   ](https://anyaigc.apifox.cn/api-465322624.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [PDF支持  [原生格式]    base64格式](https://anyaigc.apifox.cn/api-465322625.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建聊天补全 （非流） ](https://anyaigc.apifox.cn/api-465322626.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建聊天识图 （流式）](https://anyaigc.apifox.cn/api-465322627.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > Anthropic Claude 接口 [创建聊天识图 （非流）](https://anyaigc.apifox.cn/api-465322628.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [文本生成](https://anyaigc.apifox.cn/api-465322631.md): 官方文档：https://ai.google.dev/gemini-api/docs/text-generation?hl=zh-cn#multi-turn-conversations
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [文本生成-流 ](https://anyaigc.apifox.cn/api-465322632.md): 官方文档：https://ai.google.dev/gemini-api/docs/text-generation?hl=zh-cn#multi-turn-conversations
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [文本生成+思考-流 ](https://anyaigc.apifox.cn/api-465322633.md): 官方文档：https://ai.google.dev/gemini-api/docs/text-generation?hl=zh-cn#multi-turn-conversations
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [图片生成](https://anyaigc.apifox.cn/api-465322634.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [图片生成 gemini-2.5-flash-image](https://anyaigc.apifox.cn/api-465322635.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#gemini-image-editing
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [图片生成 gemini-2.5-flash-image 控制宽高比](https://anyaigc.apifox.cn/api-465322636.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#gemini-image-editing
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [图片生成 gemini-3-pro-image-preview 控制宽高比 +清晰度](https://anyaigc.apifox.cn/api-465322637.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#gemini-image-editing
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [图片编辑 ](https://anyaigc.apifox.cn/api-465322638.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#gemini-image-editing
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [图片理解](https://anyaigc.apifox.cn/api-465322639.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-understanding?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [格式化输出](https://anyaigc.apifox.cn/api-465322640.md): 官方文档：https://ai.google.dev/gemini-api/docs/structured-output?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [函数调用](https://anyaigc.apifox.cn/api-465322641.md): 官方文档：https://ai.google.dev/gemini-api/docs/function-calling?hl=zh-cn&example=meeting
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [文档理解](https://anyaigc.apifox.cn/api-465322642.md): 官方文档：https://ai.google.dev/gemini-api/docs/document-processing?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [URL context [原生格式]  ](https://anyaigc.apifox.cn/api-465322643.md): 官方文档：https://ai.google.dev/gemini-api/docs/document-processing?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [代码执行](https://anyaigc.apifox.cn/api-465322644.md): 官方文档：https://ai.google.dev/gemini-api/docs/document-processing?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [google search](https://anyaigc.apifox.cn/api-465322645.md): 官方文档：https://ai.google.dev/gemini-api/docs/document-processing?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [视频理解](https://anyaigc.apifox.cn/api-465322646.md): 官方文档：https://ai.google.dev/gemini-api/docs/video-understanding?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [URL context](https://anyaigc.apifox.cn/api-465322647.md): 官方文档：https://ai.google.dev/gemini-api/docs/url-context?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [音频理解](https://anyaigc.apifox.cn/api-465322648.md): 官方文档：https://ai.google.dev/gemini-api/docs/url-context?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [Embeddings](https://anyaigc.apifox.cn/api-465322649.md): 官方文档：https://ai.google.dev/gemini-api/docs/text-generation?hl=zh-cn#multi-turn-conversations
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [TTS 文本转语音](https://anyaigc.apifox.cn/api-465322650.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#gemini-image-editing
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [文本生成 gemini-3-pro-preview:generateContent](https://anyaigc.apifox.cn/api-465322651.md): 官方文档：https://ai.google.dev/gemini-api/docs/text-generation?hl=zh-cn#multi-turn-conversations
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [ Imagen 生成图片](https://anyaigc.apifox.cn/api-465322652.md): 官方文档：https://ai.google.dev/gemini-api/docs/document-processing?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [Imagen 4 开发中](https://anyaigc.apifox.cn/api-465322653.md): 官方文档：https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [视频理解-url [原生格式]  开发中](https://anyaigc.apifox.cn/api-465322654.md): 官方文档：https://ai.google.dev/gemini-api/docs/video-understanding?hl=zh-cn
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [gemini-tts文本转语音](https://anyaigc.apifox.cn/api-465322655.md): 官方文档：https://ai.google.dev/gemini-api/docs/text-generation?hl=zh-cn#multi-turn-conversations
+- 聊天(Chat) > 谷歌Gemini 接口 > 原生格式 [文本嵌入](https://anyaigc.apifox.cn/api-465322656.md): https://ai.google.dev/gemini-api/docs/embeddings?hl=zh-cn#rest_3   官方文档
+- 聊天(Chat) > 谷歌Gemini 接口 > chat兼容格式 [gemini图片创作接口 [chat兼容格式]](https://anyaigc.apifox.cn/api-465322657.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > 谷歌Gemini 接口 > chat兼容格式 [聊天接口 [chat兼容格式]](https://anyaigc.apifox.cn/api-465322658.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > 谷歌Gemini 接口 > chat兼容格式 [聊天接口-思考1 [chat兼容格式] ](https://anyaigc.apifox.cn/api-465322659.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > 谷歌Gemini 接口 > chat兼容格式 [聊天接口-思考2 [chat兼容格式] ](https://anyaigc.apifox.cn/api-465322660.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > 谷歌Gemini 接口 > chat兼容格式 [识图接口 [chat兼容格式]](https://anyaigc.apifox.cn/api-465322661.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > 谷歌Gemini 接口 > chat兼容格式 [聊天+读取文件接口 [chat兼容格式] ](https://anyaigc.apifox.cn/api-465322662.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 聊天(Chat) > 谷歌Gemini 接口 > chat兼容格式 [文本嵌入 [chat兼容格式]](https://anyaigc.apifox.cn/api-465322663.md): 
+- 聊天(Responses) [创建模型响应](https://anyaigc.apifox.cn/api-465322664.md): https://platform.openai.com/docs/api-reference/responses/create
+- 聊天(Responses) [创建函数调用](https://anyaigc.apifox.cn/api-465322665.md): https://platform.openai.com/docs/api-reference/responses/create
+- 聊天(Responses) [创建模型响应(流式返回)](https://anyaigc.apifox.cn/api-465322666.md): https://platform.openai.com/docs/api-reference/responses/create
+- 聊天(Responses) [创建模型响应 (控制思考长度)](https://anyaigc.apifox.cn/api-465322667.md): https://platform.openai.com/docs/api-reference/responses/create
+- 聊天(Responses) [创建网络搜索](https://anyaigc.apifox.cn/api-465322668.md): https://platform.openai.com/docs/api-reference/responses/create
+- 聊天(Responses) [创建模型响应 gpt-5启用思考](https://anyaigc.apifox.cn/api-465322669.md): https://platform.openai.com/docs/api-reference/responses/create
+- 聊天(Responses) [创建函数调用 Copy](https://anyaigc.apifox.cn/api-465322670.md): https://platform.openai.com/docs/api-reference/responses/create
+- 绘画模型 > Midjourney [上传图片](https://anyaigc.apifox.cn/api-465322671.md): 官方文档：https://docs.midjourney.com/hc/en-us/articles/33329380893325-Managing-Image-Uploads
+- 绘画模型 > Midjourney [提交Imagine任务](https://anyaigc.apifox.cn/api-465322672.md): 官方文档：https://docs.midjourney.com/hc/en-us/articles/32023408776205-Prompt-Basics
+- 绘画模型 > Midjourney [根据任务ID 查询任务状态](https://anyaigc.apifox.cn/api-465322673.md): 
+- 绘画模型 > Midjourney [根据ID列表查询任务](https://anyaigc.apifox.cn/api-465322674.md): 
+- 绘画模型 > Midjourney [获取任务图片的seed](https://anyaigc.apifox.cn/api-465322675.md): 
+- 绘画模型 > Midjourney [执行Action动作](https://anyaigc.apifox.cn/api-465322676.md): 官方文档：https://docs.midjourney.com/hc/en-us/articles/32804058614669-Upscalers
+- 绘画模型 > Midjourney [提交Blend任务](https://anyaigc.apifox.cn/api-465322677.md): 官方文档：https://docs.midjourney.com/hc/en-us/articles/32635189884557-Blend-Images-on-Discord
+- 绘画模型 > Midjourney [提交Describe任务](https://anyaigc.apifox.cn/api-465322678.md): 官方文档：https://docs.midjourney.com/hc/en-us/articles/32497889043981-Describe
+- 绘画模型 > Midjourney [提交Modal](https://anyaigc.apifox.cn/api-465322679.md): 
+- 绘画模型 > Ideogram [Generate 3.0（文生图）Generate ](https://anyaigc.apifox.cn/api-465322680.md): 使用 Ideogram 3.0 模型，根据给定的提示和可选参数同步生成图像
+- 绘画模型 > Ideogram [Generate 3.0（图片编辑）Edit](https://anyaigc.apifox.cn/api-465322681.md): 使用 Ideogram 3.0 模型，根据给定的提示和可选参数同步生成图像
+- 绘画模型 > Ideogram [Generate 3.0（图片重制）Remix ](https://anyaigc.apifox.cn/api-465322682.md): 使用 Ideogram 3.0 模型，根据给定的提示和可选参数同步生成图像
+- 绘画模型 > Ideogram [Generate 3.0（图片重构）Reframe ](https://anyaigc.apifox.cn/api-465322683.md): 使用 Ideogram 3.0 模型，根据给定的提示和可选参数同步生成图像
+- 绘画模型 > Ideogram [Generate 3.0（替换背景） Replace Background](https://anyaigc.apifox.cn/api-465322684.md): 使用 Ideogram 3.0 模型，根据给定的提示和可选参数同步生成图像
+- 绘画模型 > Ideogram [ideogram（文生图）](https://anyaigc.apifox.cn/api-465322685.md): Generates images synchronously based on a given prompt and optional parameters.
+- 绘画模型 > Ideogram [Remix（混合图）](https://anyaigc.apifox.cn/api-465322686.md): 官方文档：https://developer.ideogram.ai/api-reference/api-reference/remix
+- 绘画模型 > Ideogram [Upscale（放大高清）](https://anyaigc.apifox.cn/api-465322687.md): 官方文档：https://developer.ideogram.ai/api-reference/api-reference/upscale
+- 绘画模型 > Ideogram [Describe（描述）](https://anyaigc.apifox.cn/api-465322688.md): 官方文档：https://developer.ideogram.ai/api-reference/api-reference/describe
+- 绘画模型 > GPT Image-1 [创建  gpt-image-1](https://anyaigc.apifox.cn/api-465322689.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-1 [编辑  image](https://anyaigc.apifox.cn/api-465322690.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-1 [蒙版  gpt-image-1](https://anyaigc.apifox.cn/api-465322691.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-1 [创建  gpt-image-1.5](https://anyaigc.apifox.cn/api-465322692.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-1 [编辑  gpt-image-1.5](https://anyaigc.apifox.cn/api-465322693.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-1 [蒙版  gpt-image-1.5](https://anyaigc.apifox.cn/api-465322694.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-2 [创建  gpt-image-2](https://anyaigc.apifox.cn/api-465322701.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-2 [创建  gpt-image-2-all](https://anyaigc.apifox.cn/api-465322702.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > GPT Image-2 [编辑  gpt-image-2](https://anyaigc.apifox.cn/api-465322703.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > Grok Image 系列  [创建 Image](https://anyaigc.apifox.cn/api-465322704.md): 
+- 绘画模型 > Grok Image 系列  [编辑 image](https://anyaigc.apifox.cn/api-465322705.md): 
+- 绘画模型 > 即梦绘画 [创建绘画](https://anyaigc.apifox.cn/api-465322706.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > 即梦绘画 [编辑图片](https://anyaigc.apifox.cn/api-465322707.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > DALL·E 3 [创建 DALL·E 3](https://anyaigc.apifox.cn/api-465322708.md): [图片](https://platform.openai.com/docs/api-reference/images)
+- 绘画模型 > FLUX 系列 > gpt 兼容格式 [创建/编辑  image](https://anyaigc.apifox.cn/api-465322709.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > FLUX 系列 > gpt 兼容格式 [Flux编辑（OpenAI dall-e-3格式）](https://anyaigc.apifox.cn/api-465322710.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 绘画模型 > FLUX 系列 > Replicate 官方格式 [创建任务 black-forest-labs/flux-kontext-dev](https://anyaigc.apifox.cn/api-465322711.md): 官方文档: https://replicate.com/black-forest-labs/flux-kontext-dev
+- 绘画模型 > FLUX 系列 > Replicate 官方格式 [查询任务](https://anyaigc.apifox.cn/api-465322712.md): 官方文档: https://replicate.com/black-forest-labs/flux-kontext-max
+- 绘画模型 > 豆包系列 [创建图片](https://anyaigc.apifox.cn/api-465322713.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seededit-3-0-i2i-250628](https://anyaigc.apifox.cn/api-465322714.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-0-250828-文生图](https://anyaigc.apifox.cn/api-465322715.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-0-250828-图生图](https://anyaigc.apifox.cn/api-465322716.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-0-250828-多图生图 ](https://anyaigc.apifox.cn/api-465322717.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-5-251128 文生图（纯文本输入单图输出）](https://anyaigc.apifox.cn/api-465322718.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-5-251128  图文生图（单图输入单图输出）](https://anyaigc.apifox.cn/api-465322719.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-5-251128  多图融合（多图输入单图输出）](https://anyaigc.apifox.cn/api-465322720.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-5-251128  组图输出（多图输出）](https://anyaigc.apifox.cn/api-465322721.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-5-251128  单张图生组图](https://anyaigc.apifox.cn/api-465322722.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 豆包系列 [doubao-seedream-4-5-251128  多参考图生组图](https://anyaigc.apifox.cn/api-465322723.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > Fal.ai平台 [获取请求结果 ](https://anyaigc.apifox.cn/api-465322724.md): 
+- 绘画模型 > Fal.ai平台 [/fal-ai/nano-banana 文生图](https://anyaigc.apifox.cn/api-465322725.md): 官方文档: https://fal.ai/models/fal-ai/nano-banana
+- 绘画模型 > Fal.ai平台 [/fal-ai/nano-banana/edit 图片编辑](https://anyaigc.apifox.cn/api-465322726.md): 官方文档: https://fal.ai/models/fal-ai/nano-banana/edit
+- 绘画模型 > 腾讯AIGC生图 [创建任务](https://anyaigc.apifox.cn/api-465322727.md): 官方文档:https://cloud.tencent.com/document/product/266/126240
+- 绘画模型 > 腾讯AIGC生图 [获取请求结果 ](https://anyaigc.apifox.cn/api-465322728.md): 
+- 绘画模型 > 千问 Qwen-Image 系列 [qwen-image-max](https://anyaigc.apifox.cn/api-465322729.md): 
+- 绘画模型 > 千问 Qwen-Image 系列 [z-image-turbo](https://anyaigc.apifox.cn/api-465322730.md): 
+- 绘画模型 > 千问 Qwen-Image 系列 [qwen-image-edit-2509](https://anyaigc.apifox.cn/api-465322731.md): 给定提示和/或输入图像，模型将生成新图像。
+- 绘画模型 > 千问 Qwen-Image 系列 [qwen-image-max-2025-12-30新地址](https://anyaigc.apifox.cn/api-465322732.md): https://bailian.console.aliyun.com/cn-beijing/?tab=api#/api/?type=model&url=2975126
+- 绘画模型 > 千问 Qwen-Image 系列 [qwen-image-2.0-2026-03-03](https://anyaigc.apifox.cn/api-465322733.md): 
+- 绘画模型 > 万向wan系列 [wan2.7-image-pro](https://anyaigc.apifox.cn/api-465322734.md): 
+- 视频模型 > veo 视频生成 > 视频统一格式 [创建视频](https://anyaigc.apifox.cn/api-465322735.md): 
+- 视频模型 > veo 视频生成 > 视频统一格式 [创建视频，带图片](https://anyaigc.apifox.cn/api-465322736.md): 
+- 视频模型 > veo 视频生成 > 视频统一格式 [查询任务](https://anyaigc.apifox.cn/api-465322737.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > veo 视频生成 > 视频统一格式 [创建视频（参考图）](https://anyaigc.apifox.cn/api-465322738.md): 
+- 视频模型 > veo 视频生成 > OpenAI 视频格式  [openai 创建视频，带图片](https://anyaigc.apifox.cn/api-465322739.md): 
+- 视频模型 > veo 视频生成 > OpenAI 视频格式  [openai 查询任务](https://anyaigc.apifox.cn/api-465322740.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > veo 视频生成 > OpenAI 视频格式  [openai 下载视频](https://anyaigc.apifox.cn/api-465322741.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > veo 视频生成 > 3.1原生格式 [视频生成 veo-3.1-generate-preview](https://anyaigc.apifox.cn/api-465322742.md): 
+- 视频模型 > veo 视频生成 > 3.1原生格式 [查询任务](https://anyaigc.apifox.cn/api-465322743.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > veo 视频生成 > 3.1原生格式 [视频生成 veo-3.1-fast-generate-preview](https://anyaigc.apifox.cn/api-465322744.md): 
+- 视频模型 > luma 视频生成 > 官方API格式 [提交生成视频任务](https://anyaigc.apifox.cn/api-465322745.md): 官方文档：https://docs.lumalabs.ai/docs/video-generation
+- 视频模型 > luma 视频生成 > 官方API格式 [扩展视频](https://anyaigc.apifox.cn/api-465322746.md): 官方文档：https://docs.lumalabs.ai/docs/video-generation
+- 视频模型 > luma 视频生成 > 查询任务 [查询单个任务](https://anyaigc.apifox.cn/api-465322747.md): "state": "completed" 枚举值： "pending", "processing", "completed", "failed"
+- 视频模型 > luma 视频生成 > 查询任务 [批量获取任务](https://anyaigc.apifox.cn/api-465322748.md): "state": "completed" 枚举值： "pending", "processing", "completed", "failed"
+- 视频模型 > Kling 快手可灵 [图像生成](https://anyaigc.apifox.cn/api-465322749.md): 其他参数 请看 官方文档 https://app.klingai.com/cn/dev/document-api/apiReference/updateNotice
+- 视频模型 > Kling 快手可灵 [文生视频](https://anyaigc.apifox.cn/api-465322750.md): 其他参数 请看 官方文档 https://app.klingai.com/cn/dev/document-api/apiReference/updateNotice
+- 视频模型 > Kling 快手可灵 [图生视频](https://anyaigc.apifox.cn/api-465322751.md): 其他参数 请看 官方文档 https://app.klingai.com/cn/dev/document-api/apiReference/updateNotice
+- 视频模型 > Kling 快手可灵 [虚拟试穿](https://anyaigc.apifox.cn/api-465322752.md): 官方文档：https://app.klingai.com/cn/dev/document-api/apiReference/model/functionalityTry
+- 视频模型 > Kling 快手可灵 [对口型](https://anyaigc.apifox.cn/api-465322753.md): 1、生成视频
+- 视频模型 > Kling 快手可灵 [视频延长](https://anyaigc.apifox.cn/api-465322754.md): 1、生成视频
+- 视频模型 > Kling 快手可灵 [视频特效](https://anyaigc.apifox.cn/api-465322755.md): 您可以根据 effect_scene 实现不同的特效效果，现支持：
+- 视频模型 > Kling 快手可灵 [多图参考生视频](https://anyaigc.apifox.cn/api-465322756.md): 其他参数 请看 官方文档 https://app.klingai.com/cn/dev/document-api/apiReference/updateNotice
+- 视频模型 > Kling 快手可灵 [查询任务(免费)](https://anyaigc.apifox.cn/api-465322757.md): 
+- 视频模型 > Runway 视频生成 [提交视频生成任务](https://anyaigc.apifox.cn/api-465322758.md): 官方文档：https://docs.dev.runwayml.com/api/#tag/Start-generating/paths/~1v1~1image_to_video/post
+- 视频模型 > Runway 视频生成 [查询视频任务(免费)](https://anyaigc.apifox.cn/api-465322759.md): 
+- 视频模型 > 即梦 视频生成 > 视频统一格式 [创建视频](https://anyaigc.apifox.cn/api-465322762.md): 
+- 视频模型 > 即梦 视频生成 > 视频统一格式 [查询任务](https://anyaigc.apifox.cn/api-465322763.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > 即梦 视频生成 [提交视频生成任务](https://anyaigc.apifox.cn/api-465322760.md): 
+- 视频模型 > 即梦 视频生成 [查询视频任务(免费)](https://anyaigc.apifox.cn/api-465322761.md): TaskStatus:
+- 视频模型 > 海螺 视频生成 [提交视频生成任务 ](https://anyaigc.apifox.cn/api-465322764.md): 官方文档：https://www.minimax.io/platform/document/Model%3Fkey=684261f14c5738213294faa7?key=66d1439376e52fcee2853049&document=video_generation
+- 视频模型 > 海螺 视频生成 [视频任务状态查询](https://anyaigc.apifox.cn/api-465322765.md): 
+- 视频模型 > 海螺 视频生成 [图生视频](https://anyaigc.apifox.cn/api-465322766.md): 官方文档：https://www.minimax.io/platform/document/Model%3Fkey=684261f14c5738213294faa7?key=66d1439376e52fcee2853049&document=video_generation
+- 视频模型 > 海螺 视频生成 [首尾帧视频](https://anyaigc.apifox.cn/api-465322767.md): 官方文档：https://www.minimax.io/platform/document/Model%3Fkey=684261f14c5738213294faa7?key=66d1439376e52fcee2853049&document=video_generation
+- 视频模型 > 豆包 视频生成 [创建任务](https://anyaigc.apifox.cn/api-465322768.md): 官方文档：https://www.volcengine.com/docs/82379/1520757
+- 视频模型 > 豆包 视频生成 [查询单个任务](https://anyaigc.apifox.cn/api-465322769.md): 
+- 视频模型 > 豆包 视频生成 [查询视频生成任务列表-默认](https://anyaigc.apifox.cn/api-465322770.md): 
+- 视频模型 > 豆包 视频生成 [查询视频生成任务列表-搜索多个任务 ID](https://anyaigc.apifox.cn/api-465322771.md): 
+- 视频模型 > 豆包 视频生成 [seedance-1-5-pro-首尾帧 ](https://anyaigc.apifox.cn/api-465322772.md): 
+- 视频模型 > 豆包 视频生成 [seedance-1-5-pro](https://anyaigc.apifox.cn/api-465322773.md): 
+- 视频模型 > 豆包 视频生成 [创建视频生成任务 API（doubao-2.0)](https://anyaigc.apifox.cn/api-465322774.md): https://www.volcengine.com/docs/82379/1520757?lang=zh
+- 视频模型 > 豆包 视频生成 [doubao-2.0 查询视频生成任务 API](https://anyaigc.apifox.cn/api-465322775.md): https://www.volcengine.com/docs/82379/1521309?lang=zh
+- 视频模型 > 豆包 视频生成 [doubao-2.0 查询视频生成任务列表](https://anyaigc.apifox.cn/api-465322776.md): https://www.volcengine.com/docs/82379/1521675?lang=zh
+- 视频模型 > sora 视频生成 > 统一视频格式 [查询任务 ](https://anyaigc.apifox.cn/api-465322778.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > sora 视频生成 > 统一视频格式 [创建视频，带图片  sora-2](https://anyaigc.apifox.cn/api-465322779.md): 
+- 视频模型 > sora 视频生成 > 统一视频格式 [创建视频 sora-2](https://anyaigc.apifox.cn/api-465322780.md): 
+- 视频模型 > sora 视频生成 > 统一视频格式 [创建视频 sora-2-pro](https://anyaigc.apifox.cn/api-465322781.md): 
+- 视频模型 > sora 视频生成 > 统一视频格式 [创建视频 （带 Character）](https://anyaigc.apifox.cn/api-465322782.md): 
+- 视频模型 > sora 视频生成 > 统一视频格式 [创建视频，带图片  sora-2 Copy](https://anyaigc.apifox.cn/api-465322783.md): 
+- 视频模型 > sora 视频生成 > chat格式 [创建视频](https://anyaigc.apifox.cn/api-465322784.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > sora 视频生成 > chat格式 [创建视频, 带图片](https://anyaigc.apifox.cn/api-465322785.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > sora 视频生成 > chat格式 [连续修改生成视频](https://anyaigc.apifox.cn/api-465322786.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [openai 创建视频，带图片](https://anyaigc.apifox.cn/api-465322787.md): 
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [创建一个来自上传视频的角色](https://anyaigc.apifox.cn/api-465322788.md): 
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [使用故事板创建视频](https://anyaigc.apifox.cn/api-465322789.md): 
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [openai 创建视频，带图片 私有模式](https://anyaigc.apifox.cn/api-465322790.md): 
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [openai 创建视频（带Character）](https://anyaigc.apifox.cn/api-465322791.md): 
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [openai 编辑视频](https://anyaigc.apifox.cn/api-465322792.md): 
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [openai 下载视频](https://anyaigc.apifox.cn/api-465322793.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > sora 视频生成 > OpenAI官方视频格式 [openai 查询任务](https://anyaigc.apifox.cn/api-465322794.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > sora 视频生成 [创建角色](https://anyaigc.apifox.cn/api-465322777.md): 
+- 视频模型 > grok 视频生成 > 视频统一格式 [创建视频 ](https://anyaigc.apifox.cn/api-465322795.md): 
+- 视频模型 > grok 视频生成 > 视频统一格式 [查询任务 ](https://anyaigc.apifox.cn/api-465322796.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > grok 视频生成 > 视频统一格式 [创建视频](https://anyaigc.apifox.cn/api-465322797.md): 
+- 视频模型 > grok 视频生成 > 视频统一格式 [查询任务](https://anyaigc.apifox.cn/api-465322798.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > grok 视频生成 > 视频统一格式 [扩展视频](https://anyaigc.apifox.cn/api-465322799.md): 
+- 视频模型 > grok 视频生成 > OpenAI视频格式 [openai 创建视频，图生，视频生视频](https://anyaigc.apifox.cn/api-465322800.md): 
+- 视频模型 > grok 视频生成 > OpenAI视频格式 [openai 创建视频，图生](https://anyaigc.apifox.cn/api-465322801.md): 
+- 视频模型 > grok 视频生成 > OpenAI视频格式 [查询任务](https://anyaigc.apifox.cn/api-465322802.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > 通义万象 视频生成 [生成视频](https://anyaigc.apifox.cn/api-465322803.md): 部分模型参数参考官方文档：https://bailian.console.aliyun.com/cn-beijing?spm=5176.12818093_47.overview_recent.1.3be92cc9kBxa3c&tab=api#/api/?type=model&url=3029820
+- 视频模型 > 通义万象 视频生成 [视频查询](https://anyaigc.apifox.cn/api-465322804.md): 
+- 视频模型 > 通义万象 视频生成 [happyhorse-1.0-i2v](https://anyaigc.apifox.cn/api-465322805.md): 
+- 视频模型 > 通义万象 视频生成 [happyhorse-1.0-t2v](https://anyaigc.apifox.cn/api-465322806.md): 
+- 视频模型 > 通义万象 视频生成 [happyhorse-1.0-r2v](https://anyaigc.apifox.cn/api-465322807.md): 
+- 视频模型 > 通义万象 视频生成 [happyhorse-1.0-video-edit](https://anyaigc.apifox.cn/api-465322808.md): 
+- 视频模型 > TC-Vidu视频生成 > 视频统一格式 [创建视频](https://anyaigc.apifox.cn/api-465322809.md): 
+- 视频模型 > TC-Vidu视频生成 > 视频统一格式 [查询任务](https://anyaigc.apifox.cn/api-465322810.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 视频模型 > 腾讯AIGC视频生成 [创建任务](https://anyaigc.apifox.cn/api-465322811.md): 官方文档:https://cloud.tencent.com/document/product/266/126240
+- 视频模型 > 腾讯AIGC视频生成 [获取请求结果 ](https://anyaigc.apifox.cn/api-465322812.md): 
+- 视频模型 > 腾讯AIGC视频生成 [特效模板创建任务](https://anyaigc.apifox.cn/api-465322813.md): 官方文档:https://cloud.tencent.com/document/product/266/126240
+- 视频模型 > omni 视频生成 [创建视频参考图](https://anyaigc.apifox.cn/api-465322814.md): 
+- 视频模型 > omni 视频生成 [查询结果](https://anyaigc.apifox.cn/api-465322815.md): 
+- 视频模型 > omni 视频生成 [文生视频](https://anyaigc.apifox.cn/api-465322816.md): 
+- 语音模型 > 通意万象 语音合成 [语音合成](https://anyaigc.apifox.cn/api-465322817.md): 
+- 语音模型 > 通意万象 语音合成 [语音合成 Copy](https://anyaigc.apifox.cn/api-465322818.md): 
+- GPTs 相关 [GPTs对话](https://anyaigc.apifox.cn/api-465322819.md): 模型名称格式为：gpt-4-gizmo-*，系统会自动进行识别
+- 系统API [获取令牌列表](https://anyaigc.apifox.cn/api-465322820.md): 
+- 系统API [新增令牌](https://anyaigc.apifox.cn/api-465322821.md): 
+- 系统API [获取令牌支持模型](https://anyaigc.apifox.cn/api-465322822.md): 
+- 系统API [获取账号信息](https://anyaigc.apifox.cn/api-465322823.md): 
+- 系统API [修改令牌](https://anyaigc.apifox.cn/api-465322824.md): 
+- 系统API [搜索令牌](https://anyaigc.apifox.cn/api-465322825.md): 
+- 系统API [获取令牌使用情况](https://anyaigc.apifox.cn/api-465322826.md): 
+- 系统API [删除令牌](https://anyaigc.apifox.cn/api-465322827.md): 
+- 系统API [批量修改令牌](https://anyaigc.apifox.cn/api-465322828.md): 
+- 文生音乐 Suno > 任务提交 [生成歌曲(灵感模式)](https://anyaigc.apifox.cn/api-465322830.md): 
+- 文生音乐 Suno > 任务提交 [生成歌曲(自定义模式)](https://anyaigc.apifox.cn/api-465322831.md): 
+- 文生音乐 Suno > 任务提交 [生成歌曲(续写模式)](https://anyaigc.apifox.cn/api-465322832.md): 
+- 文生音乐 Suno > 任务提交 [生成歌曲(歌手风格)](https://anyaigc.apifox.cn/api-465322833.md): # 接入步骤
+- 文生音乐 Suno > 任务提交 [生成歌曲(上传歌曲二次创作)](https://anyaigc.apifox.cn/api-465322834.md): 
+- 文生音乐 Suno > 任务提交 [生成歌曲(拼接歌曲)](https://anyaigc.apifox.cn/api-465322835.md): 
+- 文生音乐 Suno > 任务提交 [生成歌词](https://anyaigc.apifox.cn/api-465322836.md): 
+- 文生音乐 Suno > 任务提交 [歌曲拼接](https://anyaigc.apifox.cn/api-465322838.md): 
+- 文生音乐 Suno > 任务提交 [报告上传完毕](https://anyaigc.apifox.cn/api-465322839.md): ┌─────────────────────────────────────────────────────────────────┐
+- 文生音乐 Suno > 任务提交 [查询上传处理状态](https://anyaigc.apifox.cn/api-465322840.md): ┌─────────────────────────────────────────────────────────────────┐
+- 文生音乐 Suno > 任务提交 [初始化音频文件](https://anyaigc.apifox.cn/api-465322841.md): ┌─────────────────────────────────────────────────────────────────┐
+- 文生音乐 Suno > 任务提交 [请求上传授权](https://anyaigc.apifox.cn/api-465322842.md): ┌─────────────────────────────────────────────────────────────────┐
+- 文生音乐 Suno > 任务提交 [s3上传示例](https://anyaigc.apifox.cn/api-465322843.md): 
+- 文生音乐 Suno > 任务提交 [场景一: 灵感模式](https://anyaigc.apifox.cn/api-465322844.md): 
+- 文生音乐 Suno > 任务提交 [场景二: 自定义.歌词歌名](https://anyaigc.apifox.cn/api-465322845.md): 
+- 文生音乐 Suno > 任务提交 [场景三: 纯音乐.自定义](https://anyaigc.apifox.cn/api-465322846.md): 
+- 文生音乐 Suno > 查询接口 [批量获取任务](https://anyaigc.apifox.cn/api-465322847.md): 
+- 文生音乐 Suno > 查询接口 [查询单个任务](https://anyaigc.apifox.cn/api-465322848.md): 
+- 文生音乐 Suno > 查询接口 [获取wav](https://anyaigc.apifox.cn/api-465322849.md): 
+- 文生音乐 Suno > 查询接口 [Timing:歌词、音频时间线](https://anyaigc.apifox.cn/api-465322850.md): 
+- 文生音乐 Suno > 查询接口 [场景详情获取](https://anyaigc.apifox.cn/api-465322851.md): 
+- Rerank 重排序模型 [重排序](https://anyaigc.apifox.cn/api-465322852.md): 给定一个提示，该模型将返回一个或多个预测的完成，并且还可以返回每个位置的替代标记的概率。
+- 可灵 Kling 平台 > 文生视频 [文生视频](https://anyaigc.apifox.cn/api-465322853.md): 
+- 可灵 Kling 平台 > 文生视频 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322854.md): 
+- 可灵 Kling 平台 > 图生视频 [图生视频](https://anyaigc.apifox.cn/api-465322855.md): 
+- 可灵 Kling 平台 > 图生视频 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322856.md): 
+- 可灵 Kling 平台 > Omni-Video [Omni-Video](https://anyaigc.apifox.cn/api-465322857.md): 
+- 可灵 Kling 平台 > Omni-Video [查询任务（单个）](https://anyaigc.apifox.cn/api-465322858.md): 
+- 可灵 Kling 平台 > 多图参考生视频 [多图参考生视频](https://anyaigc.apifox.cn/api-465322859.md): 
+- 可灵 Kling 平台 > 多图参考生视频 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322860.md): 
+- 可灵 Kling 平台 > 多模态视频编辑 [初始化待编辑视频](https://anyaigc.apifox.cn/api-465322861.md): 
+- 可灵 Kling 平台 > 多模态视频编辑 [增加视频选区](https://anyaigc.apifox.cn/api-465322862.md): 
+- 可灵 Kling 平台 > 多模态视频编辑 [删减视频选区](https://anyaigc.apifox.cn/api-465322863.md): 
+- 可灵 Kling 平台 > 多模态视频编辑 [预览已选区视频](https://anyaigc.apifox.cn/api-465322864.md): 
+- 可灵 Kling 平台 > 多模态视频编辑 [多模态视频](https://anyaigc.apifox.cn/api-465322865.md): 
+- 可灵 Kling 平台 > 多模态视频编辑 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322866.md): 
+- 可灵 Kling 平台 > 视频延长 [视频延长](https://anyaigc.apifox.cn/api-465322867.md): 
+- 可灵 Kling 平台 > 视频延长 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322868.md): 
+- 可灵 Kling 平台 > 视频特效 [视频特效](https://anyaigc.apifox.cn/api-465322869.md): 
+- 可灵 Kling 平台 > 视频特效 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322870.md): 
+- 可灵 Kling 平台 > 图像生成 [图像生成](https://anyaigc.apifox.cn/api-465322871.md): 
+- 可灵 Kling 平台 > 图像生成 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322872.md): 
+- 可灵 Kling 平台 > 多图参考生图 [多图参考生图](https://anyaigc.apifox.cn/api-465322873.md): 
+- 可灵 Kling 平台 > 多图参考生图 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322874.md): 
+- 可灵 Kling 平台 > Omni-Image [Omni-Image](https://anyaigc.apifox.cn/api-465322875.md): 
+- 可灵 Kling 平台 > Omni-Image [查询任务（单个）](https://anyaigc.apifox.cn/api-465322876.md): 
+- 可灵 Kling 平台 > 扩图 [扩图](https://anyaigc.apifox.cn/api-465322877.md): 
+- 可灵 Kling 平台 > 扩图 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322878.md): 
+- 可灵 Kling 平台 > 图像识别 [图像识别](https://anyaigc.apifox.cn/api-465322879.md): 
+- 可灵 Kling 平台 > 数字人 [数字人](https://anyaigc.apifox.cn/api-465322880.md): 
+- 可灵 Kling 平台 > 数字人 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322881.md): 
+- 可灵 Kling 平台 > 文生音效 [文生音效](https://anyaigc.apifox.cn/api-465322882.md): 
+- 可灵 Kling 平台 > 文生音效 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322883.md): 
+- 可灵 Kling 平台 > 视频生音效 [视频生音效](https://anyaigc.apifox.cn/api-465322884.md): 
+- 可灵 Kling 平台 > 视频生音效 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322885.md): 
+- 可灵 Kling 平台 > 语音合成 [语音合成](https://anyaigc.apifox.cn/api-465322886.md): 
+- 可灵 Kling 平台 > 对口型 [人脸识别](https://anyaigc.apifox.cn/api-465322887.md): 
+- 可灵 Kling 平台 > 对口型 [对口型](https://anyaigc.apifox.cn/api-465322888.md): 
+- 可灵 Kling 平台 > 对口型 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322889.md): 
+- 可灵 Kling 平台 > 自定义音色 [自定义音色](https://anyaigc.apifox.cn/api-465322890.md): 
+- 可灵 Kling 平台 > 自定义音色 [查询自定义音色（单个）](https://anyaigc.apifox.cn/api-465322891.md): 
+- 可灵 Kling 平台 > 自定义音色 [查询官方音色](https://anyaigc.apifox.cn/api-465322892.md): 
+- 可灵 Kling 平台 > 自定义音色 [删除自定义音色](https://anyaigc.apifox.cn/api-465322893.md): 
+- 可灵 Kling 平台 > 动作控制 [动作控制](https://anyaigc.apifox.cn/api-465322894.md): 
+- 可灵 Kling 平台 > 动作控制 [查询任务（单个）](https://anyaigc.apifox.cn/api-465322895.md): 
+- 可灵 Kling 平台 > 主体 [主体(旧)](https://anyaigc.apifox.cn/api-465322896.md): 
+- 可灵 Kling 平台 > 主体 [主体（新版本）](https://anyaigc.apifox.cn/api-465322897.md): 
+- 可灵 Kling 平台 > 主体 [查询自定义主体（单个新版本）](https://anyaigc.apifox.cn/api-465322898.md): 
+- 可灵 Kling 平台 > 主体 [查询官方主体（列表新版本）](https://anyaigc.apifox.cn/api-465322899.md): 
+- 可灵 Kling 平台 > 主体 [删除自定义主体（新版本）](https://anyaigc.apifox.cn/api-465322900.md): 
+- 阿里 pix 平台 [生成文生视频](https://anyaigc.apifox.cn/api-465322901.md): 通过prompt 进行文生视频的生成
+- 阿里 pix 平台 [获取视频状态](https://anyaigc.apifox.cn/api-465322902.md): 
+- 阿里 pix 平台 [生成图生视频](https://anyaigc.apifox.cn/api-465322903.md): 通过图片进行图生视频的生成. 生成前必须传图片, 用img_id来进行请求.
+- 阿里 pix 平台 [生成视频模版](https://anyaigc.apifox.cn/api-465322904.md): 基于图生视频如何生成视频模版
+- 阿里 pix 平台 [首尾帧生成视频](https://anyaigc.apifox.cn/api-465322905.md): 
+- 阿里 pix 平台 [生成对口型(Lipsync)视频](https://anyaigc.apifox.cn/api-465322906.md): 
+- 阿里 pix 平台 [获取TTS 音色](https://anyaigc.apifox.cn/api-465322907.md): 
+- 阿里 pix 平台 [生成延长(Extend)视频](https://anyaigc.apifox.cn/api-465322908.md): 
+- 阿里 pix 平台 [音效生成(sound_effect)接口](https://anyaigc.apifox.cn/api-465322909.md): 
+- 阿里 pix 平台 [多主体(多参考)生成视频](https://anyaigc.apifox.cn/api-465322910.md): 
+- 阿里 pix 平台 [重绘视频生成视频](https://anyaigc.apifox.cn/api-465322911.md): 
+- 阿里 pix 平台 [主体替换(Swap) Mask 生成](https://anyaigc.apifox.cn/api-465322912.md): 
+- 阿里 pix 平台 [主体替换(Swap) 视频生成](https://anyaigc.apifox.cn/api-465322913.md): 
+- 阿里 pix 平台 [多帧(Multi-transition) 视频生成](https://anyaigc.apifox.cn/api-465322914.md): 
+- 阿里 pix 平台 [动作模仿(Mimic) 视频生成](https://anyaigc.apifox.cn/api-465322915.md): 
+- 阿里 pix 平台 [视频编辑(Modify) 生成视频](https://anyaigc.apifox.cn/api-465322916.md): 
+- 阿里 pix 平台 [上传图片](https://anyaigc.apifox.cn/api-465322917.md): 图生视频/首尾帧都需要先上传图片, 通过img_id 完成生成.
+- 阿里 pix 平台 [上传资源(视频/音频)](https://anyaigc.apifox.cn/api-465322918.md): 
+- Replicate 聚合平台 [查询任务](https://anyaigc.apifox.cn/api-465322919.md): 官方文档: https://replicate.com/black-forest-labs/flux-kontext-max
+- Replicate 聚合平台 [创建任务-通过模型version（predictions）](https://anyaigc.apifox.cn/api-465322920.md): version models 支持以下
+- Replicate 聚合平台 [创建任务 stability-ai/stable-diffusion](https://anyaigc.apifox.cn/api-465322921.md): 官方文档: https://replicate.com/stability-ai/stable-diffusion
+- Replicate 聚合平台 [创建任务 stability-ai/sdxl](https://anyaigc.apifox.cn/api-465322922.md): 官方文档: https://replicate.com/stability-ai/sdxl
+- Replicate 聚合平台 [创建任务 stability-ai/stable-diffusion-inpainting](https://anyaigc.apifox.cn/api-465322923.md): 官方文档: https://replicate.com/stability-ai/stable-diffusion-inpainting
+- Replicate 聚合平台 [创建任务 stability-ai/stable-diffusion-img2img](https://anyaigc.apifox.cn/api-465322924.md): 官方文档: https://replicate.com/stability-ai/stable-diffusion-img2img
+- Replicate 聚合平台 [创建任务 lucataco/flux-schnell-lora](https://anyaigc.apifox.cn/api-465322925.md): 官方文档: https://replicate.com/lucataco/flux-schnell-lora
+- Replicate 聚合平台 [创建任务 lucataco/flux-dev-lora](https://anyaigc.apifox.cn/api-465322926.md): 官方文档: https://replicate.com/lucataco/flux-dev-lora
+- Replicate 聚合平台 [创建任务 andreasjansson/stable-diffusion-animation](https://anyaigc.apifox.cn/api-465322927.md): 官方文档:https://replicate.com/andreasjansson/stable-diffusion-animation
+- Replicate 聚合平台 [创建任务 sujaykhandekar/object-removal](https://anyaigc.apifox.cn/api-465322928.md): 官方文档:https://replicate.com/sujaykhandekar/object-removal
+- Replicate 聚合平台 [创建任务 cjwbw/rembg](https://anyaigc.apifox.cn/api-465322929.md): 官方文档:https://replicate.com/cjwbw/rembg
+- Replicate 聚合平台 [创建任务 lucataco/animate-diff](https://anyaigc.apifox.cn/api-465322930.md): 官方文档:https://replicate.com/lucataco/animate-diff
+- Replicate 聚合平台 [创建任务 ideogram-ai/ideogram-v2-turbo](https://anyaigc.apifox.cn/api-465322931.md): 官方文档:https://replicate.com/ideogram-ai/ideogram-v2-turbo
+- Replicate 聚合平台 [创建任务 black-forest-labs/flux-kontext-dev](https://anyaigc.apifox.cn/api-465322932.md): 官方文档: https://replicate.com/black-forest-labs/flux-kontext-dev
+- Replicate 聚合平台 [创建任务 minimax/video-01-live](https://anyaigc.apifox.cn/api-465322933.md): 官方文档:https://replicate.com/minimax/video-01-live
+- Replicate 聚合平台 [创建任务 minimax/video-01](https://anyaigc.apifox.cn/api-465322934.md): 官方文档:https://replicate.com/minimax/video-01
+- Replicate 聚合平台 [创建任务 recraft-ai/recraft-v3](https://anyaigc.apifox.cn/api-465322935.md): 官方文档:https://replicate.com/recraft-ai/recraft-v3
+- Replicate 聚合平台 [创建任务 recraft-ai/recraft-v3-svg](https://anyaigc.apifox.cn/api-465322936.md): 官方文档:https://replicate.com/recraft-ai/recraft-v3-svg
+- Replicate 聚合平台 [创建任务 black-forest-labs/flux-1.1-pro-ultra](https://anyaigc.apifox.cn/api-465322937.md): 官方文档: https://replicate.com/black-forest-labs/flux-1.1-pro-ultra
+- Replicate 聚合平台 [创建任务 black-forest-labs/flux-kontext-pro](https://anyaigc.apifox.cn/api-465322938.md): 官方文档: https://replicate.com/black-forest-labs/flux-kontext-pro
+- Replicate 聚合平台 [创建任务 black-forest-labs/flux-kontext-max](https://anyaigc.apifox.cn/api-465322939.md): 官方文档: https://replicate.com/black-forest-labs/flux-kontext-max
+- Replicate 聚合平台 [创建任务 flux-kontext-apps/multi-image-kontext-max](https://anyaigc.apifox.cn/api-465322940.md): 官方文档:https://replicate.com/flux-kontext-apps/multi-image-kontext-max
+- Replicate 聚合平台 [创建任务 flux-kontext-apps/multi-image-kontext-pro](https://anyaigc.apifox.cn/api-465322941.md): 官方文档:https://replicate.com/flux-kontext-apps/multi-image-kontext-pro
+- Replicate 聚合平台 [创建任务 lucataco/remove-bg](https://anyaigc.apifox.cn/api-465322942.md): 官方文档:https://replicate.com/lucataco/remove-bg
+- Replicate 聚合平台 [创建任务 riffusion/riffusion](https://anyaigc.apifox.cn/api-465322943.md): 官方文档:https://replicate.com/riffusion/riffusion
+- Replicate 聚合平台 [创建任务 black-forest-labs/flux-fill-dev](https://anyaigc.apifox.cn/api-465322944.md): 官方文档:https://replicate.com/black-forest-labs/flux-fill-dev
+- Replicate 聚合平台 [创建任务 black-forest-labs/flux-fill-pro](https://anyaigc.apifox.cn/api-465322945.md): 官方文档:https://replicate.com/black-forest-labs/flux-fill-pro
+- Replicate 聚合平台 [创建任务 google/imagen-4-fast](https://anyaigc.apifox.cn/api-465322946.md): 官方文档:https://replicate.com/google/imagen-4-fast
+- Replicate 聚合平台 [创建任务 google/imagen-4-ultra](https://anyaigc.apifox.cn/api-465322947.md): 官方文档:https://replicate.com/google/imagen-4-ultra
+- Replicate 聚合平台 [创建任务 google/imagen-4](https://anyaigc.apifox.cn/api-465322948.md): 官方文档:https://replicate.com/google/imagen-4
+- Replicate 聚合平台 [创建任务 prunaai/vace-14b](https://anyaigc.apifox.cn/api-465322949.md): 官方文档:https://replicate.com/prunaai/vace-14b
+- Replicate 聚合平台 [创建任务 bytedance/seedream-4](https://anyaigc.apifox.cn/api-465322950.md): 
+- MINIMAX官方 [创建异步语音合成任务 V2](https://anyaigc.apifox.cn/api-465322951.md): https://platform.minimaxi.com/docs/api-reference/speech-t2a-async-create
+- MINIMAX官方 [同步语音合成 V2](https://anyaigc.apifox.cn/api-465322952.md): https://platform.minimaxi.com/docs/api-reference/speech-t2a-http
+- MINIMAX官方 [文生图生视频生成任务](https://anyaigc.apifox.cn/api-465322953.md): 
+- MINIMAX官方 [上传复刻音频](https://anyaigc.apifox.cn/api-465322954.md): 
+- MINIMAX官方 [上传示例音频](https://anyaigc.apifox.cn/api-465322955.md): 需要上传的文件。填写文件的路径地址
+- MINIMAX官方 [首尾帧生成视频](https://anyaigc.apifox.cn/api-465322956.md): 
+- MINIMAX官方 [音色快速复刻](https://anyaigc.apifox.cn/api-465322957.md): https://platform.minimaxi.com/docs/api-reference/voice-cloning-clone
+- MINIMAX官方 [查询视频生成任务状态](https://anyaigc.apifox.cn/api-465322958.md): 
+- MINIMAX官方 [检索(用于视频下载,异步音频下载)](https://anyaigc.apifox.cn/api-465322959.md): 
+- MINIMAX官方 [文本合成](https://anyaigc.apifox.cn/api-465322960.md): https://platform.minimaxi.com/docs/api-reference/text-post
+- MINIMAX官方 [查询语音生成任务状态](https://anyaigc.apifox.cn/api-465322961.md): https://platform.minimaxi.com/docs/api-reference/speech-t2a-async-query
+- MINIMAX官方 [音色设计](https://anyaigc.apifox.cn/api-465322962.md): 
+- 官方VIDU视频生成、图片生成、音频生成 [创建文生视频任务](https://anyaigc.apifox.cn/api-465322963.md): 官方文档:https://platform.vidu.cn/docs/text-to-video
+- 官方VIDU视频生成、图片生成、音频生成 [创建图生视频任务](https://anyaigc.apifox.cn/api-465322964.md): 官方文档:https://platform.vidu.cn/docs/image-to-video
+- 官方VIDU视频生成、图片生成、音频生成 [创建图片生成任务](https://anyaigc.apifox.cn/api-465322965.md): 官方文档:https://platform.vidu.cn/docs/reference-to-image
+- 官方VIDU视频生成、图片生成、音频生成 [创建文生音频任务](https://anyaigc.apifox.cn/api-465322966.md): 官方文档:https://platform.vidu.cn/docs/text-to-audio
+- 官方VIDU视频生成、图片生成、音频生成 [语音合成](https://anyaigc.apifox.cn/api-465322967.md): 官方文档:https://platform.vidu.cn/docs/text-to-speech
+- 官方VIDU视频生成、图片生成、音频生成 [创建参考生视频任务（主体调用）](https://anyaigc.apifox.cn/api-465322968.md): 官方文档:https://platform.vidu.cn/docs/reference-to-video
+- 官方VIDU视频生成、图片生成、音频生成 [创建参考生视频任务（非主体调用）](https://anyaigc.apifox.cn/api-465322969.md): 官方文档:https://platform.vidu.cn/docs/reference-to-video
+- 官方VIDU视频生成、图片生成、音频生成 [创建首尾帧生视频任务](https://anyaigc.apifox.cn/api-465322970.md): 官方文档:https://platform.vidu.cn/docs/start-end-to-video
+- 官方VIDU视频生成、图片生成、音频生成 [获取请求结果 ](https://anyaigc.apifox.cn/api-465322971.md): 
+- Fal-ai 聚合平台 > falai-veo3 视频生成 [/fal-ai/veo3](https://anyaigc.apifox.cn/api-465322995.md): 官方文档地址：https://fal.ai/models/fal-ai/veo3
+- Fal-ai 聚合平台 > falai-veo3 视频生成 [/fal-ai/veo3/fast/image-to-video](https://anyaigc.apifox.cn/api-465322996.md): 官方文档地址：https://fal.ai/models/fal-ai/veo3/fast/image-to-video
+- Fal-ai 聚合平台 > falai-veo3 视频生成 [/fal-ai/veo3/fast](https://anyaigc.apifox.cn/api-465322997.md): 官方文档地址：https://fal.ai/models/fal-ai/veo3/fast
+- Fal-ai 聚合平台 > falai-veo3 视频生成 [/fal-ai/veo3/requests/{request_id}](https://anyaigc.apifox.cn/api-465322998.md): 
+- Fal-ai 聚合平台 > falai-veo3 视频生成 [/fal-ai/veo3/image-to-video](https://anyaigc.apifox.cn/api-465322999.md): 官方文档：https://fal.ai/models/fal-ai/veo3/image-to-video
+- Fal-ai 聚合平台 [获取请求结果](https://anyaigc.apifox.cn/api-465322972.md): 
+- Fal-ai 聚合平台 [/fal-ai/flux-1/dev](https://anyaigc.apifox.cn/api-465322973.md): 官方文档: https://fal.ai/models/fal-ai/flux-1/dev
+- Fal-ai 聚合平台 [/fal-ai/flux-1/dev/image-to-image](https://anyaigc.apifox.cn/api-465322974.md): 官方文档: https://fal.ai/models/fal-ai/flux-1/dev/image-to-image
+- Fal-ai 聚合平台 [/fal-ai/flux-1/dev/redux](https://anyaigc.apifox.cn/api-465322975.md): 官方文档: https://fal.ai/models/fal-ai/flux-1/dev/redux
+- Fal-ai 聚合平台 [/fal-ai/flux-1/schnell/redux](https://anyaigc.apifox.cn/api-465322976.md): 官方文档: https://fal.ai/models/fal-ai/flux-1/schnell/redux
+- Fal-ai 聚合平台 [/fal-ai/flux-pro/kontext](https://anyaigc.apifox.cn/api-465322977.md): 官方文档: https://fal.ai/models/fal-ai/flux-pro/kontext
+- Fal-ai 聚合平台 [/fal-ai/flux-pro/kontext/text-to-image](https://anyaigc.apifox.cn/api-465322978.md): 官方文档: https://fal.ai/models/fal-ai/flux-pro/kontext/text-to-image
+- Fal-ai 聚合平台 [/fal-ai/flux-pro/kontext/max](https://anyaigc.apifox.cn/api-465322979.md): 官方文档:  https://fal.ai/models/fal-ai/flux-pro/kontext/max
+- Fal-ai 聚合平台 [/fal-ai/flux-pro/kontext/max/multi](https://anyaigc.apifox.cn/api-465322980.md): 官方文档: https://fal.ai/models/fal-ai/flux-pro/kontext/max/multi
+- Fal-ai 聚合平台 [/fal-ai/wan/v2.2-a14b/image-to-image](https://anyaigc.apifox.cn/api-465322981.md): 官方文档: https://fal.ai/models/fal-ai/wan/v2.2-a14b/image-to-image
+- Fal-ai 聚合平台 [/fal-ai/bytedance/seedream/v4/text-to-image](https://anyaigc.apifox.cn/api-465322982.md): 官方文档: https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image
+- Fal-ai 聚合平台 [/fal-ai/bytedance/seedream/v4/edit](https://anyaigc.apifox.cn/api-465322983.md): 官方文档: https://fal.ai/models/fal-ai/bytedance/seedream/v4/edit
+- Fal-ai 聚合平台 [/fal-ai/vidu/reference-to-image](https://anyaigc.apifox.cn/api-465322984.md): 官方文档: https://fal.ai/models/fal-ai/vidu/reference-to-image
+- Fal-ai 聚合平台 [/fal-ai/imagen4/preview](https://anyaigc.apifox.cn/api-465322985.md): 官方文档: https://fal.ai/models/fal-ai/imagen4/preview
+- Fal-ai 聚合平台 [/fal-ai/qwen-image-edit-lora](https://anyaigc.apifox.cn/api-465322986.md): 官方文档: https://fal.ai/models/fal-ai/qwen-image-edit-lora
+- Fal-ai 聚合平台 [/fal-ai/qwen-image-edit-plus](https://anyaigc.apifox.cn/api-465322987.md): 官方文档: https://fal.ai/models/fal-ai/qwen-image-edit-plus
+- Fal-ai 聚合平台 [/fal-ai/kling-video/v2.5-turbo/pro/text-to-video](https://anyaigc.apifox.cn/api-465322988.md): 官方文档: https://fal.ai/models//fal-ai/kling-video/v2.5-turbo/pro/text-to-video
+- Fal-ai 聚合平台 [/fal-ai/kling-video/v2.5-turbo/pro/image-to-video](https://anyaigc.apifox.cn/api-465322989.md): 官方文档: https://fal.ai/models/fal-ai/kling-video/v2.5-turbo/pro/image-to-video
+- Fal-ai 聚合平台 [/fal-ai/flux-lora](https://anyaigc.apifox.cn/api-465322990.md): 官方文档: https://fal.ai/models/fal-ai/flux-lora
+- Fal-ai 聚合平台 [/fal-ai/flux-lora/image-to-image](https://anyaigc.apifox.cn/api-465322991.md): 官方文档: https://fal.ai/models/fal-ai/flux-lora/image-to-image
+- Fal-ai 聚合平台 [/fal-ai/flux-lora/inpainting](https://anyaigc.apifox.cn/api-465322992.md): 官方文档: https://fal.ai/models/fal-ai/flux-lora/inpainting
+- Fal-ai 聚合平台 [/fal-ai/kling-video/v2.5-turbo/pro/text-to-video](https://anyaigc.apifox.cn/api-465322993.md): 
+- Fal-ai 聚合平台 [/fal-ai/qwen-image-edit-lora](https://anyaigc.apifox.cn/api-465322994.md): 
+- 帮助中心 [上传图片到图床](https://anyaigc.apifox.cn/api-465323000.md): 

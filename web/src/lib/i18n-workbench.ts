@@ -23,6 +23,7 @@ export const workbenchZhToEn = {
     "请求": "Requests",
     "成功": "Succeeded",
     "生成中": "Generating",
+    "生成方式": "Generation mode",
     "失败": "Failed",
     "并发": "Concurrent",
     "时间": "Time",
@@ -145,7 +146,6 @@ export const workbenchZhToEn = {
     "参考图数量已达到当前模型上限": "The reference image limit for this model has been reached",
     "参考视频数量已达到当前模型上限": "The reference video limit for this model has been reached",
     "参考音频数量已达到当前模型上限": "The reference audio limit for this model has been reached",
-    "Seedance 参考视频总时长不能超过 15 秒": "Seedance reference videos cannot exceed 15 seconds in total",
     "当前模型不使用参考视频": "This model does not use reference video",
     "剪切板里没有可读取的图片": "No readable image was found on the clipboard",
     "已忽略不支持的参考图": "Unsupported reference images were ignored",
@@ -189,7 +189,7 @@ export const workbenchZhToEn = {
     "读取图片失败": "Failed to read the image",
     "音频生成失败": "Audio generation failed",
     "请先配置音频模型": "Configure an audio model first",
-    "请先完成 RelayBases 配置": "Complete the RelayBases settings first",
+    "请先完成 AnyAIGC 配置": "Complete the AnyAIGC settings first",
     "Gemini 调用格式暂不支持音频生成，请使用 OpenAI 格式渠道": "Gemini format does not support audio generation. Use an OpenAI-format channel.",
     "文本模型没有返回可用提示词": "The text model did not return a usable prompt",
     "读取模型失败": "Failed to load models",
@@ -220,7 +220,6 @@ const dynamicWorkbenchErrorRules = [
     [/^视频(\d+) 时长需要在 2-15 秒之间$/u, /^Video (\d+) must be 2-15 seconds long$/u, (number: string) => `视频${number} 时长需要在 2-15 秒之间`, (number: string) => `Video ${number} must be 2-15 seconds long`],
     [/^视频(\d+) 宽高需要在 300-6000px 之间$/u, /^Video (\d+) width and height must each be 300-6000 px$/u, (number: string) => `视频${number} 宽高需要在 300-6000px 之间`, (number: string) => `Video ${number} width and height must each be 300-6000 px`],
     [/^视频(\d+) 宽高比需要在 0\.4-2\.5 之间$/u, /^Video (\d+) aspect ratio must be between 0\.4 and 2\.5$/u, (number: string) => `视频${number} 宽高比需要在 0.4-2.5 之间`, (number: string) => `Video ${number} aspect ratio must be between 0.4 and 2.5`],
-    [/^视频(\d+) 像素总量不符合 Seedance 要求，请转成 480p\/720p\/1080p 后再上传$/u, /^Video (\d+) pixel count does not meet Seedance requirements; convert it to 480p, 720p, or 1080p before uploading again$/u, (number: string) => `视频${number} 像素总量不符合 Seedance 要求，请转成 480p/720p/1080p 后再上传`, (number: string) => `Video ${number} pixel count does not meet Seedance requirements; convert it to 480p, 720p, or 1080p before uploading again`],
     [/^Gemini 拒绝了本次请求：(.*)$/u, /^Gemini rejected this request: (.*)$/u, (detail: string) => `Gemini 拒绝了本次请求：${detail}`, (detail: string) => `Gemini rejected this request: ${detail}`],
 ] as const;
 

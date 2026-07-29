@@ -18,7 +18,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { useI18n } from "@/lib/i18n";
 import { normalizeWorkbenchQuality, workbenchCount, workbenchErrorText, workbenchFormatDate, workbenchPinLabel, workbenchQualityLabel, workbenchText, workbenchTrashExpiry, workbenchTrashLabel, type WorkbenchLanguage } from "@/lib/i18n-workbench";
-import { grokImageModelCapability, grokImageRequestError } from "@/lib/relaybases-media-models";
+import { mediaModelCapability, mediaRequestError } from "@/lib/anyaigc-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
@@ -140,7 +140,7 @@ const LOG_THUMBNAIL_MAX_DATA_URL_LENGTH = 700_000;
 const LOG_THUMBNAIL_QUALITY = 0.84;
 
 const LOG_STORE_KEY = "infinite-canvas:image_generation_logs";
-const IMAGE_WORKBENCH_DRAFT_KEY = "relaybases-canvas:image-workbench-draft";
+const IMAGE_WORKBENCH_DRAFT_KEY = "anyaigc-canvas:image-workbench-draft";
 const RESULT_OVERLAY_ICON_BUTTON_CLASS =
     "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-transparent !p-0 !text-white !shadow-none hover:!bg-white/16 hover:!text-white disabled:!bg-transparent disabled:!text-white/45 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
 const RESULT_OVERLAY_DANGER_BUTTON_CLASS = `${RESULT_OVERLAY_ICON_BUTTON_CLASS} hover:!bg-rose-500/45`;
@@ -194,10 +194,10 @@ export default function ImagePage() {
     const [draftHydrated, setDraftHydrated] = useState(false);
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
-    const grokImageCapability = grokImageModelCapability(model);
-    const imageReferenceLimit = grokImageCapability?.maxReferenceImages || IMAGE_REFERENCE_LIMIT;
+    const imageCapability = mediaModelCapability(model);
+    const imageReferenceLimit = imageCapability?.kind === "image" && !imageCapability.allowsReferences ? 0 : IMAGE_REFERENCE_LIMIT;
     const canGenerate = Boolean(prompt.trim());
-    const generationCount = Math.max(1, Math.min(grokImageCapability?.maxOutputs || 15, Number(config.count) || 1));
+    const generationCount = Math.max(1, Math.min(15, Number(config.count) || 1));
     const results = resultsBySession[activeSessionId] || [];
     const selectedResults = results.filter((result) => selectedResultIds.includes(result.id));
     const selectedSuccessResults = selectedResults.filter((result) => result.status === "success" && result.image);
@@ -495,7 +495,7 @@ export default function ImagePage() {
         finishSessionRun(sessionId);
         successCount ? message.success(workbenchText("图片已生成", undefined, language)) : message.error(failureMessage);
         notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", successCount ? workbenchText("图片生成完成", undefined, language) : workbenchText("图片生成失败", undefined, language), successCount ? (language === "en" ? `${workbenchCount(successCount, "张成功", "image succeeded", "images succeeded", language)}${failCount ? `, ${workbenchCount(failCount, "张失败", "image failed", "images failed", language)}` : ""}` : `成功 ${successCount} 张${failCount ? `，失败 ${failCount} 张` : ""}`) : failureMessage, {
-            tag: `relaybases-image-${sessionId}`,
+            tag: `anyaigc-image-${sessionId}`,
             requireInteraction: true,
         });
 
@@ -549,7 +549,7 @@ export default function ImagePage() {
                 }),
             );
             const zip = await createZip(files);
-            saveAs(zip, `relaybases-images-${timestampForFileName()}.zip`);
+            saveAs(zip, `anyaigc-images-${timestampForFileName()}.zip`);
             message.success({ key: messageKey, content: language === "en" ? `Packaged ${workbenchCount(files.length, "张图片", "image", "images", language)}` : `已打包 ${workbenchCount(files.length, "张图片", "image", "images", language)}` });
         } catch (error) {
             message.error({ key: messageKey, content: error instanceof Error ? error.message : workbenchText("图片打包失败", undefined, language) });
@@ -837,9 +837,9 @@ export default function ImagePage() {
             openConfigDialog(true);
             return null;
         }
-        const grokRequestError = grokImageRequestError(model, references.length, 1, language);
-        if (grokRequestError) {
-            message.error(grokRequestError);
+        const requestError = mediaRequestError(model, { imageCount: references.length }, language);
+        if (requestError) {
+            message.error(requestError);
             return null;
         }
         return { text, config: { ...effectiveConfig, model, count: "1" }, references: [...references] };
@@ -1270,7 +1270,7 @@ export default function ImagePage() {
             <Drawer
                 title={null}
                 placement="bottom"
-                height="min(88dvh, 720px)"
+                size="min(88dvh, 720px)"
                 open={logsOpen}
                 onClose={() => setLogsOpen(false)}
                 closable={false}

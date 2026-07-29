@@ -17,6 +17,10 @@ export function ClientRootInit({ children }: { children: ReactNode }) {
     const setTheme = useThemeStore((state) => state.setTheme);
 
     useEffect(() => {
+        void useLanguageStore.persist.rehydrate();
+    }, []);
+
+    useEffect(() => {
         if (handledConfigParams.current) return;
         const searchParams = new URLSearchParams(window.location.search);
         const theme = searchParams.get("theme");
@@ -40,7 +44,7 @@ export function ClientRootInit({ children }: { children: ReactNode }) {
         if (mediaApiKey) updateConfig("mediaApiKey", mediaApiKey);
         if (textApiKey) updateConfig("textApiKey", textApiKey);
         openConfigDialog(false);
-        message.success(mediaApiKey || textApiKey ? "已导入 RelayBases API Key" : "已忽略不支持的链接参数");
+        message.success(mediaApiKey || textApiKey ? "已导入 AnyAIGC API Key" : "已忽略不支持的链接参数");
     }, [message, openConfigDialog, setLanguage, setTheme, updateConfig]);
 
     return <>{children}</>;

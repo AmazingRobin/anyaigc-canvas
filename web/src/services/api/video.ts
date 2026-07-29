@@ -1,25 +1,28 @@
 import axios from "axios";
 
-import { getDataUrlByteSize } from "@/lib/image-utils";
-import { workbenchText } from "@/lib/i18n-workbench";
 import {
-    buildGrokVideoRequestPayload,
-    grokVideoBillingSeconds,
-    grokVideoRequestError,
-    isGrokImagineVideoFamilyModel,
-    normalizeGrokVideoMode,
-    relayBasesMediaText,
-    type GrokVideoMode,
-} from "@/lib/relaybases-media-models";
-import { normalizeRelayBasesVideoDuration } from "@/lib/relaybases-video";
-import { copyRelayBasesPublicMedia, isRelayBasesCanvasPublicMediaUrl, uploadRelayBasesPublicMedia } from "@/services/cloud-sync";
+    buildGrokVideoPayload,
+    buildKling3TurboVideoPayload,
+    buildKlingMotionControlPayload,
+    buildKlingOmniVideoPayload,
+    buildMiniMaxHailuoVideoPayload,
+    isGrokVideoModel,
+    mediaModelCapability,
+    mediaRequestError,
+    normalizeAspectRatio,
+    normalizeKling3TurboDuration,
+    normalizeMiniMaxHailuoDuration,
+    normalizeVideoDuration,
+} from "@/lib/anyaigc-media-models";
+import { workbenchText } from "@/lib/i18n-workbench";
+import { uploadImageReference, uploadVideoReference } from "@/services/api/media-upload";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
-import { getImageBlob, imageToDataUrl } from "@/services/image-storage";
-import { boolConfig, buildSeedancePromptText, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceVideoReferenceError, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
-import { buildApiUrl, isRelayBasesVideoModel, modelOptionName, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
+import { getImageBlob } from "@/services/image-storage";
+import { buildApiUrl, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
+type RequestOptions = { signal?: AbortSignal };
 type VideoResponse = {
     id?: string;
     task_id?: string;
@@ -28,69 +31,27 @@ type VideoResponse = {
     task_status?: string;
     success?: boolean;
     final?: boolean;
-    progress?: number;
-    image_url?: string | null;
     video_url?: string | null;
     url?: string | null;
     result_urls?: string[];
-    metadata?: {
-        url?: string | null;
-        video_url?: string | null;
-        image_url?: string | null;
-        result_urls?: string[] | null;
-        [key: string]: unknown;
-    } | null;
-    error?: { code?: string | number; message?: string };
+    task_result?: { videos?: Array<{ url?: string | null }> };
+    data?: VideoResponse | null;
+    file?: { download_url?: string | null };
+    error?: { message?: string };
     fail_reason?: string | null;
     failure_reason?: string | null;
     message?: string | null;
-    code?: string | number;
+    msg?: string;
+    code?: number;
 };
-type ApiVideoResponse = VideoResponse | { code?: number; data?: VideoResponse | null; msg?: string };
-type SeedanceTask = {
-    id: string;
-    status?: "queued" | "running" | "succeeded" | "failed" | "cancelled" | "expired";
-    error?: { code?: string; message?: string } | null;
-    content?: { video_url?: string; last_frame_url?: string } | null;
-};
-type ApiEnvelope<T> = T | { code?: number; data?: T | null; msg?: string };
-type RequestOptions = { signal?: AbortSignal };
-const RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES = 500 * 1024;
-const RELAYBASES_IMAGE_DATA_URL_TARGET_BYTES = 480 * 1024;
-const RELAYBASES_IMAGE_MAX_EDGE = 1536;
-const RELAYBASES_IMAGE_MIN_EDGE = 256;
-const GENERATED_VIDEO_ARCHIVE_TIMEOUT_MS = 12000;
-const relayBasesPublicMediaUploads = new Map<string, Promise<string>>();
 
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
-export type VideoGenerationTask = { id: string; provider: "openai" | "seedance"; model: string; mode?: AiConfig["videoCallMode"]; operation?: GrokVideoMode; startedAt?: number };
+export type VideoGenerationTask = { id: string; provider: "grok" | "kling-motion-control" | "kling-omni-video" | "kling-3-turbo-text" | "kling-3-turbo-image" | "minimax-hailuo"; model: string; startedAt?: number };
 export type VideoGenerationTaskState = { status: "pending" } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
 export type VideoGenerationPollConfig = { attempts: number; delayMs: number; timeoutMessage: string };
 
-export function videoGenerationPollConfig(task: VideoGenerationTask): VideoGenerationPollConfig {
-    if (task.provider === "openai" && isRelayBasesVideoModel(task.model)) {
-        return {
-            attempts: 2400,
-            delayMs: 3000,
-            timeoutMessage: workbenchText("视频任务仍在排队或生成中，请稍后在历史记录中继续查看"),
-        };
-    }
-    return {
-        attempts: 120,
-        delayMs: task.provider === "seedance" ? 5000 : 2500,
-        timeoutMessage: workbenchText(`${task.provider === "seedance" ? "Seedance " : ""}视频生成超时，请稍后重试`, `${task.provider === "seedance" ? "Seedance " : ""}video generation timed out. Try again later.`),
-    };
-}
-
-function aiApiUrl(config: AiConfig, path: string) {
-    return buildApiUrl(config.baseUrl, path);
-}
-
-function aiHeaders(config: AiConfig, contentType?: string) {
-    return {
-        Authorization: `Bearer ${config.apiKey}`,
-        ...(contentType ? { "Content-Type": contentType } : {}),
-    };
+export function videoGenerationPollConfig(_task: VideoGenerationTask): VideoGenerationPollConfig {
+    return { attempts: 240, delayMs: 3000, timeoutMessage: workbenchText("视频任务仍在排队或生成中，请稍后在历史记录中继续查看", "The video task is still pending. Check the generation history again later.") };
 }
 
 export async function requestVideoGeneration(config: AiConfig, prompt: string, references: ReferenceImage[] = [], videoReferences: ReferenceVideo[] = [], audioReferences: ReferenceAudio[] = [], options?: RequestOptions): Promise<VideoGenerationResult> {
@@ -110,576 +71,181 @@ export async function requestVideoGeneration(config: AiConfig, prompt: string, r
 export async function createVideoGenerationTask(config: AiConfig, prompt: string, references: ReferenceImage[] = [], videoReferences: ReferenceVideo[] = [], audioReferences: ReferenceAudio[] = [], options?: RequestOptions): Promise<VideoGenerationTask> {
     const selectedModel = (config.videoModel || config.model).trim();
     const requestConfig = resolveModelRequestConfig(config, selectedModel);
-    assertVideoConfig(requestConfig, requestConfig.model);
-    if (isSeedanceVideoConfig(requestConfig)) {
-        return createSeedanceTask(requestConfig, selectedModel, prompt, references, videoReferences, audioReferences, options);
-    }
-    return createOpenAIVideoTask(requestConfig, selectedModel, prompt, references, videoReferences, audioReferences, options);
+    const capability = mediaModelCapability(requestConfig.model);
+    if (!capability || capability.kind !== "video") throw new Error(workbenchText("请先配置 AnyAIGC 支持的视频模型", "Configure a supported AnyAIGC video model first"));
+    if (!requestConfig.apiKey.trim()) throw new Error(workbenchText("请先配置媒体 API Key", "Configure a media API key first"));
+    if (audioReferences.length) throw new Error(workbenchText("当前视频模型不支持参考音频", "The selected video model does not support audio references."));
+    const validationError = mediaRequestError(requestConfig.model, { imageCount: references.length, videoCount: videoReferences.length, operation: config.videoOperation });
+    if (validationError) throw new Error(validationError);
+
+    if (capability.invocation === "grok") return createGrokTask(requestConfig, selectedModel, prompt, references, videoReferences, options);
+    if (capability.invocation === "kling-motion-control") return createKlingMotionControlTask(requestConfig, selectedModel, prompt, references[0], videoReferences[0], options);
+    if (capability.invocation === "kling-3-turbo") return createKling3TurboTask(requestConfig, selectedModel, prompt, references, options);
+    if (capability.invocation === "minimax-hailuo") return createMiniMaxHailuoTask(requestConfig, selectedModel, prompt, references, config.videoOperation, options);
+    return createKlingOmniVideoTask(requestConfig, selectedModel, prompt, references, videoReferences, options);
 }
 
 export async function pollVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     const requestConfig = resolveModelRequestConfig(config, task.model);
-    assertVideoConfig(requestConfig, requestConfig.model);
-    return task.provider === "seedance" ? pollSeedanceTask(requestConfig, task, options) : pollOpenAIVideoTask(requestConfig, task, options);
-}
-
-export async function storeGeneratedVideo(result: VideoGenerationResult, options: { apiKey?: string; signal?: AbortSignal } = {}): Promise<UploadedFile> {
-    if (result.blob) return uploadMediaFile(result.blob, "video");
-    if (result.url) {
-        const mimeType = result.mimeType || "video/mp4";
-        const url = options.apiKey ? await copyGeneratedVideoWithFallback(options.apiKey, result.url, mimeType, options.signal) : result.url;
-        return { url, storageKey: "", bytes: 0, mimeType };
-    }
-    throw new Error(workbenchText("视频接口没有返回可播放的视频"));
-}
-
-async function copyGeneratedVideoWithFallback(apiKey: string, sourceUrl: string, mimeType: string, signal?: AbortSignal) {
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), GENERATED_VIDEO_ARCHIVE_TIMEOUT_MS);
-    const abort = () => controller.abort();
-    signal?.addEventListener("abort", abort, { once: true });
+    const path = task.provider === "grok" ? `/video/query?id=${encodeURIComponent(task.id)}` : task.provider === "kling-motion-control" ? `/kling/v1/videos/motion-control/${encodeURIComponent(task.id)}` : task.provider === "kling-3-turbo-text" ? `/kling/text-to-video/kling-3.0-turbo/${encodeURIComponent(task.id)}` : task.provider === "kling-3-turbo-image" ? `/kling/image-to-video/kling-3.0-turbo/${encodeURIComponent(task.id)}` : task.provider === "minimax-hailuo" ? `/minimax/v1/query/video_generation?task_id=${encodeURIComponent(task.id)}` : `/kling/v1/videos/omni-video/${encodeURIComponent(task.id)}`;
     try {
-        return await copyRelayBasesPublicMedia(apiKey, sourceUrl, { fileName: mediaFileNameFromUrl(sourceUrl, "generated-video.mp4"), contentType: mimeType, signal: controller.signal });
-    } catch (error) {
-        if (signal?.aborted) throw error;
-        return sourceUrl;
-    } finally {
-        window.clearTimeout(timer);
-        signal?.removeEventListener("abort", abort);
-    }
-}
-
-async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions): Promise<VideoGenerationTask> {
-    const body = await buildRelayBasesVideoPayload(config, model, prompt, references, videoReferences, audioReferences, options);
-    try {
-        const isRelayBasesVideo = isRelayBasesVideoModel(model);
-        const grokVideo = isGrokImagineVideoFamilyModel(model);
-        const mode = grokVideo ? "async" : isRelayBasesVideo ? config.videoCallMode || "sync" : undefined;
-        const path = grokVideo || !isRelayBasesVideo || mode === "async" ? "/videos" : "/video/generations";
-        const created = unwrapVideoResponse((await axios.post<ApiVideoResponse>(aiApiUrl(config, path), body, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data);
-        const id = created.task_id || created.id;
-        if (!id) throw new Error(workbenchText("视频接口没有返回任务 ID"));
-        return { id, provider: "openai", model, mode, operation: grokVideo ? normalizeGrokVideoMode(model, config.videoOperation) : undefined };
-    } catch (error) {
-        throw new Error(readAxiosError(error, workbenchText("视频任务创建失败")));
-    }
-}
-
-async function buildRelayBasesVideoPayload(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions) {
-    const modelName = modelOptionName(model);
-    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
-    const grokOperation = normalizeGrokVideoMode(modelName, config.videoOperation);
-    const duration = normalizeRelayBasesVideoDuration(config.videoSeconds, modelName, grokOperation);
-    const sourceVideo = videoReferences[0];
-    const grokRequestError = grokVideoRequestError(
-        modelName,
-        grokOperation,
-        {
-            imageCount: references.length,
-            videoCount: videoReferences.length,
-            audioCount: audioReferences.length,
-            duration,
-            sourceVideoDurationMs: sourceVideo?.durationMs,
-            sourceVideoName: sourceVideo?.name,
-            sourceVideoType: sourceVideo?.type,
-        },
-    );
-    if (grokRequestError) throw new Error(grokRequestError);
-    const compressVeoImages = modelName.startsWith("veo-");
-    const images = uniqueReferenceUrls(await Promise.all(references.map((image) => resolveRelayBasesImageUrl(config, image, compressVeoImages, options))));
-    const videos = uniqueReferenceUrls(await Promise.all(videoReferences.map((video) => resolveRelayBasesVideoReferenceUrl(config, video, options))));
-    const audios = uniqueReferenceUrls(await Promise.all(audioReferences.map((audio) => resolveRelayBasesAudioReferenceUrl(config, audio, options))));
-    const payload: Record<string, unknown> = {
-        model: modelName,
-        prompt,
-        duration,
-        aspect_ratio: normalizeRelayBasesAspectRatio(config.size),
-    };
-
-    if (modelName === "veo-omni-flash-video-edit") {
-        if (!videos[0]) throw new Error(workbenchText("视频编辑需要连接一个参考视频"));
-        payload.video_url = videos[0];
-        if (images.length) payload.Ingredients_images = images.slice(0, 5);
-        return payload;
-    }
-
-    if (modelName === "veo-omni-flash") {
-        if (images.length) payload.Ingredients_images = images.slice(0, 5);
-        return payload;
-    }
-
-    if (modelName === "veo-3-1") {
-        if (images.length) payload.images = images.slice(0, 2);
-        return payload;
-    }
-
-    if (grokVideo) {
-        if (grokOperation === "edit-video") {
-            const seconds = grokVideoBillingSeconds(grokOperation, sourceVideo?.durationMs);
-            if (!videos[0] || !seconds) throw new Error(relayBasesMediaText("Grok 视频编辑的源视频读取失败，请重新上传 MP4", "Failed to read the Grok source video. Upload the MP4 again."));
-        }
-        if (grokOperation === "extend-video") {
-            if (!videos[0]) throw new Error(relayBasesMediaText("Grok 视频延长的源视频读取失败，请重新上传 MP4", "Failed to read the Grok source video. Upload the MP4 again."));
-        }
-        if (grokOperation === "image-to-video" || grokOperation === "reference-to-video") {
-            if (!images.length) throw new Error(relayBasesMediaText("Grok 视频参考图读取失败，请重新添加有效图片", "Failed to read the Grok reference images. Add valid images again."));
-        }
-        return buildGrokVideoRequestPayload({ model: modelName, prompt, mode: grokOperation, duration, aspectRatio: config.size, resolution: config.vquality, imageUrls: images, videoUrls: videos, sourceVideoDurationMs: sourceVideo?.durationMs });
-    }
-
-    if (modelName === "video-fast-480p" || modelName === "video-fast-720p" || modelName === "video-pro-480p" || modelName === "video-pro-720p" || modelName === "video-pro-1080p" || modelName === "video-standard-720p") {
-        if (images[0]) payload.image_url = images[0];
-        if (images.length > 1) payload.extra_images = images.slice(1, 5);
-        if (videos.length) payload.extra_videos = videos;
-        if (audios.length) payload.extra_audios = audios;
-        return payload;
-    }
-
-    if (images.length) payload.images = images.slice(0, 5);
-    return payload;
-}
-
-function uniqueReferenceUrls(values: string[]) {
-    const seen = new Set<string>();
-    return values.filter((value) => {
-        const key = value.trim();
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
-}
-
-async function resolveRelayBasesImageUrl(config: AiConfig, image: ReferenceImage, compressForVeo: boolean, options?: RequestOptions) {
-    const directUrl = image.url || image.dataUrl || "";
-    const relayBasesPublicUrl = isRelayBasesCanvasPublicMediaUrl(directUrl);
-    if (directUrl.startsWith("asset://")) return directUrl;
-    if (isPublicMediaUrl(directUrl) && (!compressForVeo || !relayBasesPublicUrl)) return directUrl;
-
-    const sourceBlob = relayBasesPublicUrl ? await (await fetch(directUrl)).blob() : await readRelayBasesImageBlob(image, directUrl);
-    if (relayBasesPublicUrl && sourceBlob.size <= RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) return directUrl;
-
-    const blob = compressForVeo ? await compressRelayBasesImageBlob(sourceBlob, image.type) : sourceBlob;
-    const cacheKind = compressForVeo ? "image:veo-500kb-v1" : "image";
-    return uploadRelayBasesReferenceBlob(config, blob, relayBasesReferenceCacheKey(cacheKind, image.storageKey, directUrl, blob), relayBasesImageFileName(image.name, blob.type), blob.type || image.type || "image/png", options);
-}
-
-async function resolveRelayBasesVideoReferenceUrl(config: AiConfig, video: ReferenceVideo, options?: RequestOptions) {
-    const directUrl = video.url || "";
-    if (isPublicMediaUrl(directUrl) || directUrl.startsWith("asset://")) return directUrl;
-    const blob = await readRelayBasesStoredMediaBlob(video.storageKey, directUrl, workbenchText("参考视频必须是公网 URL，或重新上传后再生成"));
-    return uploadRelayBasesReferenceBlob(config, blob, relayBasesReferenceCacheKey("video", video.storageKey, directUrl, blob), video.name || "reference.mp4", video.type || blob.type || "video/mp4", options);
-}
-
-async function resolveRelayBasesAudioReferenceUrl(config: AiConfig, audio: ReferenceAudio, options?: RequestOptions) {
-    const directUrl = audio.url || "";
-    if (isPublicMediaUrl(directUrl) || directUrl.startsWith("asset://")) return directUrl;
-    const blob = await readRelayBasesStoredMediaBlob(audio.storageKey, directUrl, workbenchText("参考音频必须是公网 URL，或重新上传后再生成"));
-    return uploadRelayBasesReferenceBlob(config, blob, relayBasesReferenceCacheKey("audio", audio.storageKey, directUrl, blob), audio.name || "reference.mp3", audio.type || blob.type || "audio/mpeg", options);
-}
-
-async function readRelayBasesImageBlob(image: ReferenceImage, directUrl: string) {
-    if (image.storageKey) {
-        const stored = await getImageBlob(image.storageKey);
-        if (stored) return stored;
-    }
-    if (directUrl.startsWith("data:") || directUrl.startsWith("blob:")) return (await fetch(directUrl)).blob();
-    const dataUrl = await imageToDataUrl(image);
-    if (!dataUrl) throw new Error(workbenchText("参考图读取失败，请换一张图片或重新上传"));
-    return (await fetch(dataUrl)).blob();
-}
-
-async function compressRelayBasesImageBlob(blob: Blob, fallbackType: string) {
-    if (blob.size <= RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) return blob;
-    const source = blob.type.startsWith("image/") ? blob : new Blob([blob], { type: fallbackType.startsWith("image/") ? fallbackType : "image/png" });
-    const compressed = await compressRelayBasesImageDataUrl(await blobToDataUrl(source));
-    const compressedBlob = await (await fetch(compressed)).blob();
-    if (compressedBlob.size > RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) throw new Error(workbenchText("参考图自动压缩后仍超过 VEO 500KB 限制，请换一张更小的图片或降低图片分辨率"));
-    return compressedBlob;
-}
-
-function relayBasesImageFileName(value: string, mimeType: string) {
-    const name = value || "reference.png";
-    if (mimeType !== "image/jpeg") return name;
-    return `${name.replace(/\.[^.]+$/, "") || "reference"}.jpg`;
-}
-
-async function readRelayBasesStoredMediaBlob(storageKey: string | undefined, directUrl: string, emptyMessage: string) {
-    if (storageKey) {
-        const stored = await getMediaBlob(storageKey);
-        if (stored) return stored;
-    }
-    if (directUrl.startsWith("data:") || directUrl.startsWith("blob:")) return (await fetch(directUrl)).blob();
-    throw new Error(emptyMessage);
-}
-
-function relayBasesReferenceCacheKey(kind: string, storageKey: string | undefined, directUrl: string, blob: Blob) {
-    return storageKey ? `${kind}:storage:${storageKey}:${blob.size}` : `${kind}:inline:${directUrl.slice(0, 128)}:${blob.size}:${blob.type}`;
-}
-
-function uploadRelayBasesReferenceBlob(config: AiConfig, blob: Blob, cacheKey: string, fileName: string, contentType: string, options?: RequestOptions) {
-    const cached = relayBasesPublicMediaUploads.get(cacheKey);
-    if (cached) return cached;
-    const upload = uploadRelayBasesPublicMedia(config.apiKey, blob, { fileName, contentType, signal: options?.signal }).catch((error) => {
-        relayBasesPublicMediaUploads.delete(cacheKey);
-        throw error;
-    });
-    relayBasesPublicMediaUploads.set(cacheKey, upload);
-    return upload;
-}
-
-async function compressRelayBasesImageDataUrl(dataUrl: string) {
-    if (!dataUrl.startsWith("data:image/") || getDataUrlByteSize(dataUrl) <= RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) return dataUrl;
-
-    const image = await loadImageElement(dataUrl);
-    const sourceWidth = image.naturalWidth || image.width || 1024;
-    const sourceHeight = image.naturalHeight || image.height || 1024;
-    const sourceLongEdge = Math.max(sourceWidth, sourceHeight);
-    const qualities = [0.82, 0.72, 0.62, 0.52, 0.42, 0.34, 0.26];
-    let edge = Math.min(sourceLongEdge, RELAYBASES_IMAGE_MAX_EDGE);
-    let smallest = dataUrl;
-
-    while (edge >= RELAYBASES_IMAGE_MIN_EDGE) {
-        const scale = Math.min(1, edge / sourceLongEdge);
-        const width = Math.max(1, Math.round(sourceWidth * scale));
-        const height = Math.max(1, Math.round(sourceHeight * scale));
-
-        for (const quality of qualities) {
-            const compressed = await drawImageDataUrl(image, width, height, quality);
-            if (getDataUrlByteSize(compressed) < getDataUrlByteSize(smallest)) smallest = compressed;
-            if (getDataUrlByteSize(compressed) <= RELAYBASES_IMAGE_DATA_URL_TARGET_BYTES) return compressed;
-        }
-
-        edge = Math.floor(edge * 0.78);
-    }
-
-    if (getDataUrlByteSize(smallest) <= RELAYBASES_IMAGE_DATA_URL_LIMIT_BYTES) return smallest;
-    throw new Error(workbenchText("参考图自动压缩后仍超过 VEO 500KB 限制，请换一张更小的图片或降低图片分辨率"));
-}
-
-function normalizeRelayBasesDuration(value: string, model: string) {
-    if (model === "veo-3-1") return 8;
-    if (model === "veo-omni-flash" || model === "veo-omni-flash-video-edit") return 10;
-    if (model === "video-standard-720p") return 15;
-    if (model === "nana-banana-2" || model === "nana-banana-pro") return 4;
-    const seconds = Math.floor(Number(value) || 6);
-    return Math.max(4, Math.min(15, seconds));
-}
-
-function normalizeRelayBasesAspectRatio(value: string) {
-    if (!value || value === "auto" || value === "adaptive") return "16:9";
-    if (/^\d+:\d+$/.test(value)) return value;
-    const match = value.match(/^(\d+)x(\d+)$/);
-    if (!match) return "16:9";
-    const width = Number(match[1]);
-    const height = Number(match[2]);
-    if (!width || !height) return "16:9";
-    if (width === height) return "1:1";
-    return width > height ? "16:9" : "9:16";
-}
-
-function readRelayBasesResultUrl(video: VideoResponse) {
-    const metadata = video.metadata || {};
-    return video.video_url || video.url || video.result_urls?.find(Boolean) || metadata.video_url || metadata.url || metadata.result_urls?.find(Boolean) || video.image_url || metadata.image_url || "";
-}
-
-function videoTaskStatuses(video: VideoResponse) {
-    return [video.task_status, video.status, video.state].map((value) => (typeof value === "string" ? value.trim().toLowerCase() : "")).filter(Boolean);
-}
-
-function isOpenAIVideoTaskCompleted(video: VideoResponse) {
-    const statuses = videoTaskStatuses(video);
-    return statuses.some((status) => status === "completed" || status === "succeeded" || status === "success") || (video.success === true && Boolean(readRelayBasesResultUrl(video)));
-}
-
-function isOpenAIVideoTaskFailed(video: VideoResponse) {
-    const statuses = videoTaskStatuses(video);
-    if (statuses.some((status) => status.includes("fail") || status.includes("error") || status.includes("cancel") || status.includes("expire"))) return true;
-    return Boolean(video.final && video.success === false);
-}
-
-function stringValue(value: unknown) {
-    return typeof value === "string" && value.trim() ? value.trim() : "";
-}
-
-function readOpenAIVideoTaskError(video: VideoResponse) {
-    const metadata = video.metadata || {};
-    return (
-        stringValue(video.error?.message) ||
-        stringValue(video.fail_reason) ||
-        stringValue(video.failure_reason) ||
-        stringValue(video.message) ||
-        stringValue(metadata.error) ||
-        stringValue(metadata.fail_reason) ||
-        stringValue(metadata.failure_reason) ||
-        stringValue(metadata.message) ||
-        workbenchText("视频生成失败")
-    );
-}
-
-async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
-    try {
-        const video = unwrapVideoResponse((await axios.get<ApiVideoResponse>(aiApiUrl(config, `/videos/${encodeURIComponent(task.id)}`), { headers: aiHeaders(config), signal: options?.signal })).data);
-        if (isOpenAIVideoTaskCompleted(video)) {
-            const url = readRelayBasesResultUrl(video);
-            return { status: "completed", result: url ? await videoResultFromUrl(url, options) : await videoResultFromContent(config, task.id, options) };
-        }
-        if (isOpenAIVideoTaskFailed(video)) return { status: "failed", error: readOpenAIVideoTaskError(video) };
-        return { status: "pending" };
-    } catch (error) {
-        throw new Error(readAxiosError(error, workbenchText("视频任务查询失败")));
-    }
-}
-
-async function videoResultFromContent(config: AiConfig, taskId: string, options?: RequestOptions): Promise<VideoGenerationResult> {
-    try {
-        const response = await axios.get<Blob>(aiApiUrl(config, `/videos/${encodeURIComponent(taskId)}/content`), {
-            headers: aiHeaders(config),
-            responseType: "blob",
-            signal: options?.signal,
-        });
-        await assertVideoBlob(response.data);
-        return { blob: response.data };
-    } catch (error) {
-        throw new Error(readAxiosError(error, relayBasesMediaText("视频任务完成但结果下载失败", "The video task completed, but downloading the result failed.")));
-    }
-}
-
-async function createSeedanceTask(config: AiConfig, model: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions): Promise<VideoGenerationTask> {
-    if (audioReferences.length && !references.length && !videoReferences.length) {
-        throw new Error(workbenchText("Seedance 参考音频不能单独使用，请同时添加参考图或参考视频", "Seedance reference audio cannot be used alone. Add a reference image or video too."));
-    }
-    assertSeedanceVideoReferences(videoReferences);
-    assertSeedanceAudioReferences(audioReferences);
-    const content = await buildSeedanceContent(config, prompt, references, videoReferences, audioReferences);
-    if (!content.length) throw new Error(workbenchText("请输入视频提示词，或连接参考图片/视频/音频", "Enter a video prompt or connect a reference image, video, or audio file"));
-    const payload = {
-        model: modelOptionName(model),
-        content,
-        ratio: normalizeSeedanceRatio(config.size),
-        resolution: normalizeSeedanceResolution(config.vquality, modelOptionName(model)),
-        duration: normalizeSeedanceDuration(config.videoSeconds),
-        generate_audio: boolConfig(config.videoGenerateAudio, true),
-        watermark: boolConfig(config.videoWatermark, false),
-    };
-
-    try {
-        const created = unwrapSeedanceTask((await axios.post<ApiEnvelope<SeedanceTask>>(seedanceApiUrl(config), payload, { headers: aiHeaders(config, "application/json"), signal: options?.signal })).data);
-        if (!created.id) throw new Error(workbenchText("Seedance 接口没有返回任务 ID", "The Seedance API returned no task ID"));
-        return { id: created.id, provider: "seedance", model };
-    } catch (error) {
-        throw new Error(readAxiosError(error, workbenchText("Seedance 任务创建失败", "Failed to create the Seedance task")));
-    }
-}
-
-async function pollSeedanceTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
-    try {
-        const state = unwrapSeedanceTask((await axios.get<ApiEnvelope<SeedanceTask>>(seedanceApiUrl(config, task.id), { headers: aiHeaders(config), signal: options?.signal })).data);
-        if (state.status === "succeeded") {
-            const url = state.content?.video_url;
-            if (!url) return { status: "failed", error: workbenchText("Seedance 任务成功但没有返回视频 URL", "The Seedance task succeeded without a video URL") };
+        const response = await axios.get<VideoResponse>(apiUrl(requestConfig, path), { headers: apiHeaders(requestConfig), signal: options?.signal });
+        const video = unwrap(response.data);
+        if (isCompleted(video)) {
+            const url = resultUrl(video);
+            if (!url) return { status: "failed", error: workbenchText("视频任务完成但没有返回播放地址", "The completed video task returned no playable URL") };
             return { status: "completed", result: await videoResultFromUrl(url, options) };
         }
-        if (state.status === "failed" || state.status === "cancelled" || state.status === "expired") return { status: "failed", error: state.error?.message || workbenchText(`Seedance 视频生成${state.status === "expired" ? "超时" : "失败"}`, `Seedance video generation ${state.status === "expired" ? "timed out" : "failed"}`) };
+        if (isFailed(video)) return { status: "failed", error: taskError(video) };
         return { status: "pending" };
     } catch (error) {
-        throw new Error(readAxiosError(error, workbenchText("Seedance 任务查询失败", "Failed to query the Seedance task")));
+        throw new Error(readAxiosError(error, workbenchText("视频任务查询失败", "Failed to query the video task")));
     }
 }
 
-function assertSeedanceVideoReferences(videoReferences: ReferenceVideo[]) {
-    const error = seedanceVideoReferenceError(videoReferences);
-    if (error) throw new Error(error);
+export async function storeGeneratedVideo(result: VideoGenerationResult): Promise<UploadedFile> {
+    if (result.blob) return uploadMediaFile(result.blob, "video");
+    if (result.url) return { url: result.url, storageKey: "", bytes: 0, mimeType: result.mimeType || "video/mp4" };
+    throw new Error(workbenchText("视频接口没有返回可播放的视频", "The video API returned no playable video"));
 }
 
-function assertSeedanceAudioReferences(audioReferences: ReferenceAudio[]) {
-    let total = 0;
-    for (const audio of audioReferences) {
-        if (!audio.durationMs) continue;
-        if (audio.durationMs < 2000 || audio.durationMs > 15000) throw new Error(workbenchText("Seedance 参考音频单个时长需要在 2-15 秒之间", "Each Seedance reference audio file must be 2-15 seconds long"));
-        total += audio.durationMs;
+async function createGrokTask(config: AiConfig, selectedModel: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], options?: RequestOptions): Promise<VideoGenerationTask> {
+    if (videoReferences.length) throw new Error(workbenchText("当前 Grok 视频模型不支持参考视频", "The selected Grok video model does not support reference videos."));
+    const imageUrls = await Promise.all(references.map((image) => referenceImageUrl(image, options)));
+    const payload = buildGrokVideoPayload({ model: config.model, prompt, size: config.size, imageUrls });
+    const created = await createTask(config, "/video/create", payload, options);
+    return { id: taskId(created), provider: "grok", model: selectedModel, startedAt: Date.now() };
+}
+
+async function createKlingMotionControlTask(config: AiConfig, selectedModel: string, prompt: string, image: ReferenceImage, video: ReferenceVideo, options?: RequestOptions): Promise<VideoGenerationTask> {
+    const payload = buildKlingMotionControlPayload({ prompt, imageUrl: await referenceImageUrl(image, options), videoUrl: await referenceVideoUrl(video, options) });
+    const created = await createTask(config, "/kling/v1/videos/motion-control", payload, options);
+    return { id: taskId(created), provider: "kling-motion-control", model: selectedModel, startedAt: Date.now() };
+}
+
+async function createKlingOmniVideoTask(config: AiConfig, selectedModel: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], options?: RequestOptions): Promise<VideoGenerationTask> {
+    const [imageUrls, videoUrls] = await Promise.all([Promise.all(references.map((image) => referenceImageUrl(image, options))), Promise.all(videoReferences.map((video) => referenceVideoUrl(video, options)))]);
+    const payload = buildKlingOmniVideoPayload({ prompt, duration: normalizeVideoDuration(config.videoSeconds), aspectRatio: normalizeAspectRatio(config.size), imageUrls, videoUrls });
+    const created = await createTask(config, "/kling/v1/videos/omni-video", payload, options);
+    return { id: taskId(created), provider: "kling-omni-video", model: selectedModel, startedAt: Date.now() };
+}
+
+async function createKling3TurboTask(config: AiConfig, selectedModel: string, prompt: string, references: ReferenceImage[], options?: RequestOptions): Promise<VideoGenerationTask> {
+    const imageUrl = references[0] ? await referenceImageUrl(references[0], options) : "";
+    const payload = buildKling3TurboVideoPayload({ prompt, imageUrl, duration: normalizeKling3TurboDuration(config.videoSeconds), aspectRatio: config.size, resolution: config.vquality });
+    const provider = imageUrl ? "kling-3-turbo-image" : "kling-3-turbo-text";
+    const path = imageUrl ? "/kling/image-to-video/kling-3.0-turbo" : "/kling/text-to-video/kling-3.0-turbo";
+    const created = await createTask(config, path, payload, options);
+    return { id: taskId(created), provider, model: selectedModel, startedAt: Date.now() };
+}
+
+async function createMiniMaxHailuoTask(config: AiConfig, selectedModel: string, prompt: string, references: ReferenceImage[], operation: AiConfig["videoOperation"], options?: RequestOptions): Promise<VideoGenerationTask> {
+    const imageUrls = await Promise.all(references.map((image) => referenceImageUrl(image, options)));
+    const payload = buildMiniMaxHailuoVideoPayload({ model: config.model, prompt, duration: normalizeMiniMaxHailuoDuration(config.videoSeconds), operation, imageUrls });
+    const created = await createTask(config, "/minimax/v1/video_generation", payload, options);
+    return { id: taskId(created), provider: "minimax-hailuo", model: selectedModel, startedAt: Date.now() };
+}
+
+async function createTask(config: AiConfig, path: string, body: FormData | Record<string, unknown>, options?: RequestOptions) {
+    try {
+        const response = await axios.post<VideoResponse>(apiUrl(config, path), body, { headers: body instanceof FormData ? apiHeaders(config) : apiHeaders(config, "application/json"), signal: options?.signal });
+        return unwrap(response.data);
+    } catch (error) {
+        throw new Error(readAxiosError(error, workbenchText("视频任务创建失败", "Failed to create the video task")));
     }
-    if (total > 15000) throw new Error(workbenchText("Seedance 参考音频总时长不能超过 15 秒", "Seedance reference audio cannot exceed 15 seconds in total"));
 }
 
-function seedanceApiUrl(config: AiConfig, taskId?: string) {
-    return buildApiUrl(config.baseUrl, `/contents/generations/tasks${taskId ? `/${encodeURIComponent(taskId)}` : ""}`);
+async function referenceImageUrl(image: ReferenceImage, options?: RequestOptions) {
+    const directUrl = image.url || image.dataUrl || "";
+    if (isPublicUrl(directUrl)) return directUrl;
+    const blob = image.storageKey ? await getImageBlob(image.storageKey) : await fetch(directUrl).then((response) => response.blob());
+    if (!blob) throw new Error(workbenchText("参考图读取失败，请重新添加", "Failed to read the image reference. Add it again."));
+    return uploadImageReference(new File([blob], image.name || "reference.png", { type: blob.type || image.type || "image/png" }), options?.signal);
 }
 
-async function buildSeedanceContent(config: AiConfig, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[]) {
-    const content: Array<Record<string, unknown>> = [];
-    const text = buildSeedancePromptText(prompt, references, videoReferences, audioReferences);
-    if (text) content.push({ type: "text", text });
-    for (const image of references.slice(0, SEEDANCE_REFERENCE_LIMITS.images)) {
-        content.push({ type: "image_url", image_url: { url: await resolveSeedanceImageUrl(config, image) }, role: "reference_image" });
-    }
-    for (const video of videoReferences.slice(0, SEEDANCE_REFERENCE_LIMITS.videos)) {
-        content.push({ type: "video_url", video_url: { url: await resolveSeedanceVideoUrl(video) }, role: "reference_video" });
-    }
-    for (const audio of audioReferences.slice(0, SEEDANCE_REFERENCE_LIMITS.audios)) {
-        content.push({ type: "audio_url", audio_url: { url: await resolveSeedanceAudioUrl(audio) }, role: "reference_audio" });
-    }
-    return content;
+async function referenceVideoUrl(video: ReferenceVideo, options?: RequestOptions) {
+    if (isStorageVideoUrl(video.url)) return video.url;
+    const blob = video.storageKey ? await getMediaBlob(video.storageKey) : await fetch(video.url).then((response) => response.blob());
+    if (!blob) throw new Error(workbenchText("参考视频读取失败，请重新添加 MP4", "Failed to read the video reference. Add the MP4 again."));
+    return uploadVideoReference(new File([blob], video.name || "reference.mp4", { type: blob.type || video.type || "video/mp4" }), options?.signal);
 }
 
-async function resolveSeedanceImageUrl(config: AiConfig, image: ReferenceImage) {
-    const directUrl = image.url || image.dataUrl;
-    if (isPublicMediaUrl(directUrl) || directUrl.startsWith("asset://")) return directUrl;
-    const dataUrl = await imageToDataUrl(image);
-    if (!dataUrl) throw new Error(workbenchText("参考图读取失败，请换一张图片或重新上传"));
-    return dataUrl;
+function apiUrl(config: AiConfig, path: string) {
+    return path.startsWith("/kling/") || path.startsWith("/minimax/") ? `${config.baseUrl.replace(/\/+$/, "")}${path}` : buildApiUrl(config.baseUrl, path);
 }
 
-async function resolveSeedanceVideoUrl(video: ReferenceVideo) {
-    if (isPublicMediaUrl(video.url) || video.url.startsWith("asset://")) return video.url;
-    let blob: Blob | null = null;
-    if (video.storageKey) blob = await getMediaBlob(video.storageKey);
-    if (!blob && video.url?.startsWith("blob:")) blob = await (await fetch(video.url)).blob();
-    if (!blob) throw new Error(workbenchText("参考视频必须是公网 URL、素材 ID，或本地已保存的视频", "The reference video must be a public URL, an asset ID, or a locally saved video"));
-    return blobToDataUrl(blob);
+function apiHeaders(config: AiConfig, contentType?: string) {
+    return { Authorization: `Bearer ${config.apiKey}`, ...(contentType ? { "Content-Type": contentType } : {}) };
 }
 
-async function resolveSeedanceAudioUrl(audio: ReferenceAudio) {
-    if (isPublicMediaUrl(audio.url) || audio.url.startsWith("asset://")) return audio.url;
-    let blob: Blob | null = null;
-    if (audio.storageKey) blob = await getMediaBlob(audio.storageKey);
-    if (!blob && audio.url?.startsWith("blob:")) blob = await (await fetch(audio.url)).blob();
-    if (!blob) throw new Error(workbenchText("参考音频必须是公网 URL、素材 ID，或本地已保存的音频", "The reference audio must be a public URL, an asset ID, or a locally saved audio file"));
-    return blobToDataUrl(blob);
+function unwrap(payload: VideoResponse) {
+    if (typeof payload.code === "number" && payload.code !== 0) throw new Error(payload.msg || taskError(payload));
+    return payload.data || payload;
+}
+
+function taskId(video: VideoResponse) {
+    const id = video.id || video.task_id;
+    if (!id) throw new Error(workbenchText("视频接口没有返回任务 ID", "The video API returned no task ID"));
+    return id;
+}
+
+function resultUrl(video: VideoResponse) {
+    return video.video_url || video.url || video.result_urls?.find(Boolean) || video.task_result?.videos?.find((item) => item.url)?.url || video.file?.download_url || video.data?.file?.download_url || "";
+}
+
+function statuses(video: VideoResponse): string[] {
+    return [video.status, video.state, video.task_status, video.data?.status].flatMap((value) => {
+        const status = value?.trim().toLowerCase();
+        return status ? [status] : [];
+    });
+}
+
+function isCompleted(video: VideoResponse) {
+    return statuses(video).some((status) => status === "completed" || status === "succeed" || status === "succeeded" || status === "success") || (video.success === true && Boolean(resultUrl(video)));
+}
+
+function isFailed(video: VideoResponse) {
+    return statuses(video).some((status) => status.includes("fail") || status.includes("error") || status.includes("cancel") || status.includes("expire")) || video.final === true && video.success === false;
+}
+
+function taskError(video: VideoResponse) {
+    return video.error?.message || video.fail_reason || video.failure_reason || video.message || workbenchText("视频生成失败", "Video generation failed");
 }
 
 async function videoResultFromUrl(url: string, options?: RequestOptions): Promise<VideoGenerationResult> {
-    if (/^https?:\/\//i.test(url)) return { url, mimeType: "video/mp4" };
+    if (isPublicUrl(url)) return { url, mimeType: "video/mp4" };
     try {
         const response = await axios.get<Blob>(url, { responseType: "blob", signal: options?.signal });
-        await assertVideoBlob(response.data);
-        return { blob: response.data };
+        return { blob: response.data, mimeType: response.data.type || "video/mp4" };
     } catch (error) {
-        if (axios.isCancel(error) || options?.signal?.aborted) throw error;
-        return { url, mimeType: "video/mp4" };
+        throw new Error(readAxiosError(error, workbenchText("视频结果下载失败", "Failed to download the video result")));
     }
-}
-
-function assertVideoConfig(config: AiConfig, model: string) {
-    if (!model) throw new Error(workbenchText("请先配置视频模型", "Configure a video model first"));
-    if (!config.baseUrl.trim()) throw new Error(workbenchText("请先完成 RelayBases 配置", "Complete the RelayBases settings first"));
-    if (!config.apiKey.trim()) throw new Error(workbenchText("请先配置 API Key"));
-    if (config.apiFormat === "gemini") throw new Error(workbenchText("Gemini 调用格式暂不支持视频生成，请使用 OpenAI 格式渠道", "The Gemini API format does not support video generation. Use an OpenAI-format channel."));
-}
-
-function unwrapVideoResponse(payload: ApiVideoResponse) {
-    return unwrapEnvelope(payload, workbenchText("接口没有返回视频任务", "The API returned no video task"));
-}
-
-function unwrapSeedanceTask(payload: ApiEnvelope<SeedanceTask>) {
-    return unwrapEnvelope(payload, workbenchText("Seedance 接口没有返回任务", "The Seedance API returned no task"));
-}
-
-function unwrapEnvelope<T>(payload: ApiEnvelope<T>, emptyMessage: string): T {
-    if (!payload) throw new Error(emptyMessage);
-    if (typeof payload !== "object") throw new Error(emptyMessage);
-    if (typeof payload === "object" && "code" in payload && typeof payload.code === "number") {
-        if (payload.code !== 0) throw new Error(payload.msg || workbenchText("请求失败"));
-        if (!payload.data) throw new Error(emptyMessage);
-        if (typeof payload.data !== "object") throw new Error(emptyMessage);
-        return payload.data;
-    }
-    return payload as T;
 }
 
 function readAxiosError(error: unknown, fallback: string) {
-    if (axios.isCancel(error)) return workbenchText("请求已取消");
-    if (axios.isAxiosError<{ error?: { message?: string }; msg?: string; code?: number }>(error)) {
-        const responseData = error.response?.data;
-        return responseData?.msg || responseData?.error?.message || statusMessage(error.response?.status, fallback);
-    }
-    if (error instanceof DOMException && error.name === "AbortError") return workbenchText("请求已取消");
+    if (axios.isCancel(error)) return workbenchText("请求已取消", "Request cancelled");
+    if (axios.isAxiosError<{ error?: { message?: string }; msg?: string }>(error)) return error.response?.data?.msg || error.response?.data?.error?.message || (error.response?.status ? `${fallback} (${error.response.status})` : fallback);
     return error instanceof Error ? error.message : fallback;
 }
 
-function statusMessage(status: number | undefined, fallback: string) {
-    if (status === 401 || status === 403) return workbenchText("鉴权失败，请检查 API Key、套餐权限或模型权限");
-    if (status === 429) return workbenchText("请求被限流或额度不足，请稍后重试");
-    return status ? `${fallback}（${status}）` : fallback;
+function isPublicUrl(value: string) {
+    return /^https?:\/\//i.test(value);
 }
 
-async function assertVideoBlob(blob: Blob) {
-    if (!blob.type.includes("json")) return;
-    let payload: { code?: number; msg?: string; error?: { message?: string } };
+function isStorageVideoUrl(value: string) {
     try {
-        payload = JSON.parse(await blob.text()) as { code?: number; msg?: string; error?: { message?: string } };
+        return new URL(value).hostname.toLowerCase() === "storage.to";
     } catch {
-        return;
-    }
-    if (typeof payload.code === "number" && payload.code !== 0) throw new Error(payload.msg || workbenchText("视频下载失败"));
-    if (payload.error?.message) throw new Error(payload.error.message);
-}
-
-function isPublicMediaUrl(value: string) {
-    return /^https?:\/\//i.test(value || "");
-}
-
-function mediaFileNameFromUrl(value: string, fallback: string) {
-    try {
-        const pathname = new URL(value).pathname;
-        return pathname.split("/").pop() || fallback;
-    } catch {
-        return fallback;
+        return false;
     }
 }
 
 function delay(ms: number, signal?: AbortSignal) {
     return new Promise<void>((resolve, reject) => {
-        if (signal?.aborted) {
+        const timer = window.setTimeout(resolve, ms);
+        signal?.addEventListener("abort", () => {
+            window.clearTimeout(timer);
             reject(new DOMException("Aborted", "AbortError"));
-            return;
-        }
-        const timer = setTimeout(resolve, ms);
-        signal?.addEventListener(
-            "abort",
-            () => {
-                clearTimeout(timer);
-                reject(new DOMException("Aborted", "AbortError"));
-            },
-            { once: true },
-        );
-    });
-}
-
-function blobToDataUrl(blob: Blob) {
-    return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error(workbenchText("读取本地素材失败")));
-        reader.readAsDataURL(blob);
-    });
-}
-
-function loadImageElement(src: string) {
-    return new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error(workbenchText("参考图压缩失败，请换一张图片或重新上传")));
-        image.src = src;
-    });
-}
-
-function drawImageDataUrl(image: HTMLImageElement, width: number, height: number, quality: number) {
-    return new Promise<string>((resolve) => {
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-        if (!context) return resolve(image.src);
-        context.fillStyle = "#fff";
-        context.fillRect(0, 0, width, height);
-        context.drawImage(image, 0, 0, width, height);
-        canvas.toBlob(
-            (blob) => {
-                if (!blob) return resolve(canvas.toDataURL("image/jpeg", quality));
-                resolve(blobToDataUrl(blob));
-            },
-            "image/jpeg",
-            quality,
-        );
+        }, { once: true });
     });
 }

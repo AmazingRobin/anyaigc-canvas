@@ -3,36 +3,36 @@ import { ArrowUpRight, BookOpen, Rocket } from "lucide-react";
 import { appName, gitConfig } from "@/lib/shared";
 
 const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
-const canvasUrl = "https://canvas.relaybases.com/canvas?mode=new";
+const canvasUrl = "https://canvas.anyaigc.com/canvas?mode=new";
 
 const showcaseImages = [
   {
-    src: "/showcase/rb-prompt-001.webp",
+    src: "/showcase/prompt-001.webp",
     title: "电影感人像",
     caption: "人物、光线和氛围参考可以直接沉淀进工作流。",
   },
   {
-    src: "/showcase/rb-prompt-012.webp",
+    src: "/showcase/prompt-012.webp",
     title: "产品细节",
     caption: "适合产品视觉、材质探索和电商主图方向。",
   },
   {
-    src: "/showcase/rb-prompt-021.webp",
+    src: "/showcase/prompt-021.webp",
     title: "建筑场景",
     caption: "把空间、参考图和生成结果放在同一张画布上比较。",
   },
   {
-    src: "/showcase/rb-prompt-035.webp",
+    src: "/showcase/prompt-035.webp",
     title: "自然风景",
     caption: "用节点串联不同风格版本，保留每一步灵感。",
   },
   {
-    src: "/showcase/rb-prompt-051.webp",
+    src: "/showcase/prompt-051.webp",
     title: "3D 概念",
     caption: "从概念草案到精修提示词，连续迭代更顺手。",
   },
   {
-    src: "/showcase/rb-prompt-091.webp",
+    src: "/showcase/prompt-091.webp",
     title: "海报主视觉",
     caption: "适合活动海报、社媒主视觉和风格板整理。",
   },
@@ -40,7 +40,7 @@ const showcaseImages = [
 
 const capabilities = [
   ["画布编排", "用节点组织提示词、参考图、生成结果和后续改写。"],
-  ["图片生成", "对接 RelayBases 媒体线路，支持生成、编辑和素材沉淀。"],
+  ["图片生成", "对接 AnyAIGC 媒体接口，支持生成、编辑和素材沉淀。"],
   ["Agent 辅助", "文本模型理解画布状态，再通过工具调用执行画布操作。"],
 ];
 
@@ -51,7 +51,7 @@ export default function HomePage() {
         <div>
           <div className="inline-flex items-center gap-2 border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-300">
             <Rocket className="size-3.5 text-emerald-300" />
-            RelayBases AI 视觉工作台
+            AnyAIGC AI 视觉工作台
           </div>
           <h1 className="mt-7 max-w-3xl text-4xl font-semibold leading-tight text-white md:text-6xl [font-family:var(--font-display)]">
             {appName}
@@ -135,7 +135,7 @@ export default function HomePage() {
             本地提示词库示例
           </h2>
           <p className="mt-4 text-sm leading-7 text-zinc-400">
-            这些示例来自 RelayBases
+            这些示例来自 AnyAIGC
             定制提示词库，图片资源随项目本地发布，避免上线后依赖第三方图床。
           </p>
         </div>

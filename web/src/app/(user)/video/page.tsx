@@ -13,25 +13,22 @@ import { ModelPicker } from "@/components/model-picker";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { SelectionBubble } from "@/components/selection-bubble";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { normalizeVideoResolutionValue, normalizeVideoSizeValue, videoResolutionLabel, videoSizeLabel } from "@/components/video-settings-panel";
+import { videoSizeLabel } from "@/components/video-settings-panel";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
-import { boolConfig, isSeedanceFastModel, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceDurationOptions, seedanceRatioOptions, seedanceReferenceLabel, seedanceResolutionOptions, seedanceVideoReferenceError, seedanceVideoReferenceHint, SEEDANCE_REFERENCE_LIMITS } from "@/lib/seedance-video";
-import { normalizeRelayBasesVideoDuration, relayBasesVideoTiming } from "@/lib/relaybases-video";
 import {
-    GROK_VIDEO_MODES,
-    grokVideoBillingSeconds,
-    grokVideoModeLabel,
-    grokVideoOperationCapability,
-    grokVideoRequestError,
-    grokVideoResolutionOptions,
-    grokVideoUsesSourceOutput,
-    isGrokImagineVideoBaseModel,
-    isGrokImagineVideoFamilyModel,
-    isGrokImagineVideoModel,
-    normalizeGrokVideoMode,
-    normalizeGrokVideoResolution,
-    type GrokVideoMode,
-} from "@/lib/relaybases-media-models";
+    mediaModelCapability,
+    mediaRequestError,
+    isKling3TurboVideoModel,
+    isMiniMaxHailuoVideoModel,
+    normalizeAspectRatio,
+    normalizeKling3TurboResolution,
+    normalizeVideoDurationForModel,
+    normalizeVideoOperation,
+    videoDurationLimits,
+    videoDurationOptions,
+    videoReferenceImageLimit,
+    type VideoOperation,
+} from "@/lib/anyaigc-media-models";
 import { useI18n } from "@/lib/i18n";
 import { workbenchErrorText, workbenchFormatDate, workbenchPinLabel, workbenchText, workbenchTrashExpiry, workbenchTrashLabel, type WorkbenchLanguage } from "@/lib/i18n-workbench";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
@@ -46,7 +43,7 @@ import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo
 import { consumeImageToVideoReferences } from "@/services/workbench-handoff";
 import { emptyWorkbenchTrash, moveLogToWorkbenchTrash, moveLogsToWorkbenchTrash, purgeExpiredWorkbenchTrash, readWorkbenchTrash, removeWorkbenchTrashEntry, restoreWorkbenchTrashEntry, WORKBENCH_TRASH_RETENTION_DAYS, type WorkbenchTrashEntry } from "@/services/workbench-trash";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
-import { isRelayBasesVideoModel, modelOptionName, normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { modelOptionName, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
@@ -121,7 +118,7 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "videoCallMod
 type PollGenerationOptions = { notify?: boolean; resultId?: string; startedAtMs?: number; runStarted?: boolean; request?: GenerationRequestSnapshot };
 
 const LOG_STORE_KEY = "infinite-canvas:video_generation_logs";
-const VIDEO_WORKBENCH_DRAFT_KEY = "relaybases-canvas:video-workbench-draft";
+const VIDEO_WORKBENCH_DRAFT_KEY = "anyaigc-canvas:video-workbench-draft";
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
 const VIDEO_LOG_THUMBNAIL_MIN_RENDER_EDGE = 720;
@@ -131,11 +128,7 @@ const RESULT_OVERLAY_DANGER_BUTTON_CLASS = `${RESULT_OVERLAY_ICON_BUTTON_CLASS} 
 const RESULT_FAILED_ICON_BUTTON_CLASS = "!inline-flex !size-8 !items-center !justify-center !rounded-full !border-0 !bg-red-100/70 !p-0 !text-red-600 !shadow-none hover:!bg-red-200/80 dark:!bg-red-950/60 dark:!text-red-200 dark:hover:!bg-red-900/80 [&_.ant-btn-icon]:!m-0 [&_.ant-btn-icon]:shrink-0";
 const COMPOSER_CONTROL_CLASS = "h-8 rounded-full border border-input bg-transparent px-3 text-sm font-normal shadow-sm transition-colors hover:bg-stone-100/70 dark:hover:bg-stone-900/70";
 const HISTORY_SEARCH_INPUT_CLASS = "mb-3 !rounded-lg !border-stone-200 !bg-background !shadow-none transition-colors hover:!border-stone-300 focus-within:!border-stone-300 focus-within:!shadow-none [&.ant-input-affix-wrapper-focused]:!border-stone-300 [&.ant-input-affix-wrapper-focused]:!shadow-none [&_input]:!outline-none dark:!border-stone-800 dark:hover:!border-stone-700 dark:focus-within:!border-stone-700 dark:[&.ant-input-affix-wrapper-focused]:!border-stone-700";
-const VIDEO_MODE_OPTIONS = [
-    { value: "sync", label: "同步" },
-    { value: "async", label: "异步·4倍扣费" },
-];
-const RELAYBASES_VIDEO_RATIO_OPTIONS = [
+const VIDEO_RATIO_OPTIONS = [
     { value: "16:9", label: "横屏" },
     { value: "9:16", label: "竖屏" },
     { value: "1:1", label: "方形" },
@@ -187,21 +180,18 @@ export default function VideoPage() {
 
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const modelName = modelOptionName(model);
-    const seedanceVideo = isSeedanceVideoConfig({ ...effectiveConfig, model });
-    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
-    const grokBaseVideo = isGrokImagineVideoBaseModel(modelName);
-    const grokOperation = normalizeGrokVideoMode(modelName, effectiveConfig.videoOperation);
-    const grokUsesSourceOutput = grokVideoUsesSourceOutput(modelName, grokOperation);
-    const referenceLimits = videoReferenceLimits(seedanceVideo, modelName, grokOperation);
-    const relayBasesVideo = isRelayBasesVideoModel(model);
-    const ratioValue = seedanceVideo ? normalizeSeedanceRatio(effectiveConfig.size) : normalizeVideoSizeValue(effectiveConfig.size);
-    const resolutionValue = seedanceVideo ? normalizeSeedanceResolution(effectiveConfig.vquality, modelName) : grokVideo ? normalizeGrokVideoResolution(effectiveConfig.vquality, modelName) : "fixed";
-    const secondsValue = seedanceVideo ? String(normalizeSeedanceDuration(effectiveConfig.videoSeconds)) : String(normalizeRelayBasesVideoDuration(effectiveConfig.videoSeconds, modelName, grokOperation));
-    const ratioOptions = videoRatioOptions(seedanceVideo, language);
-    const resolutionOptions = videoResolutionOptions(seedanceVideo, modelName, grokOperation, videoResolutionLabel(effectiveConfig.vquality, model, language), language);
-    const secondsOptions = videoSecondsOptions(seedanceVideo, modelName, grokOperation, secondsValue, language);
-    const secondsTiming = seedanceVideo ? { min: 4, max: 15, defaultValue: 5, fixed: false } : relayBasesVideoTiming(modelName, grokOperation);
-    const canGenerate = Boolean(prompt.trim());
+    const videoCapability = mediaModelCapability(model);
+    const videoOperation = isKling3TurboVideoModel(modelName) ? (references.length ? "image-to-video" : "text-to-video") : normalizeVideoOperation(modelName, effectiveConfig.videoOperation);
+    const referenceLimits = videoReferenceLimits(modelName, videoOperation);
+    const ratioValue = normalizeAspectRatio(effectiveConfig.size);
+    const durationLimits = videoDurationLimits(modelName);
+    const secondsValue = String(normalizeVideoDurationForModel(modelName, effectiveConfig.videoSeconds));
+    const ratioOptions = videoRatioOptions(language);
+    const secondsOptions = videoSecondsOptions(modelName, language);
+    const resolutionValue = normalizeKling3TurboResolution(effectiveConfig.vquality);
+    const supportsResolution = isKling3TurboVideoModel(modelName);
+    const supportsOperationSelection = videoCapability?.kind === "video" && videoCapability.invocation === "minimax-hailuo";
+    const canGenerate = Boolean(prompt.trim() || (isKling3TurboVideoModel(modelName) && references.length));
     const activeLogId = previewLog?.id || activeResultLogId;
     const activeRunning = activeLogId ? runningByLog[activeLogId] : undefined;
     const results = activeLogId ? dedupeGenerationResults(resultsByLog[activeLogId] || []) : [];
@@ -263,14 +253,14 @@ export default function VideoPage() {
         if (!configHydrated) return;
         const handoff = consumeImageToVideoReferences();
         if (!handoff?.references.length) return;
-        if (isGrokImagineVideoBaseModel(modelName)) updateConfig("videoOperation", "image-to-video");
-        const handoffMode = isGrokImagineVideoBaseModel(modelName) ? "image-to-video" : grokOperation;
-        const handoffLimits = videoReferenceLimits(seedanceVideo, modelName, handoffMode);
+        const handoffMode = videoCapability?.kind === "video" && videoCapability.operations.includes("image-to-video") ? "image-to-video" : videoOperation;
+        if (handoffMode === "image-to-video") updateConfig("videoOperation", handoffMode);
+        const handoffLimits = videoReferenceLimits(modelName, handoffMode);
         setReferences((value) => mergeReferenceImages(handoff.references, value).slice(0, handoffLimits.images));
         if (handoff.prompt) setPrompt((value) => (value.trim() ? value : handoff.prompt || value));
         const importedCount = Math.min(handoff.references.length, handoffLimits.images);
         message.success(language === "en" ? `Imported ${importedCount} reference ${importedCount === 1 ? "image" : "images"}` : `已带入 ${importedCount} 张参考图`);
-    }, [configHydrated, grokOperation, language, message, modelName, seedanceVideo, updateConfig]);
+    }, [configHydrated, language, message, modelName, updateConfig, videoCapability, videoOperation]);
 
     useEffect(() => {
         if (!configHydrated || typeof window === "undefined") return;
@@ -408,7 +398,7 @@ export default function VideoPage() {
 
     const optimizePrompt = async () => {
         const text = prompt.trim();
-        if (!text) {
+        if (!text && !(isKling3TurboVideoModel(modelName) && references.length)) {
             message.warning(workbenchText("请先输入提示词梗概", "Enter a prompt outline first.", language));
             return;
         }
@@ -499,7 +489,7 @@ export default function VideoPage() {
             await saveLog(failedLog);
             if (targetLog) setPreviewLog(failedLog);
             message.error(workbenchErrorText(errorMessage, language));
-            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频任务创建失败", "Failed to create video task", language), workbenchErrorText(errorMessage, language), { tag: `relaybases-video-create-${resultId}`, requireInteraction: true });
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频任务创建失败", "Failed to create video task", language), workbenchErrorText(errorMessage, language), { tag: `anyaigc-video-create-${resultId}`, requireInteraction: true });
             finishLogRun(logId);
         }
     };
@@ -521,37 +511,10 @@ export default function VideoPage() {
             openConfigDialog(true);
             return null;
         }
-        if (modelName.toLowerCase() === "veo-omni-flash-video-edit" && !videoReferences.length) {
-            message.error(workbenchText("当前模型需要 1 个参考视频", "The current model requires one reference video.", language));
-            return null;
-        }
-        if (seedanceVideo) {
-            const videoReferenceError = seedanceVideoReferenceError(videoReferences, language);
-            if (videoReferenceError) {
-                message.error(`${videoReferenceError}${language === "en" ? ". " : "。"}${seedanceVideoReferenceHint(language)}${language === "en" ? "." : "。"}`);
-                return null;
-            }
-        }
-        const requestConfig = buildVideoConfig(effectiveConfig, model);
-        const requestOperation = normalizeGrokVideoMode(modelName, requestConfig.videoOperation);
-        const requestDuration = normalizeRelayBasesVideoDuration(requestConfig.videoSeconds, modelName, requestOperation);
-        const sourceVideo = videoReferences[0];
-        const grokRequestError = grokVideoRequestError(
-            modelName,
-            requestOperation,
-            {
-                imageCount: references.length,
-                videoCount: videoReferences.length,
-                audioCount: audioReferences.length,
-                duration: requestDuration,
-                sourceVideoDurationMs: sourceVideo?.durationMs,
-                sourceVideoName: sourceVideo?.name,
-                sourceVideoType: sourceVideo?.type,
-            },
-            language,
-        );
-        if (grokRequestError) {
-            message.error(grokRequestError);
+        const requestConfig = { ...buildVideoConfig(effectiveConfig, model), videoOperation };
+        const requestError = mediaRequestError(modelName, { imageCount: references.length, videoCount: videoReferences.length, operation: requestConfig.videoOperation }, language);
+        if (requestError) {
+            message.error(requestError);
             return null;
         }
         return {
@@ -569,14 +532,11 @@ export default function VideoPage() {
         config: {
             model: snapshot.config.model,
             videoModel: snapshot.config.videoModel || modelValue,
-            videoCallMode: normalizeVideoCallMode(snapshot.config.videoCallMode),
-            videoOperation: normalizeGrokVideoMode(snapshot.config.videoModel || modelValue, snapshot.config.videoOperation),
+            videoCallMode: "async",
+            videoOperation: normalizeVideoOperation(snapshot.config.videoModel || modelValue, snapshot.config.videoOperation),
             size: snapshot.config.size,
             vquality: normalizeResolution(snapshot.config.vquality),
-            videoSeconds:
-                normalizeGrokVideoMode(snapshot.config.videoModel || modelValue, snapshot.config.videoOperation) === "edit-video"
-                    ? String(grokVideoBillingSeconds("edit-video", snapshot.videoReferences[0]?.durationMs) || snapshot.config.videoSeconds)
-                    : snapshot.config.videoSeconds,
+            videoSeconds: snapshot.config.videoSeconds,
             videoGenerateAudio: snapshot.config.videoGenerateAudio,
             videoWatermark: snapshot.config.videoWatermark,
         },
@@ -589,7 +549,6 @@ export default function VideoPage() {
     const buildRetrySnapshot = async (request: GenerationRequestSnapshot) => {
         const hydrated = await hydrateVideoRequestSnapshot(request);
         const retryModel = hydrated.config.videoModel || hydrated.model;
-        const retryModelName = modelOptionName(retryModel);
         const retryConfig = buildVideoConfig({ ...effectiveConfig, ...hydrated.config }, retryModel);
         const text = hydrated.prompt.trim();
         if (!text) {
@@ -601,35 +560,9 @@ export default function VideoPage() {
             openConfigDialog(true);
             return null;
         }
-        if (retryModelName.toLowerCase() === "veo-omni-flash-video-edit" && !hydrated.videoReferences.length) {
-            message.error(workbenchText("当前模型需要 1 个参考视频", "The current model requires one reference video.", language));
-            return null;
-        }
-        if (isSeedanceVideoConfig({ ...retryConfig, model: retryModel })) {
-            const videoReferenceError = seedanceVideoReferenceError(hydrated.videoReferences, language);
-            if (videoReferenceError) {
-                message.error(`${videoReferenceError}${language === "en" ? ". " : "。"}${seedanceVideoReferenceHint(language)}${language === "en" ? "." : "。"}`);
-                return null;
-            }
-        }
-        const retryOperation = normalizeGrokVideoMode(retryModelName, retryConfig.videoOperation);
-        const sourceVideo = hydrated.videoReferences[0];
-        const grokRequestError = grokVideoRequestError(
-            retryModelName,
-            retryOperation,
-            {
-                imageCount: hydrated.references.length,
-                videoCount: hydrated.videoReferences.length,
-                audioCount: hydrated.audioReferences.length,
-                duration: normalizeRelayBasesVideoDuration(retryConfig.videoSeconds, retryModelName, retryOperation),
-                sourceVideoDurationMs: sourceVideo?.durationMs,
-                sourceVideoName: sourceVideo?.name,
-                sourceVideoType: sourceVideo?.type,
-            },
-            language,
-        );
-        if (grokRequestError) {
-            message.error(grokRequestError);
+        const retryError = mediaRequestError(retryModel, { imageCount: hydrated.references.length, videoCount: hydrated.videoReferences.length, operation: retryConfig.videoOperation }, language);
+        if (retryError) {
+            message.error(retryError);
             return null;
         }
         return {
@@ -653,7 +586,7 @@ export default function VideoPage() {
         if (recoverableLog?.task) {
             const task = recoverableLog.task;
             const recoveryLog = { ...recoverableLog, status: "生成中" as const, error: undefined };
-            void pollGenerationLog(recoveryLog, buildVideoConfig({ ...effectiveConfig, ...recoveryLog.config, videoOperation: recoveryLog.config.videoOperation || task.operation || effectiveConfig.videoOperation }, task.model || recoveryLog.model), { notify: true });
+            void pollGenerationLog(recoveryLog, buildVideoConfig({ ...effectiveConfig, ...recoveryLog.config, videoOperation: recoveryLog.config.videoOperation || effectiveConfig.videoOperation }, task.model || recoveryLog.model), { notify: true });
             return;
         }
         if (request) {
@@ -692,7 +625,7 @@ export default function VideoPage() {
                 }),
             );
             const zip = await createZip(files);
-            saveAs(zip, `relaybases-videos-${timestampForFileName()}.zip`);
+            saveAs(zip, `anyaigc-videos-${timestampForFileName()}.zip`);
             message.success({ key: messageKey, content: language === "en" ? `Packaged ${files.length} ${files.length === 1 ? "video" : "videos"}` : `已打包 ${files.length} 个视频` });
         } catch (error) {
             message.error({ key: messageKey, content: error instanceof Error ? error.message : workbenchText("视频打包失败", "Failed to package videos", language) });
@@ -720,20 +653,14 @@ export default function VideoPage() {
     };
 
     const editResultVideo = (video: GeneratedVideo) => {
-        if (isGrokImagineVideoModel(modelName)) {
-            message.warning(workbenchText("grok-imagine-video-1.5 仅支持单图生视频，不能继续编辑视频", "grok-imagine-video-1.5 only supports single-image video generation and cannot edit a video.", language));
+        if (!referenceLimits.videos) {
+            message.warning(workbenchText("当前模型不支持参考视频", "The selected model does not support reference videos.", language));
             return;
-        }
-        const grokBaseEdit = isGrokImagineVideoBaseModel(modelName);
-        if (grokBaseEdit) {
-            updateConfig("videoOperation", "edit-video");
-            setReferences([]);
-            setAudioReferences([]);
         }
         const reference: ReferenceVideo = { id: nanoid(), name: "generated-video.mp4", type: video.mimeType || "video/mp4", url: video.url, storageKey: video.storageKey, bytes: video.bytes, width: video.width, height: video.height, durationMs: video.videoDurationMs };
         const referenceKey = reference.storageKey || reference.url;
         const applyReference = (mode: "append" | "replace") => {
-            setVideoReferences((value) => (mode === "replace" ? [reference] : [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)]).slice(0, grokBaseEdit ? 1 : referenceLimits.videos || SEEDANCE_REFERENCE_LIMITS.videos));
+            setVideoReferences((value) => (mode === "replace" ? [reference] : [reference, ...value.filter((item) => (item.storageKey || item.url) !== referenceKey)]).slice(0, referenceLimits.videos));
             message.success(workbenchText(mode === "replace" ? "已替换参考视频" : "已加入参考视频", mode === "replace" ? "Reference video replaced" : "Reference video added", language));
         };
         if (effectiveConfig.referenceEditMode === "ask" && videoReferences.length) {
@@ -957,7 +884,7 @@ export default function VideoPage() {
             for (let attempt = 0; attempt < pollConfig.attempts; attempt += 1) {
                 const state = await pollVideoGenerationTask(requestConfig, log.task);
                 if (state.status === "completed") {
-                    const stored = await storeGeneratedVideo(state.result, { apiKey: requestConfig.apiKey });
+                    const stored = await storeGeneratedVideo(state.result);
                     const elapsedMs = Date.now() - requestStartedAtMs;
                     const nextVideo: GeneratedVideo = {
                         id: resultId,
@@ -978,7 +905,7 @@ export default function VideoPage() {
                     setPreviewLog((current) => (current?.id === completedLog.id ? completedLog : current));
                     message.success(workbenchText("视频已生成", "Video generated", language));
                     const notificationName = log.prompt || log.title || workbenchText("视频任务", "Video task", language);
-                    notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频生成完成", "Video generation complete", language), language === "en" ? `${notificationName} completed` : `${notificationName} 已完成`, { tag: `relaybases-video-${resultId}`, requireInteraction: true });
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频生成完成", "Video generation complete", language), language === "en" ? `${notificationName} completed` : `${notificationName} 已完成`, { tag: `anyaigc-video-${resultId}`, requireInteraction: true });
                     void createVideoThumbnail(stored.url).then(async (thumbnail) => {
                         const normalized = normalizeVideoThumbnail(thumbnail);
                         if (!normalized) return;
@@ -999,7 +926,7 @@ export default function VideoPage() {
             await saveLog(failedLog);
             setPreviewLog((current) => (current?.id === failedLog.id ? failedLog : current));
             message.error(workbenchErrorText(errorMessage, language));
-            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频生成失败", "Video generation failed", language), workbenchErrorText(errorMessage, language), { tag: `relaybases-video-${resultId}`, requireInteraction: true });
+            notifyWorkbenchTask(effectiveConfig.notifyOnGenerationComplete === "true", workbenchText("视频生成失败", "Video generation failed", language), workbenchErrorText(errorMessage, language), { tag: `anyaigc-video-${resultId}`, requireInteraction: true });
         } finally {
             activeLogIdsRef.current.delete(resultId);
             finishLogRun(logId);
@@ -1016,8 +943,8 @@ export default function VideoPage() {
         setVideoReferences(log.videoReferences || []);
         setAudioReferences(log.audioReferences || []);
         if (log.config.videoModel || log.model) updateConfig("videoModel", log.config.videoModel || log.model);
-        if (log.config.videoCallMode) updateConfig("videoCallMode", normalizeVideoCallMode(log.config.videoCallMode));
-        if (log.config.videoOperation) updateConfig("videoOperation", normalizeGrokVideoMode(log.config.videoModel || log.model, log.config.videoOperation));
+        if (log.config.videoCallMode) updateConfig("videoCallMode", "async");
+        if (log.config.videoOperation) updateConfig("videoOperation", normalizeVideoOperation(log.config.videoModel || log.model, log.config.videoOperation));
         if (log.config.size) updateConfig("size", log.config.size);
         if (log.config.vquality) updateConfig("vquality", log.config.vquality);
         if (log.config.videoSeconds) updateConfig("videoSeconds", log.config.videoSeconds);
@@ -1035,14 +962,14 @@ export default function VideoPage() {
             return;
         }
         const requestModel = modelOptionName(request.config.videoModel || request.model);
-        const requestOperation = normalizeGrokVideoMode(requestModel, request.config.videoOperation);
-        const limits = videoReferenceLimits(isSeedanceVideoConfig({ ...effectiveConfig, ...request.config, model: request.model }), requestModel, requestOperation);
+        const requestOperation = normalizeVideoOperation(requestModel, request.config.videoOperation);
+        const limits = videoReferenceLimits(requestModel, requestOperation);
         setPrompt(request.prompt);
         setReferences((request.references || []).slice(0, limits.images));
         setVideoReferences((request.videoReferences || []).slice(0, limits.videos));
         setAudioReferences((request.audioReferences || []).slice(0, limits.audios));
         if (request.config.videoModel || request.model) updateConfig("videoModel", request.config.videoModel || request.model);
-        if (request.config.videoCallMode) updateConfig("videoCallMode", normalizeVideoCallMode(request.config.videoCallMode));
+        if (request.config.videoCallMode) updateConfig("videoCallMode", "async");
         if (request.config.videoOperation) updateConfig("videoOperation", requestOperation);
         if (request.config.size) updateConfig("size", request.config.size);
         if (request.config.vquality) updateConfig("vquality", request.config.vquality);
@@ -1055,9 +982,8 @@ export default function VideoPage() {
     const renderReferencePanel = () => (
         <VideoReferencePanel
             language={language}
-            seedance={seedanceVideo}
             modelName={modelName}
-            operation={grokOperation}
+            operation={videoOperation}
             limits={referenceLimits}
             references={references}
             videoReferences={videoReferences}
@@ -1216,21 +1142,11 @@ export default function VideoPage() {
                                 <div className="flex flex-col gap-3 pt-1 xl:flex-row xl:items-center xl:justify-between">
                                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                                         <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
-                                        {grokVideo ? (grokBaseVideo ? <VideoComposerSelect label={workbenchText("生成模式", "Generation Mode", language)} value={grokOperation} options={grokVideoModeOptions(language)} onChange={(value) => updateConfig("videoOperation", normalizeGrokVideoMode(modelName, value))} /> : <VideoComposerMetric label={workbenchText("生成模式", "Generation Mode", language)} value={grokVideoModeLabel(grokOperation, language)} />) : null}
-                                        {grokVideo ? <VideoComposerMetric label={workbenchText("调用", "Call", language)} value={workbenchText("异步", "Async", language)} /> : relayBasesVideo ? <VideoComposerSelect label={workbenchText("模式", "Mode", language)} value={normalizeVideoCallMode(effectiveConfig.videoCallMode)} options={VIDEO_MODE_OPTIONS} onChange={(value) => updateConfig("videoCallMode", normalizeVideoCallMode(value))} /> : null}
-                                        {!grokUsesSourceOutput ? <VideoComposerSelect label={workbenchText("比例", "Aspect Ratio", language)} value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} /> : null}
-                                        {grokUsesSourceOutput ? <VideoComposerMetric label={workbenchText("输出", "Output", language)} value={workbenchText("跟随源视频 · 最高 720p", "Matches source · up to 720p", language)} /> : resolutionOptions.length > 1 ? <VideoComposerSelect label={workbenchText("清晰度", "Resolution", language)} value={resolutionValue} options={resolutionOptions} onChange={(value) => updateConfig("vquality", value)} /> : <VideoComposerMetric label={workbenchText("清晰度", "Resolution", language)} value={resolutionOptions[0]?.label || videoResolutionLabel(effectiveConfig.vquality, model, language)} />}
-                                        {grokOperation === "edit-video" ? null : secondsTiming.fixed ? (
-                                            <VideoComposerMetric label={workbenchText("时长", "Duration", language)} value={secondsOptions[0]?.label || (secondsValue === "-1" ? workbenchText("智能", "Auto", language) : `${secondsValue}s`)} />
-                                        ) : (
-                                            <VideoComposerDurationControl label={grokOperation === "extend-video" ? workbenchText("延长时长", "Extension", language) : undefined} value={secondsValue} options={secondsOptions} min={secondsTiming.min} max={secondsTiming.max} allowSmart={seedanceVideo} onChange={(value) => updateConfig("videoSeconds", value)} />
-                                        )}
-                                        {seedanceVideo ? (
-                                            <>
-                                                <VideoToggleControl label={workbenchText("声音", "Audio", language)} checked={boolConfig(effectiveConfig.videoGenerateAudio, true)} onChange={(checked) => updateConfig("videoGenerateAudio", String(checked))} />
-                                                <VideoToggleControl label={workbenchText("水印", "Watermark", language)} checked={boolConfig(effectiveConfig.videoWatermark, false)} onChange={(checked) => updateConfig("videoWatermark", String(checked))} />
-                                            </>
-                                        ) : null}
+                                        {supportsOperationSelection ? <VideoComposerSelect label={workbenchText("生成方式", "Generation mode", language)} value={videoOperation} options={videoCapability.operations.map((operation) => ({ value: operation, label: videoOperationLabel(operation, language) }))} onChange={(value) => { const operation = value as VideoOperation; updateConfig("videoOperation", operation); setReferences((items) => items.slice(0, videoReferenceImageLimit(modelName, operation))); }} /> : videoCapability?.kind === "video" ? <VideoComposerMetric label={workbenchText("生成方式", "Generation mode", language)} value={videoOperationLabel(videoOperation, language)} /> : null}
+                                        <VideoComposerMetric label={workbenchText("调用", "Call", language)} value={workbenchText("异步", "Async", language)} />
+                                        <VideoComposerSelect label={workbenchText("比例", "Aspect ratio", language)} value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
+                                        {supportsResolution ? <VideoComposerSelect label={workbenchText("分辨率", "Resolution", language)} value={resolutionValue} options={[{ value: "720p", label: "720p" }, { value: "1080p", label: "1080p" }]} onChange={(value) => updateConfig("vquality", value)} /> : null}
+                                        <VideoComposerDurationControl value={secondsValue} options={secondsOptions} min={durationLimits.min} max={durationLimits.max} presetOnly={isMiniMaxHailuoVideoModel(modelName)} onChange={(value) => updateConfig("videoSeconds", value)} />
                                     </div>
                                     <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => void generate()} className="xl:min-w-36">
                                         {workbenchText("开始生成", "Generate", language)}
@@ -1267,7 +1183,7 @@ export default function VideoPage() {
             <Drawer
                 title={null}
                 placement="bottom"
-                height="min(88dvh, 720px)"
+                size="min(88dvh, 720px)"
                 open={logsOpen}
                 onClose={() => setLogsOpen(false)}
                 closable={false}
@@ -1382,7 +1298,7 @@ function VideoComposerSelect({ label, value, options, onChange }: { label: strin
     );
 }
 
-function VideoComposerDurationControl({ label, value, options, min, max, allowSmart, onChange }: { label?: string; value: string; options: Array<{ value: string; label: string; disabled?: boolean }>; min: number; max: number; allowSmart?: boolean; onChange: (value: string) => void }) {
+function VideoComposerDurationControl({ label, value, options, min, max, allowSmart, presetOnly, onChange }: { label?: string; value: string; options: Array<{ value: string; label: string; disabled?: boolean }>; min: number; max: number; allowSmart?: boolean; presetOnly?: boolean; onChange: (value: string) => void }) {
     const [draft, setDraft] = useState(value === "-1" ? "" : value);
     const selected = options.find((item) => item.value === value);
     const customValue = "__custom_duration__";
@@ -1405,7 +1321,7 @@ function VideoComposerDurationControl({ label, value, options, min, max, allowSm
     return (
         <div className={`inline-flex items-center overflow-hidden ${COMPOSER_CONTROL_CLASS} px-0`}>
             <span className="pl-3 pr-2 text-xs text-stone-500 dark:text-stone-400">{label || workbenchText("时长", "Duration")}</span>
-            <input
+            {presetOnly ? <span className="w-10 px-1 text-center text-stone-700 dark:text-stone-200">{value}</span> : <input
                 type="number"
                 min={min}
                 max={max}
@@ -1418,7 +1334,7 @@ function VideoComposerDurationControl({ label, value, options, min, max, allowSm
                     if (event.key === "Enter") event.currentTarget.blur();
                 }}
                 onMouseDown={(event) => event.stopPropagation()}
-            />
+            />}
             <span className="pr-1 text-xs text-stone-500 dark:text-stone-400">s</span>
             <Select value={selected?.value || customValue} onValueChange={(next) => next !== customValue && onChange(next)}>
                 <SelectTrigger className="h-7 w-7 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-stone-100/80 focus-visible:ring-0 dark:hover:bg-stone-800/70" aria-label={workbenchText("选择时长预设", "Select a duration preset")} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} />
@@ -1439,20 +1355,6 @@ function VideoComposerDurationControl({ label, value, options, min, max, allowSm
     );
 }
 
-function VideoToggleControl({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-    return (
-        <button
-            type="button"
-            className={`inline-flex h-8 items-center gap-1 rounded-full border px-3 text-sm font-normal shadow-sm transition-colors ${checked ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200" : "border-input bg-transparent text-stone-700 hover:bg-stone-100/70 dark:text-stone-200 dark:hover:bg-stone-900/70"}`}
-            onClick={() => onChange(!checked)}
-            aria-pressed={checked}
-        >
-            <span className="shrink-0 text-xs opacity-70">{label}</span>
-            <span className="min-w-0 truncate">{workbenchText(checked ? "开" : "关", checked ? "On" : "Off")}</span>
-        </button>
-    );
-}
-
 type VideoReferenceLimits = {
     images: number;
     videos: number;
@@ -1462,25 +1364,17 @@ type VideoReferenceLimits = {
     audioMaxBytes: number;
 };
 
-const RELAYBASES_MULTI_REFERENCE_MODELS = new Set(["video-fast-480p", "video-fast-720p", "video-pro-480p", "video-pro-720p", "video-pro-1080p", "video-standard-720p"]);
-
-function videoReferenceLimits(seedance: boolean, model: string, operation?: GrokVideoMode): VideoReferenceLimits {
-    const value = model.toLowerCase();
-    const base = {
-        imageMaxBytes: SEEDANCE_REFERENCE_LIMITS.imageMaxBytes,
-        videoMaxBytes: SEEDANCE_REFERENCE_LIMITS.videoMaxBytes,
-        audioMaxBytes: SEEDANCE_REFERENCE_LIMITS.audioMaxBytes,
+function videoReferenceLimits(model: string, operation?: VideoOperation): VideoReferenceLimits {
+    const capability = mediaModelCapability(model);
+    if (!capability || capability.kind !== "video") return { images: 0, videos: 0, audios: 0, imageMaxBytes: 10 * 1024 * 1024, videoMaxBytes: 100 * 1024 * 1024, audioMaxBytes: 0 };
+    return {
+        images: videoReferenceImageLimit(model, operation),
+        videos: capability.videoCount.max,
+        audios: 0,
+        imageMaxBytes: 10 * 1024 * 1024,
+        videoMaxBytes: 100 * 1024 * 1024,
+        audioMaxBytes: 0,
     };
-    if (seedance) return { ...SEEDANCE_REFERENCE_LIMITS };
-    if (isGrokImagineVideoFamilyModel(value)) {
-        const capability = grokVideoOperationCapability(value, operation);
-        return { ...base, images: capability?.maxReferenceImages || 0, videos: capability?.maxReferenceVideos || 0, audios: 0 };
-    }
-    if (value === "veo-omni-flash-video-edit") return { ...base, images: 5, videos: 1, audios: 0 };
-    if (value === "veo-omni-flash") return { ...base, images: 5, videos: 0, audios: 0 };
-    if (value === "veo-3-1") return { ...base, images: 2, videos: 0, audios: 0 };
-    if (RELAYBASES_MULTI_REFERENCE_MODELS.has(value)) return { ...base, images: 5, videos: 3, audios: 3 };
-    return { ...base, images: 5, videos: 0, audios: 0 };
 }
 
 function formatReferenceLimit(bytes: number) {
@@ -1508,66 +1402,38 @@ function videoReferenceCountLabel(kind: "image" | "video" | "audio", count: numb
     return max > 0 ? `${label} ${count}/${max}` : label;
 }
 
-function videoReferenceLabel(kind: "image" | "video" | "audio", index: number, language: "zh" | "en") {
-    if (language === "zh") return seedanceReferenceLabel(kind, index);
-    return `${kind === "image" ? "Image" : kind === "video" ? "Video" : "Audio"} ${index + 1}`;
+function videoReferenceLabel(model: string, operation: VideoOperation, kind: "image" | "video" | "audio", index: number, language: "zh" | "en") {
+    if (kind === "image" && isMiniMaxHailuoVideoModel(model) && operation === "first-last-frame") return (index === 0 ? ["首帧", "First frame"] : ["尾帧", "Last frame"])[language === "en" ? 1 : 0];
+    const label = language === "en" ? (kind === "image" ? "Image" : kind === "video" ? "Video" : "Audio") : kind === "image" ? "图片" : kind === "video" ? "视频" : "音频";
+    return `${label} ${index + 1}`;
 }
 
-function videoReferenceRequirements(seedance: boolean, model: string, operation: GrokVideoMode, limits: VideoReferenceLimits, language: "zh" | "en" = "zh") {
-    const value = model.toLowerCase();
-    if (seedance) {
+function videoReferenceRequirements(model: string, operation: VideoOperation, limits: VideoReferenceLimits, language: "zh" | "en" = "zh") {
+    const capability = mediaModelCapability(model);
+    if (capability?.kind === "video" && capability.invocation === "kling-motion-control") {
         return {
-            image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: language === "en" ? `MP4/MOV · 2–15s · max ${formatReferenceLimit(limits.videoMaxBytes)} each` : `MP4/MOV · 2-15s · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
-            audio: language === "en" ? `MP3/WAV · 2–15s · max ${formatReferenceLimit(limits.audioMaxBytes)} each` : `MP3/WAV · 2-15s · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
+            image: language === "en" ? "Exactly 1 person image · PNG/JPG" : "必须且只能使用 1 张人物参考图 · PNG/JPG",
+            video: language === "en" ? "Exactly 1 action video · MP4/MOV · max 100MB" : "必须且只能使用 1 个动作参考视频 · MP4/MOV · 最大 100MB",
+            audio: language === "en" ? "Not supported" : "不支持",
         };
     }
-    if (isGrokImagineVideoFamilyModel(value)) {
-        const sourceMode = operation === "edit-video" || operation === "extend-video";
-        return {
-            image:
-                limits.images > 0
-                    ? language === "en"
-                        ? `${operation === "reference-to-video" ? "1-7 reference images" : "Exactly 1 source image"} · PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each`
-                        : `${operation === "reference-to-video" ? "1-7 张参考图" : "必须且只能使用 1 张源图片"} · PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`
-                    : language === "en"
-                      ? "Not used in this mode"
-                      : "当前模式不使用",
-            video: sourceMode ? (language === "en" ? `Exactly 1 MP4 · ${operation === "edit-video" ? "up to 8.7s" : "2-15s"} · max ${formatReferenceLimit(limits.videoMaxBytes)}` : `必须且只能使用 1 个 MP4 · ${operation === "edit-video" ? "最长 8.7 秒" : "2-15 秒"} · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`) : language === "en" ? "Not used in this mode" : "当前模式不使用",
-            audio: language === "en" ? "Not Supported" : "不支持",
-        };
+    if (capability?.kind === "video" && capability.invocation === "grok" && operation === "image-to-video") {
+        return { image: language === "en" ? "Exactly 1 source image · PNG/JPG" : "必须且只能使用 1 张源图片 · PNG/JPG", video: language === "en" ? "Not supported" : "不支持", audio: language === "en" ? "Not supported" : "不支持" };
     }
-    if (value === "veo-omni-flash-video-edit") {
-        return {
-            image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: language === "en" ? `MP4/MOV · max ${formatReferenceLimit(limits.videoMaxBytes)} each` : `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
-            audio: language === "en" ? "Not used" : "不使用",
-        };
-    }
-    if (value === "veo-3-1") {
-        return {
-            image: language === "en" ? `First/last frames · up to 2 PNG/JPG images · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `首帧/尾帧 · 最多 2 张 · PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: language === "en" ? "Not used" : "不使用",
-            audio: language === "en" ? "Not used" : "不使用",
-        };
-    }
-    if (limits.videos || limits.audios) {
-        return {
-            image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-            video: language === "en" ? `MP4/MOV · max ${formatReferenceLimit(limits.videoMaxBytes)} each` : `MP4/MOV · 单个≤${formatReferenceLimit(limits.videoMaxBytes)}`,
-            audio: language === "en" ? `MP3/WAV · max ${formatReferenceLimit(limits.audioMaxBytes)} each` : `MP3/WAV · 单个≤${formatReferenceLimit(limits.audioMaxBytes)}`,
-        };
+    if (capability?.kind === "video" && capability.invocation === "minimax-hailuo") {
+        if (operation === "image-to-video") return { image: language === "en" ? "Exactly 1 first-frame image · PNG/JPG" : "必须且只能使用 1 张首帧图片 · PNG/JPG", video: language === "en" ? "Not supported" : "不支持", audio: language === "en" ? "Not supported" : "不支持" };
+        if (operation === "first-last-frame") return { image: language === "en" ? "Exactly 2 images in order: first frame, then last frame · PNG/JPG" : "必须且只能使用 2 张图片，顺序为首帧、尾帧 · PNG/JPG", video: language === "en" ? "Not supported" : "不支持", audio: language === "en" ? "Not supported" : "不支持" };
+        return { image: language === "en" ? "Not used for text to video" : "文生视频不使用参考图", video: language === "en" ? "Not supported" : "不支持", audio: language === "en" ? "Not supported" : "不支持" };
     }
     return {
-        image: language === "en" ? `PNG/JPG · max ${formatReferenceLimit(limits.imageMaxBytes)} each` : `PNG/JPG · 单张≤${formatReferenceLimit(limits.imageMaxBytes)}`,
-        video: language === "en" ? "Not used" : "不使用",
-        audio: language === "en" ? "Not used" : "不使用",
+        image: limits.images ? (language === "en" ? `PNG/JPG · up to ${limits.images}` : `PNG/JPG · 最多 ${limits.images} 张`) : language === "en" ? "Not used" : "不使用",
+        video: limits.videos ? (language === "en" ? `MP4/MOV · up to ${limits.videos} · max ${formatReferenceLimit(limits.videoMaxBytes)}` : `MP4/MOV · 最多 ${limits.videos} 个 · 最大 ${formatReferenceLimit(limits.videoMaxBytes)}`) : language === "en" ? "Not used" : "不使用",
+        audio: language === "en" ? "Not supported" : "不支持",
     };
 }
 
 function VideoReferencePanel({
     language,
-    seedance,
     modelName,
     operation,
     limits,
@@ -1585,9 +1451,8 @@ function VideoReferencePanel({
     onRemoveAudio,
 }: {
     language: "zh" | "en";
-    seedance: boolean;
     modelName: string;
-    operation: GrokVideoMode;
+    operation: VideoOperation;
     limits: VideoReferenceLimits;
     references: ReferenceImage[];
     videoReferences: ReferenceVideo[];
@@ -1603,7 +1468,7 @@ function VideoReferencePanel({
     onRemoveAudio: (id: string) => void;
 }) {
     const summary = videoReferenceSummary(references, videoReferences, audioReferences, language);
-    const requirements = videoReferenceRequirements(seedance, modelName, operation, limits, language);
+    const requirements = videoReferenceRequirements(modelName, operation, limits, language);
 
     return (
         <div className="space-y-3">
@@ -1629,17 +1494,17 @@ function VideoReferencePanel({
                         role="button"
                         tabIndex={0}
                         className="group relative size-16 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-stone-100 outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:bg-stone-900 dark:ring-stone-800/70"
-                        aria-label={language === "en" ? `View ${videoReferenceLabel("image", index, language)}` : `查看${videoReferenceLabel("image", index, language)}`}
-                        onClick={() => onPreview({ kind: "image", label: videoReferenceLabel("image", index, language), item })}
+                        aria-label={language === "en" ? `View ${videoReferenceLabel(modelName, operation, "image", index, language)}` : `查看${videoReferenceLabel(modelName, operation, "image", index, language)}`}
+                        onClick={() => onPreview({ kind: "image", label: videoReferenceLabel(modelName, operation, "image", index, language), item })}
                         onKeyDown={(event) => {
                             if (event.key !== "Enter" && event.key !== " ") return;
                             event.preventDefault();
-                            onPreview({ kind: "image", label: videoReferenceLabel("image", index, language), item });
+                            onPreview({ kind: "image", label: videoReferenceLabel(modelName, operation, "image", index, language), item });
                         }}
                     >
                         <img src={item.dataUrl} alt={item.name} className="size-full object-cover" />
                         <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/10 group-focus-visible:bg-black/10" />
-                        <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{videoReferenceLabel("image", index, language)}</span>
+                        <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{videoReferenceLabel(modelName, operation, "image", index, language)}</span>
                         <ReferenceOrderButtons index={index} total={references.length} onMove={(offset) => onMoveImage(index, offset)} />
                         <button
                             type="button"
@@ -1664,17 +1529,17 @@ function VideoReferencePanel({
                             role="button"
                             tabIndex={0}
                             className="group relative h-16 w-24 shrink-0 cursor-zoom-in overflow-hidden rounded-lg bg-black outline-none ring-1 ring-stone-200/70 transition focus-visible:ring-2 focus-visible:ring-primary dark:ring-stone-800/70"
-                            aria-label={language === "en" ? `View ${videoReferenceLabel("video", index, language)}` : `查看${videoReferenceLabel("video", index, language)}`}
-                            onClick={() => onPreview({ kind: "video", label: videoReferenceLabel("video", index, language), item })}
+                            aria-label={language === "en" ? `View ${videoReferenceLabel(modelName, operation, "video", index, language)}` : `查看${videoReferenceLabel(modelName, operation, "video", index, language)}`}
+                            onClick={() => onPreview({ kind: "video", label: videoReferenceLabel(modelName, operation, "video", index, language), item })}
                             onKeyDown={(event) => {
                                 if (event.key !== "Enter" && event.key !== " ") return;
                                 event.preventDefault();
-                                onPreview({ kind: "video", label: videoReferenceLabel("video", index, language), item });
+                                onPreview({ kind: "video", label: videoReferenceLabel(modelName, operation, "video", index, language), item });
                             }}
                         >
                             <video src={item.url} className="size-full object-cover" muted preload="metadata" />
                             <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover:bg-black/15 group-focus-visible:bg-black/15" />
-                            <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{videoReferenceLabel("video", index, language)}</span>
+                            <span className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white">{videoReferenceLabel(modelName, operation, "video", index, language)}</span>
                             <ReferenceOrderButtons index={index} total={videoReferences.length} onMove={(offset) => onMoveVideo(index, offset)} />
                             <button
                                 type="button"
@@ -1698,7 +1563,7 @@ function VideoReferencePanel({
                         <div key={item.id} className="group relative flex h-16 w-44 shrink-0 flex-col justify-center gap-1.5 rounded-lg bg-stone-50 px-2 ring-1 ring-stone-200/70 dark:bg-stone-900/55 dark:ring-stone-800/70">
                             <div className="flex min-w-0 items-center gap-2 pr-5 text-xs text-stone-500 dark:text-stone-400">
                                 <Music2 className="size-3.5 shrink-0" />
-                                <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{videoReferenceLabel("audio", index, language)}</span>
+                                <span className="shrink-0 rounded bg-stone-200 px-1 text-[10px] text-stone-700 dark:bg-stone-800 dark:text-stone-200">{videoReferenceLabel(modelName, operation, "audio", index, language)}</span>
                                 <span data-no-i18n className="truncate">{item.name}</span>
                             </div>
                             <audio src={item.url} controls className="h-7 w-full" preload="metadata" />
@@ -1732,34 +1597,23 @@ function VideoReferenceStrip({ title, detail, empty, children }: { title: string
     );
 }
 
-function videoRatioOptions(seedance: boolean, language?: WorkbenchLanguage) {
-    if (!seedance) return RELAYBASES_VIDEO_RATIO_OPTIONS.map((item) => ({ ...item, label: workbenchText(item.label, undefined, language) }));
-    return seedanceRatioOptions.map((item) => ({ value: item.value, label: item.value === "adaptive" ? workbenchText(item.label, "Adaptive", language) : `${workbenchText(item.label, undefined, language)} ${item.value}` }));
+function videoRatioOptions(language?: WorkbenchLanguage) {
+    return VIDEO_RATIO_OPTIONS.map((item) => ({ ...item, label: workbenchText(item.label, undefined, language) }));
 }
 
-function grokVideoModeOptions(language?: WorkbenchLanguage) {
-    return GROK_VIDEO_MODES.map((value) => ({ value, label: grokVideoModeLabel(value, language) }));
+function videoSecondsOptions(model: string, _language?: WorkbenchLanguage) {
+    return videoDurationOptions(model).map((seconds) => ({ value: String(seconds), label: `${seconds}s` }));
 }
 
-function videoResolutionOptions(seedance: boolean, model: string, operation: GrokVideoMode, fixedLabel: string, language?: WorkbenchLanguage) {
-    if (isGrokImagineVideoFamilyModel(model)) return grokVideoResolutionOptions(model, operation).map((value) => ({ value, label: value }));
-    if (!seedance) return [{ value: "fixed", label: fixedLabel }];
-    return seedanceResolutionOptions.map((item) => ({ value: item.value, label: workbenchText(item.label, undefined, language), disabled: item.value === "1080p" && isSeedanceFastModel(model) }));
-}
-
-function videoSecondsOptions(seedance: boolean, model: string, operation: GrokVideoMode, currentValue: string, language?: WorkbenchLanguage) {
-    const options = seedance ? seedanceDurationOptions.map((value) => ({ value: String(value), label: value === -1 ? workbenchText("智能", "Auto", language) : `${value}s` })) : relayBasesVideoTiming(model, operation).options.map((value) => ({ value: String(value), label: `${value}s` }));
-    if (currentValue && !options.some((item) => item.value === currentValue)) options.push({ value: currentValue, label: currentValue === "-1" ? workbenchText("智能", "Auto", language) : `${currentValue}s` });
-    return uniqueVideoOptions(options);
-}
-
-function uniqueVideoOptions(options: Array<{ value: string; label: string; disabled?: boolean }>) {
-    const seen = new Set<string>();
-    return options.filter((item) => {
-        if (seen.has(item.value)) return false;
-        seen.add(item.value);
-        return true;
-    });
+function videoOperationLabel(operation: VideoOperation, language?: WorkbenchLanguage) {
+    const labels: Record<VideoOperation, [string, string]> = {
+        "text-to-video": ["文生视频", "Text to video"],
+        "image-to-video": ["图生视频", "Image to video"],
+        "first-last-frame": ["首尾帧视频", "First & last frame"],
+        "motion-control": ["动作控制", "Motion control"],
+        "omni-video": ["全能视频", "Omni video"],
+    };
+    return workbenchText(...labels[operation], language);
 }
 
 type HistoryPillTone = "neutral" | "success" | "danger" | "pending" | "info";
@@ -2233,11 +2087,8 @@ function TrashPanel({
                     const videos = logVideos(entry.log);
                     const coverVideo = entry.log.video || videos[0];
                     const modelName = modelOptionName(entry.log.config?.videoModel || entry.log.model);
-                    const operation = normalizeGrokVideoMode(modelName, entry.log.config?.videoOperation);
-                    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
-                    const sourceOutput = grokVideoUsesSourceOutput(modelName, operation);
-                    const sizeLabel = sourceOutput ? workbenchText("跟随源", "Source") : videoSizeLabel(entry.log.config?.size || entry.log.size, entry.log.model);
-                    const resolutionLabel = sourceOutput ? workbenchText("最高 720p", "Up to 720p") : videoResolutionBadge(entry.log.config?.vquality || entry.log.resolution);
+                    const operation = normalizeVideoOperation(modelName, entry.log.config?.videoOperation);
+                    const sizeLabel = videoSizeLabel(entry.log.config?.size || entry.log.size, entry.log.model);
                     const expirePercent = trashRemainingPercent(entry);
                     return (
                         <div key={entry.id} className={`relative overflow-hidden rounded-xl border bg-background p-3 shadow-sm transition ${selected ? "border-stone-400 ring-2 ring-stone-200 dark:border-stone-600 dark:ring-stone-800" : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"}`}>
@@ -2248,8 +2099,8 @@ function TrashPanel({
                                     <div data-no-i18n className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900 dark:text-stone-100">{promptPreview}</div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="模型"><span data-no-i18n>{entry.log.config?.videoModel || entry.log.model || workbenchText("默认", "Default")}</span></HistoryPill>
-                                        {grokVideo ? <HistoryPill label="生成模式">{grokVideoModeLabel(operation)}</HistoryPill> : null}
-                                        <HistoryPill label={sourceOutput ? "输出" : "清晰度"}>{sourceOutput ? workbenchText("跟随源视频 · 最高 720p", "Matches source · up to 720p") : resolutionLabel}</HistoryPill>
+                                        <HistoryPill label={workbenchText("生成方式", "Generation mode")}>{videoOperationLabel(operation)}</HistoryPill>
+                                        <HistoryPill label="比例">{sizeLabel}</HistoryPill>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-1">
                                         <HistoryPill label="删除">{formatTrashDate(entry.deletedAt)}</HistoryPill>
@@ -2372,11 +2223,9 @@ function LogCard({
     const promptPreview = log.prompt || log.title || "";
     const displayPromptPreview = !log.prompt && (!log.title || log.title === "未命名") ? workbenchText("未命名", "Untitled") : promptPreview || compactLogTitle(log.model || "");
     const logModelName = modelOptionName(log.config.videoModel || log.model);
-    const grokVideo = isGrokImagineVideoFamilyModel(logModelName);
-    const videoOperation = normalizeGrokVideoMode(logModelName, log.config.videoOperation);
-    const sourceOutput = grokVideoUsesSourceOutput(logModelName, videoOperation);
-    const sizeLabel = sourceOutput ? workbenchText("跟随源", "Source", language) : videoSizeLabel(log.config.size || log.size, log.model);
-    const resolutionLabel = sourceOutput ? workbenchText("最高 720p", "Up to 720p", language) : videoResolutionBadge(log.config.vquality || log.resolution);
+    const videoOperation = normalizeVideoOperation(logModelName, log.config.videoOperation);
+    const sizeLabel = videoSizeLabel(log.config.size || log.size, log.model);
+    const resolutionLabel = videoResolutionBadge(log.config.vquality || log.resolution);
     const secondsLabel = videoSecondsBadge(log.config.videoSeconds || log.seconds);
     const videos = logVideos(log);
     const failCount = log.failures.length;
@@ -2426,8 +2275,8 @@ function LogCard({
                             <span data-no-i18n>{log.model || workbenchText("默认", "Default")}</span>
                         </HistoryPill>
                         <HistoryPill label="模式">{videoModeLabel(log.config.videoCallMode, log.model)}</HistoryPill>
-                        {grokVideo ? <HistoryPill label="生成模式">{grokVideoModeLabel(videoOperation, language)}</HistoryPill> : null}
-                        {sourceOutput ? <HistoryPill label="输出">{workbenchText("跟随源视频 · 最高 720p", "Matches source · up to 720p", language)}</HistoryPill> : <><HistoryPill label="比例">{sizeLabel}</HistoryPill><HistoryPill label="清晰度">{resolutionLabel}</HistoryPill></>}
+                        <HistoryPill label={workbenchText("生成方式", "Generation mode")}>{videoOperationLabel(videoOperation, language)}</HistoryPill>
+                        <HistoryPill label="比例">{sizeLabel}</HistoryPill><HistoryPill label="清晰度">{resolutionLabel}</HistoryPill>
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1 pt-2">
                         <HistoryPill label="请求">{requestCount}</HistoryPill>
@@ -2437,7 +2286,7 @@ function LogCard({
                         <HistoryPill tone="info" label="总耗时">
                             {formatDuration(log.durationMs)}
                         </HistoryPill>
-                        <HistoryPill label={videoOperation === "edit-video" ? "计费时长" : videoOperation === "extend-video" ? "延长时长" : "总时长"}>{secondsLabel}</HistoryPill>
+                        <HistoryPill label="总时长">{secondsLabel}</HistoryPill>
                         <HistoryPill label="时间">{workbenchFormatDate(log.createdAt, { hour12: false })}</HistoryPill>
                     </div>
                 </div>
@@ -2817,8 +2666,8 @@ function normalizeVideoRequestSnapshot(value: Partial<GenerationRequestSnapshot>
     const config = {
         ...fallback.config,
         ...(value?.config || {}),
-        videoCallMode: normalizeVideoCallMode(value?.config?.videoCallMode || fallback.config.videoCallMode),
-        videoOperation: normalizeGrokVideoMode(videoModel, value?.config?.videoOperation || fallback.config.videoOperation),
+        videoCallMode: "async" as const,
+        videoOperation: normalizeVideoOperation(videoModel, value?.config?.videoOperation || fallback.config.videoOperation),
         vquality: normalizeResolution(value?.config?.vquality || fallback.config.vquality || ""),
     };
     return {
@@ -3010,8 +2859,8 @@ function normalizeLogConfig(log: Partial<GenerationLog>): GenerationLogConfig {
     return {
         model: log.config?.model || log.model || "",
         videoModel,
-        videoCallMode: normalizeVideoCallMode(log.config?.videoCallMode),
-        videoOperation: normalizeGrokVideoMode(videoModel, log.config?.videoOperation || log.task?.operation),
+        videoCallMode: "async",
+        videoOperation: normalizeVideoOperation(videoModel, log.config?.videoOperation),
         size: log.config?.size || log.size || "",
         vquality: normalizeResolution(log.config?.vquality || log.resolution || ""),
         videoSeconds: log.config?.videoSeconds || log.seconds || "",
@@ -3057,11 +2906,11 @@ function buildLog({
     failures?: GeneratedFailure[];
     error?: string;
 }): GenerationLog {
-    const logConfig = {
+    const logConfig: GenerationLogConfig = {
         model: config.model,
         videoModel: config.videoModel,
-        videoCallMode: normalizeVideoCallMode(config.videoCallMode),
-        videoOperation: normalizeGrokVideoMode(config.videoModel || model, config.videoOperation),
+        videoCallMode: "async",
+        videoOperation: normalizeVideoOperation(config.videoModel || model, config.videoOperation),
         size: config.size,
         vquality: normalizeResolution(config.vquality),
         videoSeconds: config.videoSeconds,
@@ -3128,28 +2977,23 @@ function dedupeVideos(videos: GeneratedVideo[]) {
 }
 
 function buildVideoConfig(config: AiConfig, model: string): AiConfig {
-    const seedance = isSeedanceVideoConfig({ ...config, model });
-    const modelName = modelOptionName(model);
-    const grokVideo = isGrokImagineVideoFamilyModel(modelName);
-    const videoOperation = normalizeGrokVideoMode(modelName, config.videoOperation);
+    const videoOperation = normalizeVideoOperation(model, config.videoOperation);
     return {
         ...config,
         model,
         videoModel: model,
-        videoCallMode: grokVideo ? "async" : normalizeVideoCallMode(config.videoCallMode),
+        videoCallMode: "async",
         videoOperation,
-        size: seedance ? normalizeSeedanceRatio(config.size) : normalizeVideoSize(config.size),
-        videoSeconds: grokVideo ? String(normalizeRelayBasesVideoDuration(config.videoSeconds, modelName, videoOperation)) : normalizeVideoSeconds(config.videoSeconds),
-        vquality: grokVideo ? normalizeGrokVideoResolution(config.vquality, modelName) : normalizeResolution(config.vquality),
-        videoGenerateAudio: String(boolConfig(config.videoGenerateAudio, true)),
-        videoWatermark: String(boolConfig(config.videoWatermark, false)),
+        size: normalizeAspectRatio(config.size),
+        videoSeconds: String(normalizeVideoDurationForModel(model, config.videoSeconds)),
+        vquality: isKling3TurboVideoModel(model) ? normalizeKling3TurboResolution(config.vquality) : "",
+        videoGenerateAudio: "false",
+        videoWatermark: "false",
     };
 }
 
 function normalizeVideoSeconds(value: string) {
-    if (String(value).trim() === "-1") return "-1";
-    const seconds = Math.floor(Number(value) || 6);
-    return String(Math.max(1, Math.min(20, seconds)));
+    return String(Math.max(3, Math.min(60, Math.round(Number(value) || 5))));
 }
 
 function videoSecondsBadge(value: string) {
@@ -3219,16 +3063,13 @@ function updateVideoResultById(results: GenerationResult[], id: string, next: Pa
 }
 
 function videoModeLabel(value: AiConfig["videoCallMode"] | undefined, model = "") {
-    if (isGrokImagineVideoFamilyModel(modelOptionName(model))) return workbenchText("异步", "Async");
-    return normalizeVideoCallMode(value) === "async" ? workbenchText("异步·4倍扣费", "Async · 4× billing") : workbenchText("同步", "Sync");
-}
-
-function normalizeVideoSize(value: string) {
-    return normalizeVideoSizeValue(value);
+    void value;
+    void model;
+    return workbenchText("异步", "Async");
 }
 
 function normalizeResolution(value: string) {
-    return normalizeVideoResolutionValue(value);
+    return value || "";
 }
 
 function delay(ms: number) {

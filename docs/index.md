@@ -1,11 +1,10 @@
-# 无限画布文档索引
+# AnyAIGC Canvas 文档索引
 
 ## 项目介绍
 
 - [快速开始](/docs/overview/quick-start)
 - [功能介绍](/docs/overview/features)
-- [Render 部署](/docs/overview/render)
-- [Docker 部署](/docs/overview/docker)
+- [Vercel 部署](/docs/overview/quick-start)
 - [第三方 GitHub 提示词仓库](/docs/overview/third-party-prompt-repositories)
 
 ## 操作手册
@@ -33,11 +32,10 @@
 ## 项目进度
 
 - [更新日志](/docs/progress/changelog)
-- [Grok Imagine 媒体模型接入开发计划](/docs/progress/grok-media-integration-plan)
 - [待测试](/docs/progress/pending-test)
 - [TODO](/docs/progress/todo)
 
 ## 说明
 
-- 当前画布项目和“我的素材”主要保存在浏览器本地，跨设备可自行配置 WebDAV 同步。
-- AI API Key 保存在浏览器本地，并由前端直接请求 OpenAI 兼容接口。
+- 当前画布项目和“我的素材”主要保存在浏览器本地，跨设备可自行配置 WebDAV。
+- AI API Key 保存在浏览器本地，并由前端直接请求 AnyAIGC 接口。

@@ -13,20 +13,7 @@ export const sharedZhToEn: Readonly<Record<string, string>> = {
     打开导航菜单: "Open navigation",
     导航菜单: "Navigation",
     导航: "Navigation",
-    "RelayBases 主站导航": "RelayBases main site navigation",
-
-    自动云同步正在后台运行: "Automatic cloud sync is running in the background",
-    云同步正在运行: "Cloud sync is running",
-    填写媒体APIKey或文本APIKey后可使用云同步: "Enter a media API key or text API key to use cloud sync",
-    打开云同步进度: "Open cloud sync progress",
-    开启云同步: "Enable cloud sync",
-    自动同步中: "Auto syncing",
-    同步中: "Syncing",
-    云同步: "Cloud Sync",
-    开启同步: "Enable Sync",
-    点击开启云同步并查看进度: "Click to enable cloud sync and view progress",
-    请先填写媒体APIKey或文本APIKey: "Enter a media API key or text API key first",
-    "RelayBases 云同步失败": "RelayBases cloud sync failed",
+    "AnyAIGC 主站导航": "AnyAIGC main site navigation",
 
     全部: "All",
     文本: "Text",
@@ -86,7 +73,7 @@ export const sharedZhToEn: Readonly<Record<string, string>> = {
     素材已删除: "Asset deleted",
     手动添加: "Manual",
     画布: "Canvas",
-    "RelayBases 精选": "RelayBases Curated",
+    "AnyAIGC 精选": "AnyAIGC Curated",
 
     提示词中心: "Prompt Center",
     提示词中心说明: "Find inspiration quickly by title, tag, and category.",
@@ -151,6 +138,21 @@ export const sharedZhToEn: Readonly<Record<string, string>> = {
     "请先填写媒体 API Key": "Enter a media API key first",
     "Key 可用，但没有返回画布已支持的媒体模型": "The key is valid, but it returned no media models supported by Canvas",
     "Key 可用，但没有返回支持 Responses 的文本模型": "The key is valid, but it returned no text models that support Responses",
+    此Key没有返回Canvas支持的媒体模型: "This key returned no media models supported by Canvas",
+    此Key没有返回可用的文本或音频模型: "This key returned no usable text or audio models",
+    读取模型失败: "Failed to load models",
+    "WebDAV 连接成功": "WebDAV connection succeeded",
+    "WebDAV 同步完成": "WebDAV sync completed",
+    "WebDAV 操作失败": "WebDAV operation failed",
+    设置: "Settings",
+    API配置: "API settings",
+    "API Key 仅保存在当前浏览器，并由前端直接请求 AnyAIGC 接口。两个 Key 都建议在控制台选择“智能自动”分组。": "API keys stay in this browser and are sent directly to AnyAIGC. Choose the Smart Auto group for both keys.",
+    推荐分组智能自动: "Recommended group: Smart Auto",
+    默认音频模型: "Default audio model",
+    画布素材和生成记录默认保存在浏览器本地可使用自己的WebDAV服务备份或在设备间同步: "Canvases, assets, and history are stored locally in your browser. Use your own WebDAV service for backup or device-to-device sync.",
+    密码或应用密码: "Password or app password",
+    远端目录: "Remote directory",
+    清单文件: "Manifest file",
     读取媒体模型失败: "Failed to load media models",
     "填写媒体 API Key 后获取该 Key 可用的模型。": "Enter a media API key to load the models available to that key.",
     暂无可用模型: "No available models",
@@ -160,10 +162,7 @@ export const sharedZhToEn: Readonly<Record<string, string>> = {
     WebDAV连接可用: "WebDAV connection succeeded",
     WebDAV连接测试失败: "WebDAV connection test failed",
     WebDAV同步失败: "WebDAV sync failed",
-    准备云同步: "Preparing cloud sync",
     准备同步: "Preparing sync",
-    立即云同步: "Sync now",
-    云同步中: "Cloud syncing",
     上次同步: "Last sync",
     尚未同步: "Not synced yet",
     最近失败: "Last failure",
@@ -233,24 +232,17 @@ export const sharedZhToEn: Readonly<Record<string, string>> = {
     读取云端同步文件失败: "Failed to read the cloud sync file",
     读取云端同步文件超时: "Timed out while reading the cloud sync file",
     上传云端同步文件失败: "Failed to upload the cloud sync file",
-    创建云同步会话失败: "Failed to create a cloud sync session",
-    云同步会话响应无效: "The cloud sync session response is invalid",
-    创建云同步会话超时请稍后重试: "Timed out while creating the cloud sync session. Try again later.",
-    云同步认证失败请检查RelayBasesKey是否可用: "Cloud sync authentication failed. Check whether the RelayBases key is valid.",
     云端同步文件不存在: "The cloud sync file does not exist",
-    无法连接RelayBases云同步请检查网络状态: "Unable to connect to RelayBases cloud sync. Check the network.",
     请先填写媒体APIKey: "Enter a media API key first",
     上传素材为空已取消上传: "The media upload is empty and was cancelled",
     单个参考素材不能超过100MB: "A single reference file cannot exceed 100 MB",
     上传公开参考素材失败: "Failed to upload the public reference media",
     公开参考素材上传响应无效: "The public reference media upload response is invalid",
     上传公开参考素材超时请稍后重试: "Timed out while uploading the public reference media. Try again later.",
-    无法连接RelayBases素材上传服务请检查网络状态: "Unable to connect to the RelayBases media upload service. Check the network.",
     视频结果不是可归档的HTTPS地址: "The video result is not an archivable HTTPS URL",
     归档公开视频失败: "Failed to archive the public video",
     归档公开视频响应无效: "The public video archive response is invalid",
     归档公开视频超时请稍后重试: "Timed out while archiving the public video. Try again later.",
-    无法连接RelayBases素材归档服务请检查网络状态: "Unable to connect to the RelayBases media archive service. Check the network.",
 };
 
 export type SharedLanguage = LanguageName;
@@ -278,10 +270,6 @@ export function sharedErrorText(value: string, language?: SharedLanguage): strin
         const prefix = value.slice(0, separator);
         const translatedPrefix = sharedText(prefix, undefined, language);
         if (translatedPrefix !== prefix) return `${translatedPrefix}: ${value.slice(separator + 1).trim()}`;
-    }
-    if (value.startsWith("云同步请求超时：")) {
-        const detail = value.slice("云同步请求超时：".length).replace(/，请稍后重试$/, "").replaceAll("，", ", ");
-        return `Cloud sync request timed out: ${detail}. Try again later.`;
     }
     if (value.endsWith(" 同步清单不是当前应用的数据")) {
         return `${value.slice(0, -" 同步清单不是当前应用的数据".length)} sync manifest does not belong to this app`;

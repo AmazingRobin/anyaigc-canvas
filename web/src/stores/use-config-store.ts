@@ -5,16 +5,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
-import {
-    GROK_IMAGINE_EDIT_MODEL,
-    GROK_IMAGINE_IMAGE_QUALITY_MODEL,
-    GROK_IMAGINE_VIDEO_BASE_MODEL,
-    GROK_IMAGINE_VIDEO_MODEL,
-    grokMediaModelCapability,
-    isGrokImagineVideoFamilyModel,
-    normalizeGrokVideoMode,
-    type GrokVideoMode,
-} from "@/lib/relaybases-media-models";
+import { filterMediaModels, mediaModelCapability, normalizeVideoOperation, type VideoOperation } from "@/lib/anyaigc-media-models";
 import { normalizeReferenceEditMode, normalizeSubmitTaskShortcut, type ReferenceEditMode, type SubmitTaskShortcut } from "@/lib/workbench-preferences";
 
 export type ApiCallFormat = "openai" | "gemini";
@@ -40,7 +31,7 @@ export type AiConfig = {
     imageModel: string;
     videoModel: string;
     videoCallMode: "sync" | "async";
-    videoOperation: GrokVideoMode;
+    videoOperation: VideoOperation;
     textModel: string;
     audioModel: string;
     audioVoice: string;
@@ -78,54 +69,36 @@ export type WebdavSyncConfig = {
     lastSyncedAt: string;
 };
 
-export type CloudSyncConfig = {
-    enabled: boolean;
-    lastSyncedAt: string;
-    lastError: string;
-};
-
-export type CloudSyncActivity = "idle" | "auto" | "manual";
-
-export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
+export const CONFIG_STORE_KEY = "anyaigc-canvas:ai_config_store";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 const CHANNEL_MODEL_SEPARATOR = "::";
-export const RELAYBASES_MEDIA_BASE_URL = "https://image-2.relaybases.com";
-export const RELAYBASES_TEXT_BASE_URL = "https://api.relaybases.com";
-export const RELAYBASES_BASE_URL = RELAYBASES_MEDIA_BASE_URL;
-export const RELAYBASES_CHANNEL_ID = "relaybases";
-export const RELAYBASES_TEXT_CHANNEL_ID = "relaybases-text";
-export const RELAYBASES_RECOMMENDED_IMAGE_KEY_GROUP = "media";
-export const RELAYBASES_RECOMMENDED_TEXT_KEY_GROUP = "codex-pro";
-export const RELAYBASES_SYNC_IMAGE_MODELS = ["gpt-image-2", "nana-banana-2_sync", "nana-banana-pro_sync", GROK_IMAGINE_EDIT_MODEL, GROK_IMAGINE_IMAGE_QUALITY_MODEL] as const;
-export const RELAYBASES_ASYNC_IMAGE_MODELS = ["nana-banana-2", "nana-banana-pro"] as const;
-export const RELAYBASES_VIDEO_MODELS = ["veo-3-1", "veo-omni-flash", "veo-omni-flash-video-edit", "video-fast-480p", "video-fast-720p", "video-pro-480p", "video-pro-720p", "video-pro-1080p", "video-standard-720p", GROK_IMAGINE_VIDEO_BASE_MODEL, GROK_IMAGINE_VIDEO_MODEL] as const;
-export const RELAYBASES_IMAGE_MODELS = [...RELAYBASES_SYNC_IMAGE_MODELS, ...RELAYBASES_ASYNC_IMAGE_MODELS] as const;
-export const RELAYBASES_MEDIA_MODELS = [...RELAYBASES_IMAGE_MODELS, ...RELAYBASES_VIDEO_MODELS] as const;
-export const RELAYBASES_MODELS = RELAYBASES_MEDIA_MODELS;
-const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
-const RELAYBASES_DEFAULT_IMAGE_MODEL = "gpt-image-2";
-const RELAYBASES_DEFAULT_VIDEO_MODEL = "veo-3-1";
+export const ANYAIGC_BASE_URL = "https://anyaigc.com";
+export const ANYAIGC_MEDIA_CHANNEL_ID = "anyaigc-media";
+export const ANYAIGC_TEXT_CHANNEL_ID = "anyaigc-text";
+export const ANYAIGC_RECOMMENDED_KEY_GROUP = "智能自动";
+const ANYAIGC_DEFAULT_IMAGE_MODEL = "gpt-image-2";
+const ANYAIGC_DEFAULT_VIDEO_MODEL = "grok-imagine-video";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
-    baseUrl: RELAYBASES_BASE_URL,
+    baseUrl: ANYAIGC_BASE_URL,
     apiKey: "",
     mediaApiKey: "",
     textApiKey: "",
     apiFormat: "openai",
     channels: [
         {
-            id: RELAYBASES_CHANNEL_ID,
-            name: "RelayBases Media",
-            baseUrl: RELAYBASES_BASE_URL,
+            id: ANYAIGC_MEDIA_CHANNEL_ID,
+            name: "AnyAIGC Media",
+            baseUrl: ANYAIGC_BASE_URL,
             apiKey: "",
             apiFormat: "openai",
             models: [],
         },
         {
-            id: RELAYBASES_TEXT_CHANNEL_ID,
-            name: "RelayBases Text",
-            baseUrl: RELAYBASES_TEXT_BASE_URL,
+            id: ANYAIGC_TEXT_CHANNEL_ID,
+            name: "AnyAIGC Text",
+            baseUrl: ANYAIGC_BASE_URL,
             apiKey: "",
             apiFormat: "openai",
             models: [],
@@ -173,58 +146,28 @@ export const defaultWebdavSyncConfig: WebdavSyncConfig = {
     lastSyncedAt: "",
 };
 
-export const defaultCloudSyncConfig: CloudSyncConfig = {
-    enabled: false,
-    lastSyncedAt: "",
-    lastError: "",
-};
-
 type ConfigStore = {
     config: AiConfig;
-    cloudSync: CloudSyncConfig;
     webdav: WebdavSyncConfig;
     isConfigOpen: boolean;
     configActiveTab: string;
-    cloudSyncActivity: CloudSyncActivity;
     shouldPromptContinue: boolean;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
     updateConfigValues: (values: Partial<AiConfig>) => void;
-    updateCloudSyncConfig: <K extends keyof CloudSyncConfig>(key: K, value: CloudSyncConfig[K]) => void;
     updateWebdavConfig: <K extends keyof WebdavSyncConfig>(key: K, value: WebdavSyncConfig[K]) => void;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
     openConfigDialog: (shouldPromptContinue?: boolean, activeTab?: string) => void;
     setConfigDialogOpen: (isOpen: boolean) => void;
     setConfigActiveTab: (activeTab: string) => void;
-    setCloudSyncActivity: (activity: CloudSyncActivity) => void;
     clearPromptContinue: () => void;
 };
 
 function isVideoModelName(model: string) {
-    const capability = grokMediaModelCapability(model);
-    if (capability) return capability.kind === "video";
-    const value = modelOptionName(model).toLowerCase();
-    return value.includes("seedance") || value.includes("video") || value.includes("sora") || value.includes("veo") || value.includes("kling") || value.includes("wan") || value.includes("hailuo");
+    return mediaModelCapability(model)?.kind === "video";
 }
 
 function isImageModelName(model: string) {
-    const capability = grokMediaModelCapability(model);
-    if (capability) return capability.kind === "image";
-    const value = modelOptionName(model).toLowerCase();
-    return (
-        !isVideoModelName(model) &&
-        !isAudioModelName(model) &&
-        (value.includes("nana-banana") ||
-            value.includes("seedream") ||
-            value.includes("gpt-image") ||
-            value.includes("image") ||
-            value.includes("dall-e") ||
-            value.includes("dalle") ||
-            value.includes("imagen") ||
-            value.includes("flux") ||
-            value.includes("sdxl") ||
-            value.includes("stable-diffusion") ||
-            value.includes("midjourney"))
-    );
+    return mediaModelCapability(model)?.kind === "image";
 }
 
 function isAudioModelName(model: string) {
@@ -253,7 +196,7 @@ export function selectableModelsByCapability(config: AiConfig, capability?: Mode
     return config[modelListKey(capability)];
 }
 
-export function applyRelayBasesConfigPatch(config: AiConfig, values: Partial<AiConfig>): AiConfig {
+export function applyAnyAIGCConfigPatch(config: AiConfig, values: Partial<AiConfig>): AiConfig {
     const next: AiConfig = { ...config, ...values };
     let channels = next.channels;
 
@@ -262,7 +205,7 @@ export function applyRelayBasesConfigPatch(config: AiConfig, values: Partial<AiC
         const changed = mediaApiKey !== config.mediaApiKey;
         next.mediaApiKey = mediaApiKey;
         next.apiKey = mediaApiKey;
-        channels = updateChannelApiKey(channels, RELAYBASES_CHANNEL_ID, mediaApiKey, changed);
+        channels = updateChannelApiKey(channels, ANYAIGC_MEDIA_CHANNEL_ID, mediaApiKey, changed);
         if (changed) {
             next.model = "";
             next.imageModel = "";
@@ -274,7 +217,7 @@ export function applyRelayBasesConfigPatch(config: AiConfig, values: Partial<AiC
         const textApiKey = typeof values.textApiKey === "string" ? values.textApiKey : "";
         const changed = textApiKey !== config.textApiKey;
         next.textApiKey = textApiKey;
-        channels = updateChannelApiKey(channels, RELAYBASES_TEXT_CHANNEL_ID, textApiKey, changed);
+        channels = updateChannelApiKey(channels, ANYAIGC_TEXT_CHANNEL_ID, textApiKey, changed);
         if (changed) next.textModel = "";
     }
 
@@ -282,28 +225,12 @@ export function applyRelayBasesConfigPatch(config: AiConfig, values: Partial<AiC
     return next;
 }
 
-export function migrateRelayBasesConfig(config: Partial<AiConfig> | undefined, version: number): AiConfig {
-    const migratedConfig = { ...defaultConfig, ...(config || {}) };
-    if (version < 2) {
-        if (!migratedConfig.count || String(migratedConfig.count) === "1") migratedConfig.count = "3";
-        if (!migratedConfig.canvasImageCount || String(migratedConfig.canvasImageCount) === "1") migratedConfig.canvasImageCount = "3";
-    }
-    if (version < 3) {
-        migratedConfig.channels = (Array.isArray(migratedConfig.channels) ? migratedConfig.channels : []).map((channel) =>
-            channel.id === RELAYBASES_CHANNEL_ID || channel.id === RELAYBASES_TEXT_CHANNEL_ID ? { ...channel, models: [] } : channel,
-        );
-        migratedConfig.model = "";
-        migratedConfig.imageModel = "";
-        migratedConfig.videoModel = "";
-        migratedConfig.textModel = "";
-        migratedConfig.audioModel = "";
-        migratedConfig.models = [];
-        migratedConfig.imageModels = [];
-        migratedConfig.videoModels = [];
-        migratedConfig.textModels = [];
-        migratedConfig.audioModels = [];
-    }
-    return migratedConfig;
+export function migrateAnyAIGCConfig(config: Partial<AiConfig> | undefined): AiConfig {
+    return mergePersistedAnyAIGCConfig(config);
+}
+
+export function mergePersistedAnyAIGCConfig(config: Partial<AiConfig> | undefined): AiConfig {
+    return normalizeAnyAIGCConfig({ ...defaultConfig, ...(config || {}) });
 }
 
 function updateChannelApiKey(channels: ModelChannel[], channelId: string, apiKey: string, clearModels = false) {
@@ -314,7 +241,7 @@ function updateChannelApiKey(channels: ModelChannel[], channelId: string, apiKey
         return { ...channel, apiKey, ...(clearModels ? { models: [] } : {}) };
     });
     if (matched) return nextChannels;
-    return [...nextChannels, channelId === RELAYBASES_TEXT_CHANNEL_ID ? createRelayBasesTextChannel(apiKey) : createRelayBasesMediaChannel(apiKey)];
+    return [...nextChannels, channelId === ANYAIGC_TEXT_CHANNEL_ID ? createAnyAIGCTextChannel(apiKey) : createAnyAIGCMediaChannel(apiKey)];
 }
 
 function modelListKey(capability: ModelCapability) {
@@ -330,21 +257,12 @@ export const useConfigStore = create<ConfigStore>()(
     persist(
         (set, get) => ({
             config: defaultConfig,
-            cloudSync: defaultCloudSyncConfig,
             webdav: defaultWebdavSyncConfig,
             isConfigOpen: false,
             configActiveTab: "channels",
-            cloudSyncActivity: "idle",
             shouldPromptContinue: false,
-            updateConfig: (key, value) => set((state) => ({ config: normalizeRelayBasesConfig(applyRelayBasesConfigPatch(state.config, { [key]: value } as Partial<AiConfig>)) })),
-            updateConfigValues: (values) => set((state) => ({ config: normalizeRelayBasesConfig(applyRelayBasesConfigPatch(state.config, values)) })),
-            updateCloudSyncConfig: (key, value) =>
-                set((state) => ({
-                    cloudSync: {
-                        ...state.cloudSync,
-                        [key]: value,
-                    },
-                })),
+            updateConfig: (key, value) => set((state) => ({ config: normalizeAnyAIGCConfig(applyAnyAIGCConfigPatch(state.config, { [key]: value } as Partial<AiConfig>)) })),
+            updateConfigValues: (values) => set((state) => ({ config: normalizeAnyAIGCConfig(applyAnyAIGCConfigPatch(state.config, values)) })),
             updateWebdavConfig: (key, value) =>
                 set((state) => ({
                     webdav: {
@@ -356,35 +274,29 @@ export const useConfigStore = create<ConfigStore>()(
             openConfigDialog: (shouldPromptContinue = false, activeTab) => set((state) => ({ isConfigOpen: true, shouldPromptContinue, configActiveTab: activeTab || state.configActiveTab })),
             setConfigDialogOpen: (isConfigOpen) => set({ isConfigOpen }),
             setConfigActiveTab: (configActiveTab) => set({ configActiveTab }),
-            setCloudSyncActivity: (cloudSyncActivity) => set({ cloudSyncActivity }),
             clearPromptContinue: () => set({ shouldPromptContinue: false }),
         }),
         {
             name: CONFIG_STORE_KEY,
-            version: 3,
-            migrate: (persisted, version) => {
+            version: 1,
+            migrate: (persisted) => {
                 const persistedState = (persisted || {}) as {
                     config?: Partial<AiConfig>;
-                    cloudSync?: Partial<CloudSyncConfig>;
                     webdav?: Partial<WebdavSyncConfig>;
                 };
-                const migratedConfig = migrateRelayBasesConfig(persistedState.config, version);
                 return {
-                    config: migratedConfig,
-                    cloudSync: { ...defaultCloudSyncConfig, ...(persistedState.cloudSync || {}) },
+                    config: migrateAnyAIGCConfig(persistedState.config),
                     webdav: { ...defaultWebdavSyncConfig, ...(persistedState.webdav || {}) },
                 };
             },
-            partialize: (state) => ({ config: state.config, cloudSync: state.cloudSync, webdav: state.webdav }),
+            partialize: (state) => ({ config: state.config, webdav: state.webdav }),
             merge: (persisted, current) => {
                 const persistedState = (persisted || {}) as Partial<ConfigStore>;
                 const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
-                const persistedCloudSync = (persistedState.cloudSync || {}) as Partial<CloudSyncConfig>;
                 const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
-                const config = normalizeRelayBasesConfig({ ...defaultConfig, ...persistedConfig });
+                const config = mergePersistedAnyAIGCConfig(persistedConfig);
                 return {
                     ...current,
-                    cloudSync: { ...defaultCloudSyncConfig, ...persistedCloudSync },
                     webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
                     config,
                 };
@@ -433,30 +345,6 @@ export function decodeChannelModel(value: string) {
 
 export function modelOptionName(value: string) {
     return decodeChannelModel(value)?.model || value;
-}
-
-export function isRelayBasesSyncImageModel(model: string) {
-    return (RELAYBASES_SYNC_IMAGE_MODELS as readonly string[]).includes(modelOptionName(model));
-}
-
-export function isRelayBasesAsyncImageModel(model: string) {
-    return (RELAYBASES_ASYNC_IMAGE_MODELS as readonly string[]).includes(modelOptionName(model));
-}
-
-export function isRelayBasesAsyncTaskModel(model: string) {
-    const name = modelOptionName(model);
-    return isRelayBasesAsyncImageModel(name);
-}
-
-export function relayBasesModelBillingLabel(model: string) {
-    if (isRelayBasesAsyncTaskModel(model)) return "异步·4倍扣费";
-    if (isGrokImagineVideoFamilyModel(model)) return "异步";
-    if (isRelayBasesSyncImageModel(model)) return "同步";
-    return "";
-}
-
-export function isRelayBasesVideoModel(model: string) {
-    return (RELAYBASES_VIDEO_MODELS as readonly string[]).includes(modelOptionName(model));
 }
 
 export function normalizeVideoCallMode(value: unknown): AiConfig["videoCallMode"] {
@@ -510,51 +398,51 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
     };
 }
 
-function createRelayBasesMediaChannel(apiKey = "", models: string[] = []): ModelChannel {
+function createAnyAIGCMediaChannel(apiKey = "", models: string[] = []): ModelChannel {
     return createModelChannel({
-        id: RELAYBASES_CHANNEL_ID,
-        name: "RelayBases Media",
-        baseUrl: RELAYBASES_BASE_URL,
+        id: ANYAIGC_MEDIA_CHANNEL_ID,
+        name: "AnyAIGC Media",
+        baseUrl: ANYAIGC_BASE_URL,
         apiKey,
         apiFormat: "openai",
         models,
     });
 }
 
-function createRelayBasesTextChannel(apiKey = "", models: string[] = []): ModelChannel {
+function createAnyAIGCTextChannel(apiKey = "", models: string[] = []): ModelChannel {
     return createModelChannel({
-        id: RELAYBASES_TEXT_CHANNEL_ID,
-        name: "RelayBases Text",
-        baseUrl: RELAYBASES_TEXT_BASE_URL,
+        id: ANYAIGC_TEXT_CHANNEL_ID,
+        name: "AnyAIGC Text",
+        baseUrl: ANYAIGC_BASE_URL,
         apiKey,
         apiFormat: "openai",
-        models: filterModelsByCapability(uniqueRawModels(models), "text"),
+        models: uniqueRawModels(models),
     });
 }
 
-export function normalizeRelayBasesConfig(config: AiConfig): AiConfig {
+export function normalizeAnyAIGCConfig(config: AiConfig): AiConfig {
     const channels = normalizeChannels(config);
     const models = modelOptionsFromChannels(channels);
-    const mediaChannel = channels.find((channel) => channel.id === RELAYBASES_CHANNEL_ID);
-    const textChannel = channels.find((channel) => channel.id === RELAYBASES_TEXT_CHANNEL_ID);
-    const imageModelOptions = filterModelsByCapability(mediaChannel?.models || [], "image").map((model) => encodeChannelModel(RELAYBASES_CHANNEL_ID, model));
-    const videoModelOptions = filterModelsByCapability(mediaChannel?.models || [], "video").map((model) => encodeChannelModel(RELAYBASES_CHANNEL_ID, model));
-    const audioModelOptions = filterModelsByCapability(mediaChannel?.models || [], "audio").map((model) => encodeChannelModel(RELAYBASES_CHANNEL_ID, model));
-    const textModelOptions = filterModelsByCapability(textChannel?.models || [], "text").map((model) => encodeChannelModel(RELAYBASES_TEXT_CHANNEL_ID, model));
+    const mediaChannel = channels.find((channel) => channel.id === ANYAIGC_MEDIA_CHANNEL_ID);
+    const textChannel = channels.find((channel) => channel.id === ANYAIGC_TEXT_CHANNEL_ID);
+    const imageModelOptions = filterMediaModels(mediaChannel?.models || [], "image").map((model) => encodeChannelModel(ANYAIGC_MEDIA_CHANNEL_ID, model));
+    const videoModelOptions = filterMediaModels(mediaChannel?.models || [], "video").map((model) => encodeChannelModel(ANYAIGC_MEDIA_CHANNEL_ID, model));
+    const audioModelOptions = filterModelsByCapability(textChannel?.models || [], "audio").map((model) => encodeChannelModel(ANYAIGC_TEXT_CHANNEL_ID, model));
+    const textModelOptions = filterModelsByCapability(textChannel?.models || [], "text").map((model) => encodeChannelModel(ANYAIGC_TEXT_CHANNEL_ID, model));
     const normalizedImageModel = normalizeModelOptionValue(config.imageModel || config.model, channels);
     const normalizedVideoModel = normalizeModelOptionValue(config.videoModel, channels);
     const normalizedTextModel = normalizeModelOptionValue(config.textModel, channels);
     const normalizedAudioModel = normalizeModelOptionValue(config.audioModel, channels);
-    const imageModel = imageModelOptions.includes(normalizedImageModel) ? normalizedImageModel : preferredModelOption(imageModelOptions, RELAYBASES_DEFAULT_IMAGE_MODEL);
-    const videoModel = videoModelOptions.includes(normalizedVideoModel) ? normalizedVideoModel : preferredModelOption(videoModelOptions, RELAYBASES_DEFAULT_VIDEO_MODEL);
+    const imageModel = imageModelOptions.includes(normalizedImageModel) ? normalizedImageModel : preferredModelOption(imageModelOptions, ANYAIGC_DEFAULT_IMAGE_MODEL);
+    const videoModel = videoModelOptions.includes(normalizedVideoModel) ? normalizedVideoModel : preferredModelOption(videoModelOptions, ANYAIGC_DEFAULT_VIDEO_MODEL);
     const textModel = textModelOptions.includes(normalizedTextModel) ? normalizedTextModel : preferredTextModelOption(textModelOptions);
     const audioModel = audioModelOptions.includes(normalizedAudioModel) ? normalizedAudioModel : audioModelOptions[0] || "";
-    const mediaApiKey = channels.find((channel) => channel.id === RELAYBASES_CHANNEL_ID)?.apiKey || "";
-    const textApiKey = channels.find((channel) => channel.id === RELAYBASES_TEXT_CHANNEL_ID)?.apiKey || "";
+    const mediaApiKey = channels.find((channel) => channel.id === ANYAIGC_MEDIA_CHANNEL_ID)?.apiKey || "";
+    const textApiKey = channels.find((channel) => channel.id === ANYAIGC_TEXT_CHANNEL_ID)?.apiKey || "";
     return {
         ...config,
         channelMode: "local",
-        baseUrl: RELAYBASES_BASE_URL,
+        baseUrl: ANYAIGC_BASE_URL,
         apiKey: mediaApiKey,
         mediaApiKey,
         textApiKey,
@@ -565,7 +453,7 @@ export function normalizeRelayBasesConfig(config: AiConfig): AiConfig {
         imageModel,
         videoModel,
         videoCallMode: normalizeVideoCallMode(config.videoCallMode),
-        videoOperation: normalizeGrokVideoMode(videoModel, config.videoOperation),
+        videoOperation: normalizeVideoOperation(videoModel, config.videoOperation),
         textModel,
         audioModel,
         imageModels: imageModelOptions,
@@ -592,12 +480,11 @@ export function normalizeRelayBasesConfig(config: AiConfig): AiConfig {
 
 function normalizeChannels(config: AiConfig) {
     const persistedChannels = Array.isArray(config.channels) ? config.channels : [];
-    const mediaChannel = persistedChannels.find((channel) => channel.id === RELAYBASES_CHANNEL_ID);
-    const textChannel = persistedChannels.find((channel) => channel.id === RELAYBASES_TEXT_CHANNEL_ID);
-    const firstLegacyKey = persistedChannels.find((channel) => channel.id !== RELAYBASES_TEXT_CHANNEL_ID && channel.apiKey)?.apiKey || "";
-    const mediaApiKey = config.mediaApiKey || config.apiKey || mediaChannel?.apiKey || firstLegacyKey || "";
+    const mediaChannel = persistedChannels.find((channel) => channel.id === ANYAIGC_MEDIA_CHANNEL_ID);
+    const textChannel = persistedChannels.find((channel) => channel.id === ANYAIGC_TEXT_CHANNEL_ID);
+    const mediaApiKey = config.mediaApiKey || config.apiKey || mediaChannel?.apiKey || "";
     const textApiKey = config.textApiKey || textChannel?.apiKey || "";
-    return [createRelayBasesMediaChannel(mediaApiKey, mediaChannel?.models || []), createRelayBasesTextChannel(textApiKey, textChannel?.models || [])];
+    return [createAnyAIGCMediaChannel(mediaApiKey, mediaChannel?.models || []), createAnyAIGCTextChannel(textApiKey, textChannel?.models || [])];
 }
 
 function preferredModelOption(models: string[], preferredModel: string) {
@@ -605,7 +492,7 @@ function preferredModelOption(models: string[], preferredModel: string) {
 }
 
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
-    return apiFormat === "gemini" ? GEMINI_BASE_URL : RELAYBASES_BASE_URL;
+    return ANYAIGC_BASE_URL;
 }
 
 function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {

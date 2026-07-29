@@ -3,7 +3,6 @@
 import type { CSSProperties } from "react";
 import { Keyboard, Languages, Settings2 } from "lucide-react";
 
-import { CloudSyncActionButton } from "@/components/layout/cloud-sync-action-button";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useConfigStore } from "@/stores/use-config-store";
@@ -28,7 +27,6 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
 
     return (
         <div className="inline-flex shrink-0 items-center gap-1">
-            <CloudSyncActionButton variant={variant} />
             {showConfig ? (
                 <button type="button" className={naturalIconClass} style={iconStyle} onClick={() => openConfigDialog(false)} aria-label="配置" title="配置">
                     <Settings2 className="size-4" />

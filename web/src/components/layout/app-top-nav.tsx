@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
-import { RELAYBASES_HOME_URL, relayBasesLinks } from "@/constant/relaybases-links";
+import { ANYAIGC_HOME_URL, anyaigcLinks } from "@/constant/anyaigc-links";
+import { AnyAIGCCanvasLogo } from "@/components/brand/anyaigc-canvas-logo";
 import { AppConfigModal } from "@/components/layout/app-config-modal";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
@@ -29,19 +30,13 @@ export function AppTopNav() {
                     <div className="mx-auto flex h-16 w-full max-w-[1800px] items-stretch justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
                         <div className="flex min-w-0 flex-1 items-center">
                             <a
-                                href={RELAYBASES_HOME_URL}
+                                href={ANYAIGC_HOME_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex h-full shrink-0 items-center gap-2 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:text-stone-600 dark:text-stone-100 dark:hover:text-stone-300"
                             >
-                                <span
-                                    className="size-6 shrink-0 bg-current"
-                                    style={{
-                                        mask: "url(/relaybases-mark.svg) center / contain no-repeat",
-                                        WebkitMask: "url(/relaybases-mark.svg) center / contain no-repeat",
-                                    }}
-                                />
-                                <span className="text-base font-semibold">RelayBases</span>
+                                <AnyAIGCCanvasLogo className="h-6 w-auto shrink-0" />
+                                <span className="text-base font-semibold">AnyAIGC</span>
                             </a>
                             <span className="mx-3 hidden h-5 w-px shrink-0 bg-stone-200 sm:block dark:bg-stone-800" />
                             <Link href="/" className="hidden h-full shrink-0 items-center px-1 text-[13px] font-medium leading-none tracking-tight text-stone-500 transition hover:text-stone-950 sm:flex dark:text-stone-400 dark:hover:text-stone-100">
@@ -81,8 +76,8 @@ export function AppTopNav() {
                             >
                                 <Menu className="size-5" />
                             </button>
-                            <nav className="mr-1 hidden items-center gap-1 2xl:flex" aria-label={sharedText("RelayBases 主站导航", "RelayBases main site navigation", language)}>
-                                {relayBasesLinks.map((link) => (
+                            <nav className="mr-1 hidden items-center gap-1 2xl:flex" aria-label={sharedText("AnyAIGC 主站导航", "AnyAIGC main site navigation", language)}>
+                                {anyaigcLinks.map((link) => (
                                     <a
                                         key={link.href}
                                         href={link.href}

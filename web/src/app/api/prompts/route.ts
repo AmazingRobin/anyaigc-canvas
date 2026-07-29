@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
-import { englishPromptFor, promptTagEnByZh, promptTitleEnById } from "@/local-prompts/relaybases-prompt-translations";
-import localPrompts from "@/local-prompts/relaybases-prompts.json";
+import { englishPromptFor, promptTagEnByZh, promptTitleEnById } from "@/local-prompts/anyaigc-prompt-translations";
+import localPrompts from "@/local-prompts/anyaigc-prompts.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,8 +22,8 @@ type Prompt = LocalPrompt & {
     updatedAt: string;
 };
 
-const promptCategory = "RelayBases 精选";
-const promptCategoryEn = "RelayBases Curated";
+const promptCategory = "AnyAIGC 精选";
+const promptCategoryEn = "AnyAIGC Curated";
 const createdAt = "2026-06-28";
 
 export async function GET(request: NextRequest) {

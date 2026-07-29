@@ -6,12 +6,12 @@ import { spawn } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, "..");
-const promptsPath = path.join(appRoot, "src", "local-prompts", "relaybases-prompts.json");
-const outputDir = path.join(appRoot, "public", "prompt-covers", "relaybases");
+const promptsPath = path.join(appRoot, "src", "local-prompts", "anyaigc-prompts.json");
+const outputDir = path.join(appRoot, "public", "prompt-covers", "anyaigc");
 
-const apiKey = process.env.RELAYBASES_API_KEY || process.env.RB_API_KEY;
-const baseUrl = process.env.RELAYBASES_BASE_URL || "https://image-2.relaybases.com";
-const model = process.env.RELAYBASES_IMAGE_MODEL || "gpt-image-2";
+const apiKey = process.env.ANYAIGC_API_KEY;
+const baseUrl = process.env.ANYAIGC_BASE_URL || "https://anyaigc.com";
+const model = process.env.ANYAIGC_IMAGE_MODEL || "gpt-image-2";
 const size = process.env.PROMPT_COVER_SIZE || "1024x1024";
 const apiOutputFormat = process.env.PROMPT_COVER_API_FORMAT || "png";
 const coverExtension = normalizeCoverExtension(process.env.PROMPT_COVER_EXTENSION || "webp");
@@ -25,7 +25,7 @@ const limit = clampInt(process.env.LIMIT, 0, 1000, 0);
 const force = process.env.FORCE === "1" || process.env.FORCE === "true";
 
 if (!apiKey) {
-    console.error("Missing RELAYBASES_API_KEY or RB_API_KEY.");
+    console.error("Missing ANYAIGC_API_KEY.");
     process.exit(1);
 }
 

@@ -5,10 +5,10 @@ import { ArrowUp, LoaderCircle, Square } from "lucide-react";
 import { Button } from "antd";
 
 import { ModelPicker } from "@/components/model-picker";
-import { normalizeVideoCallMode, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { type VideoOperation } from "@/lib/anyaigc-media-models";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasText } from "@/lib/i18n-canvas";
-import type { GrokVideoMode } from "@/lib/relaybases-media-models";
 import { useLanguageStore, type LanguageName } from "@/stores/use-language-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -17,7 +17,7 @@ import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { buildCanvasGenerationConfig } from "../utils/canvas-generation-config";
-import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "../types";
+import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData, type CanvasNodeMetadata } from "../types";
 import type { CanvasResourceReference } from "../utils/canvas-resource-references";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
@@ -151,10 +151,10 @@ function promptPlaceholder(mode: CanvasNodeGenerationMode, hasImageContent: bool
     return hasTextContent ? canvasText("请输入你想要将本段文本修改成什么", "Describe how you want to rewrite this text", language) : canvasText("请输入你想要生成的文本内容", "Describe the text you want to generate", language);
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string) {
+function videoConfigPatch(key: keyof AiConfig, value: string): Partial<CanvasNodeMetadata> {
     if (key === "videoSeconds") return { seconds: value };
-    if (key === "videoCallMode") return { videoCallMode: normalizeVideoCallMode(value) };
-    if (key === "videoOperation") return { videoOperation: value as GrokVideoMode };
+    if (key === "videoCallMode") return { videoCallMode: "async" };
+    if (key === "videoOperation") return { videoOperation: value as VideoOperation };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     return { [key]: value };
