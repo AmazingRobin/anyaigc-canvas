@@ -6,7 +6,7 @@ description: 当前版本已实现但仍需人工验证的变更项
 # 待测试
 
 - AnyAIGC Key 与模型发现：分别输入媒体和文本 API Key，确认提示选择“智能自动 / Smart Auto”分组；媒体 Key 下应提示智能自动分组可能不返回 Gemini 图片模型，使用 Nano Banana 2 / Pro 需改用已设置 Gemini 支持的分组 Key（比如：特价banana）。点击“获取模型”后，图片/视频仅显示 `/v1/models` 返回且在 Canvas 支持列表中的模型。刷新页面后，已获取的模型列表和默认模型必须保留；更换任一 Key 后，仅清空该 Key 的列表和默认模型；401/403 清空该列表，暂时网络失败保留上次成功结果。
-- 图片模型：使用真实 Key 验证 `gpt-image-2` 文生图与图生图、`gemini-3.1-flash-image-preview` 或 `gemini-3-pro-image-preview` 生图，以及 `grok-imagine-image` 和 `grok-imagine-image-pro` 文生图。Grok 图片模型添加参考图或蒙版时必须在提交前明确拒绝。
+- 图片模型：使用真实 Key 验证 `gpt-image-2` 文生图与图生图、`gemini-3.1-flash-image-preview` 或 `gemini-3-pro-image-preview` 生图，以及 `grok-imagine-image` 和 `grok-imagine-image-pro` 文生图。Gemini 生图/图生图选择非 `auto` 尺寸时，请检查 `generationConfig.imageConfig`：画布尺寸会映射为 Gemini 支持的 `aspectRatio` 和最接近的 `imageSize`，例如 `768x1344` 为 `9:16` 和 `1K`。Grok 图片模型添加参考图或蒙版时必须在提交前明确拒绝。
 - 视频模型：使用真实 Key 验证 `grok-imagine-video` 文生视频、`grok-imagine-video-1.5` 恰好一张图片的图生视频、`kling-motion-control` 一张图片加一个动作视频、`kling-omni-video`，以及 `kling-3.0-turbo` 的文生和单图生。Omni 提交时必须映射为 `kling-v3-omni`；Kling 3.0 Turbo 文生必须使用推荐的顶层 `prompt`，并在 `settings` 提交分辨率、画面比例和时长，图生仍使用对应图生端点。两者均须按实际端点轮询，支持 720p/1080p 和 3-15 秒，并将 `task_status: "succeed"` 与 `task_result.videos[].url` 识别为完成结果。`MiniMax-Hailuo-02` 与 `MiniMax-Hailuo-2.3` 仅在 `/v1/models` 返回时显示；分别验证文生（无参考图）、图生（恰好一张首帧图）和首尾帧（恰好两张图，列表顺序为首帧、尾帧），请求应发送到 `/minimax/v1/video_generation`，仅可选 6/10 秒，并从查询响应的顶层或嵌套 `file.download_url` 完成任务。任何未在 `/v1/models` 返回的模型都不得被选择或隐式替换。
 - 参考素材上传：为 Kling 提交本地图片和 MP4；图片应通过 imageproxy 上传，MP4 应按 storage.to 初始化、签名上传、确认的顺序处理。若上游不能读取 storage.to 分享链接，应展示明确错误且不得改投其他模型。
 - 数据与双语：中文和英文分别覆盖首页、图片工作台、视频工作台、画布编辑器和设置。检查品牌、Logo、隐私链接、模型空状态、输入提示、错误和辅助属性；用户输入的提示词、画布名和素材正文必须保持原语言。

@@ -105,6 +105,12 @@ const IMAGE_MAX_PIXELS = 8294400;
 const IMAGE_MAX_EDGE = 3840;
 const IMAGE_MAX_RATIO = 3;
 const IMAGE_OUTPUT_FORMAT = "png";
+const GEMINI_IMAGE_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9", "1:4", "1:8", "4:1", "8:1"];
+const GEMINI_IMAGE_SIZES = [
+    { value: "1K", longEdge: 1024 },
+    { value: "2K", longEdge: 2048 },
+    { value: "4K", longEdge: 4096 },
+];
 
 function normalizeQuality(quality: string) {
     const value = quality.trim().toLowerCase();
@@ -172,6 +178,33 @@ function resolveRequestSize(quality: string | undefined, size: string) {
     }
     if (value.includes(":")) return resolveSize(quality, value);
     throw new Error(workbenchText("图像尺寸格式不支持，请使用 auto、9:16 或 1024x1024"));
+}
+
+function closestGeminiAspectRatio(width: number, height: number) {
+    const ratio = width / height;
+    return GEMINI_IMAGE_ASPECT_RATIOS.reduce((closest, value) => {
+        const [candidateWidth, candidateHeight] = value.split(":").map(Number);
+        return Math.abs(Math.log(ratio) - Math.log(candidateWidth / candidateHeight)) < Math.abs(Math.log(ratio) - Math.log(closest.width / closest.height)) ? { value, width: candidateWidth, height: candidateHeight } : closest;
+    }, { value: "1:1", width: 1, height: 1 }).value;
+}
+
+function closestGeminiImageSize(width: number, height: number) {
+    const longestEdge = Math.max(width, height);
+    return GEMINI_IMAGE_SIZES.reduce((closest, value) => Math.abs(longestEdge - value.longEdge) < Math.abs(longestEdge - closest.longEdge) ? value : closest).value;
+}
+
+function geminiImageConfig(config: AiConfig) {
+    const quality = normalizeQuality(config.quality);
+    const requestSize = resolveRequestSize(quality, config.size);
+    if (requestSize) {
+        const dimensions = parseImageDimensions(requestSize);
+        if (!dimensions) return undefined;
+        return { aspectRatio: closestGeminiAspectRatio(dimensions.width, dimensions.height), imageSize: closestGeminiImageSize(dimensions.width, dimensions.height) };
+    }
+    if (quality === "low") return { imageSize: "1K" };
+    if (quality === "medium") return { imageSize: "2K" };
+    if (quality === "high") return { imageSize: "4K" };
+    return undefined;
 }
 
 function resolveImageDataUrl(item: Record<string, unknown>) {
@@ -671,10 +704,11 @@ async function requestGeminiImagesOnce(config: AiConfig, prompt: string, referen
     for (const image of references) {
         parts.push(toGeminiImagePart(await imageToDataUrl(image)));
     }
+    const imageConfig = geminiImageConfig(config);
     const response = await axios.post<GeminiPayload>(
         geminiApiUrl(config, "generateContent"),
         {
-            ...toGeminiBody(config, [{ role: "user", content: prompt }], { generationConfig: { responseModalities: ["TEXT", "IMAGE"] } }),
+            ...toGeminiBody(config, [{ role: "user", content: prompt }], { generationConfig: { responseModalities: ["TEXT", "IMAGE"], ...(imageConfig ? { imageConfig } : {}) } }),
             contents: [{ role: "user", parts }],
         },
         { headers: geminiHeaders(config), signal: options?.signal },
