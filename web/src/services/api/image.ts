@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import { AZURE_IMAGE_MASK_MAX_BYTES, dataUrlToFile, validateAzureImageEditFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { workbenchText } from "@/lib/i18n-workbench";
-import { isGeminiImageModel, mediaRequestError } from "@/lib/anyaigc-media-models";
+import { isGeminiImageModel, isGrokImageModel, mediaRequestError } from "@/lib/anyaigc-media-models";
 import { imageToDataUrl } from "@/services/image-storage";
 import type { ReferenceImage } from "@/types/image";
 
@@ -111,6 +111,14 @@ const GEMINI_IMAGE_SIZES = [
     { value: "2K", longEdge: 2048 },
     { value: "4K", longEdge: 4096 },
 ];
+const GROK_IMAGE_SIZES = [
+    { value: "960x960", width: 960, height: 960 },
+    { value: "720x1280", width: 720, height: 1280 },
+    { value: "1280x720", width: 1280, height: 720 },
+    { value: "1168x784", width: 1168, height: 784 },
+    { value: "784x1168", width: 784, height: 1168 },
+];
+const GROK_IMAGE_ASPECT_RATIOS = ["1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2", "9:19.5", "19.5:9", "9:20", "20:9", "1:2", "2:1", "auto"];
 
 function normalizeQuality(quality: string) {
     const value = quality.trim().toLowerCase();
@@ -205,6 +213,20 @@ function geminiImageConfig(config: AiConfig) {
     if (quality === "medium") return { imageSize: "2K" };
     if (quality === "high") return { imageSize: "4K" };
     return undefined;
+}
+
+function grokImageOptions(config: AiConfig, n: number) {
+    const quality = normalizeQuality(config.quality) || "medium";
+    const requestSize = resolveRequestSize(quality, config.size) || "960x960";
+    const dimensions = parseImageDimensions(requestSize) || { width: 960, height: 960 };
+    const size = GROK_IMAGE_SIZES.reduce((closest, value) => Math.abs(Math.log(dimensions.width / dimensions.height) - Math.log(value.width / value.height)) < Math.abs(Math.log(dimensions.width / dimensions.height) - Math.log(closest.width / closest.height)) ? value : closest).value;
+    const ratio = dimensions.width / dimensions.height;
+    const normalizedAspectRatio = GROK_IMAGE_ASPECT_RATIOS.filter((value) => value !== "auto").reduce((closest, value) => {
+        const [width, height] = value.split(":").map(Number);
+        return Math.abs(Math.log(ratio) - Math.log(width / height)) < Math.abs(Math.log(ratio) - Math.log(closest.width / closest.height)) ? { value, width, height } : closest;
+    }, { value: "1:1", width: 1, height: 1 }).value;
+    const resolution = quality === "high" ? "2k" : "1k";
+    return { size, aspectRatio: Array.from({ length: n }, () => normalizedAspectRatio), quality: Array.from({ length: n }, () => quality), resolution: Array.from({ length: n }, () => resolution) };
 }
 
 function resolveImageDataUrl(item: Record<string, unknown>) {
@@ -744,6 +766,20 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
             throw new Error(readAxiosError(error, workbenchText("请求失败")));
         }
     }
+    if (isGrokImageModel(requestConfig.model)) {
+        const grokN = Math.min(10, n);
+        const grok = grokImageOptions(requestConfig, grokN);
+        try {
+            const response = await axios.post<ImageApiResponse>(
+                aiApiUrl(requestConfig, "/images/generations"),
+                { model: requestConfig.model, prompt: withSystemPrompt(requestConfig, prompt), size: grok.size, aspect_ratio: grok.aspectRatio, n: grokN, quality: grok.quality, resolution: grok.resolution, response_format: "b64_json" },
+                { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },
+            );
+            return parseImagePayload(response.data);
+        } catch (error) {
+            throw new Error(readAxiosError(error, workbenchText("请求失败")));
+        }
+    }
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(quality, config.size);
     try {
@@ -780,6 +816,25 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         if (mask) throw new Error(workbenchText("Gemini 调用格式暂不支持蒙版编辑", "The Gemini API format does not currently support mask editing"));
         try {
             return await requestGeminiImages(requestConfig, requestPrompt, references, n, options);
+        } catch (error) {
+            throw new Error(readAxiosError(error, workbenchText("请求失败")));
+        }
+    }
+    if (isGrokImageModel(requestConfig.model)) {
+        const grokN = Math.min(10, n);
+        const grok = grokImageOptions(requestConfig, grokN);
+        const formData = new FormData();
+        formData.set("model", requestConfig.model);
+        formData.set("prompt", withSystemPrompt(requestConfig, requestPrompt));
+        formData.set("image", dataUrlToFile({ ...references[0], dataUrl: await imageToDataUrl(references[0]) }));
+        formData.set("aspect_ratio", grok.aspectRatio[0]);
+        formData.set("quality", grok.quality[0]);
+        formData.set("resolution", grok.resolution[0]);
+        formData.set("n", String(grokN));
+        formData.set("response_format", "b64_json");
+        try {
+            const response = await axios.post<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { headers: aiHeaders(requestConfig), signal: options?.signal });
+            return parseImagePayload(response.data);
         } catch (error) {
             throw new Error(readAxiosError(error, workbenchText("请求失败")));
         }

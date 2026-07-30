@@ -18,7 +18,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { useI18n } from "@/lib/i18n";
 import { normalizeWorkbenchQuality, workbenchCount, workbenchErrorText, workbenchFormatDate, workbenchPinLabel, workbenchQualityLabel, workbenchText, workbenchTrashExpiry, workbenchTrashLabel, type WorkbenchLanguage } from "@/lib/i18n-workbench";
-import { mediaModelCapability, mediaRequestError } from "@/lib/anyaigc-media-models";
+import { isGrokImageModel, mediaModelCapability, mediaRequestError } from "@/lib/anyaigc-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
@@ -195,7 +195,7 @@ export default function ImagePage() {
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
     const imageCapability = mediaModelCapability(model);
-    const imageReferenceLimit = imageCapability?.kind === "image" && !imageCapability.allowsReferences ? 0 : IMAGE_REFERENCE_LIMIT;
+    const imageReferenceLimit = imageCapability?.kind === "image" && !imageCapability.allowsReferences ? 0 : isGrokImageModel(model) ? 1 : IMAGE_REFERENCE_LIMIT;
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(15, Number(config.count) || 1));
     const results = resultsBySession[activeSessionId] || [];

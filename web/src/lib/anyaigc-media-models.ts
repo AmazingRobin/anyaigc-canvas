@@ -55,8 +55,8 @@ export const ANYAIGC_MEDIA_MODEL_CAPABILITIES: Record<AnyAIGCMediaModelId, Media
     [GPT_IMAGE_2_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
     [GEMINI_FLASH_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false },
     [GEMINI_PRO_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false },
-    [GROK_IMAGINE_IMAGE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: false, allowsMask: false },
-    [GROK_IMAGINE_IMAGE_PRO_MODEL]: { kind: "image", invocation: "openai", allowsReferences: false, allowsMask: false },
+    [GROK_IMAGINE_IMAGE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false },
+    [GROK_IMAGINE_IMAGE_PRO_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false },
     [GROK_IMAGINE_VIDEO_MODEL]: {
         kind: "video",
         invocation: "grok",
@@ -176,7 +176,8 @@ export function mediaRequestError(model: string, state: MediaRequestState, langu
     const images = state.imageCount || 0;
     const videos = state.videoCount || 0;
     if (capability.kind === "image") {
-        if (images && !capability.allowsReferences) return mediaText("当前 Grok 图片模型仅支持文生图，不能使用参考图片", "The selected Grok image model supports text-to-image only and cannot use reference images.", language);
+        if (images && !capability.allowsReferences) return mediaText("当前图片模型不支持参考图片", "The selected image model does not support reference images.", language);
+        if (isGrokImageModel(model) && images > 1) return mediaText("当前 Grok 图片模型仅支持一张参考图", "The selected Grok image model supports exactly one reference image.", language);
         if (state.hasMask && !capability.allowsMask) return mediaText("当前图片模型不支持蒙版编辑", "The selected image model does not support masked editing.", language);
         return "";
     }
