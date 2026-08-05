@@ -226,7 +226,7 @@ function grokImageOptions(config: AiConfig, n: number) {
         return Math.abs(Math.log(ratio) - Math.log(width / height)) < Math.abs(Math.log(ratio) - Math.log(closest.width / closest.height)) ? { value, width, height } : closest;
     }, { value: "1:1", width: 1, height: 1 }).value;
     const resolution = quality === "high" ? "2k" : "1k";
-    return { size, aspectRatio: Array.from({ length: n }, () => normalizedAspectRatio), quality: Array.from({ length: n }, () => quality), resolution: Array.from({ length: n }, () => resolution) };
+    return { size, aspectRatio: normalizedAspectRatio, quality, resolution };
 }
 
 function resolveImageDataUrl(item: Record<string, unknown>) {
@@ -827,9 +827,9 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         formData.set("model", requestConfig.model);
         formData.set("prompt", withSystemPrompt(requestConfig, requestPrompt));
         formData.set("image", dataUrlToFile({ ...references[0], dataUrl: await imageToDataUrl(references[0]) }));
-        formData.set("aspect_ratio", grok.aspectRatio[0]);
-        formData.set("quality", grok.quality[0]);
-        formData.set("resolution", grok.resolution[0]);
+        formData.set("aspect_ratio", grok.aspectRatio);
+        formData.set("quality", grok.quality);
+        formData.set("resolution", grok.resolution);
         formData.set("n", String(grokN));
         formData.set("response_format", "b64_json");
         try {

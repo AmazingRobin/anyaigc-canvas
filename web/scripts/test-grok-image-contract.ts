@@ -30,10 +30,10 @@ try {
             model: GROK_IMAGINE_IMAGE_MODEL,
             prompt: "A cat running",
             size: "720x1280",
-            aspect_ratio: ["9:16", "9:16"],
+            aspect_ratio: "9:16",
             n: 2,
-            quality: ["high", "high"],
-            resolution: ["2k", "2k"],
+            quality: "high",
+            resolution: "2k",
             response_format: "b64_json",
         },
     });
