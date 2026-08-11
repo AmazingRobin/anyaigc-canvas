@@ -9,6 +9,7 @@ import { filterMediaModels, mediaModelCapability, normalizeVideoOperation, type 
 import { normalizeReferenceEditMode, normalizeSubmitTaskShortcut, type ReferenceEditMode, type SubmitTaskShortcut } from "@/lib/workbench-preferences";
 
 export type ApiCallFormat = "openai" | "gemini";
+export type AnyAIGCSite = "asia" | "global";
 
 export type ModelChannel = {
     id: string;
@@ -21,6 +22,7 @@ export type ModelChannel = {
 
 export type AiConfig = {
     channelMode: "remote" | "local";
+    anyaigcSite: AnyAIGCSite;
     baseUrl: string;
     apiKey: string;
     mediaApiKey: string;
@@ -73,6 +75,7 @@ export const CONFIG_STORE_KEY = "anyaigc-canvas:ai_config_store";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 const CHANNEL_MODEL_SEPARATOR = "::";
 export const ANYAIGC_BASE_URL = "https://anyaigc.com";
+export const ANYAIGC_GLOBAL_BASE_URL = "https://anyaigc.ai";
 export const ANYAIGC_MEDIA_CHANNEL_ID = "anyaigc-media";
 export const ANYAIGC_TEXT_CHANNEL_ID = "anyaigc-text";
 export const ANYAIGC_RECOMMENDED_KEY_GROUP = "智能自动";
@@ -81,6 +84,7 @@ const ANYAIGC_DEFAULT_VIDEO_MODEL = "grok-imagine-video";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
+    anyaigcSite: "asia",
     baseUrl: ANYAIGC_BASE_URL,
     apiKey: "",
     mediaApiKey: "",
@@ -200,6 +204,20 @@ export function applyAnyAIGCConfigPatch(config: AiConfig, values: Partial<AiConf
     const next: AiConfig = { ...config, ...values };
     let channels = next.channels;
 
+    if (Object.prototype.hasOwnProperty.call(values, "anyaigcSite")) {
+        const anyaigcSite = normalizeAnyAIGCSite(values.anyaigcSite);
+        const changed = anyaigcSite !== config.anyaigcSite;
+        next.anyaigcSite = anyaigcSite;
+        channels = updateAnyAIGCChannelBaseUrls(channels, anyaigcSite, changed);
+        if (changed) {
+            next.model = "";
+            next.imageModel = "";
+            next.videoModel = "";
+            next.textModel = "";
+            next.audioModel = "";
+        }
+    }
+
     if (Object.prototype.hasOwnProperty.call(values, "mediaApiKey")) {
         const mediaApiKey = typeof values.mediaApiKey === "string" ? values.mediaApiKey : "";
         const changed = mediaApiKey !== config.mediaApiKey;
@@ -242,6 +260,11 @@ function updateChannelApiKey(channels: ModelChannel[], channelId: string, apiKey
     });
     if (matched) return nextChannels;
     return [...nextChannels, channelId === ANYAIGC_TEXT_CHANNEL_ID ? createAnyAIGCTextChannel(apiKey) : createAnyAIGCMediaChannel(apiKey)];
+}
+
+function updateAnyAIGCChannelBaseUrls(channels: ModelChannel[], site: AnyAIGCSite, clearModels = false) {
+    const baseUrl = anyAIGCBaseUrl(site);
+    return (Array.isArray(channels) ? channels : []).map((channel) => channel.id === ANYAIGC_MEDIA_CHANNEL_ID || channel.id === ANYAIGC_TEXT_CHANNEL_ID ? { ...channel, baseUrl, ...(clearModels ? { models: [] } : {}) } : channel);
 }
 
 function modelListKey(capability: ModelCapability) {
@@ -398,22 +421,22 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
     };
 }
 
-function createAnyAIGCMediaChannel(apiKey = "", models: string[] = []): ModelChannel {
+function createAnyAIGCMediaChannel(apiKey = "", models: string[] = [], site: AnyAIGCSite = "asia"): ModelChannel {
     return createModelChannel({
         id: ANYAIGC_MEDIA_CHANNEL_ID,
         name: "AnyAIGC Media",
-        baseUrl: ANYAIGC_BASE_URL,
+        baseUrl: anyAIGCBaseUrl(site),
         apiKey,
         apiFormat: "openai",
         models,
     });
 }
 
-function createAnyAIGCTextChannel(apiKey = "", models: string[] = []): ModelChannel {
+function createAnyAIGCTextChannel(apiKey = "", models: string[] = [], site: AnyAIGCSite = "asia"): ModelChannel {
     return createModelChannel({
         id: ANYAIGC_TEXT_CHANNEL_ID,
         name: "AnyAIGC Text",
-        baseUrl: ANYAIGC_BASE_URL,
+        baseUrl: anyAIGCBaseUrl(site),
         apiKey,
         apiFormat: "openai",
         models: uniqueRawModels(models),
@@ -421,7 +444,8 @@ function createAnyAIGCTextChannel(apiKey = "", models: string[] = []): ModelChan
 }
 
 export function normalizeAnyAIGCConfig(config: AiConfig): AiConfig {
-    const channels = normalizeChannels(config);
+    const anyaigcSite = normalizeAnyAIGCSite(config.anyaigcSite);
+    const channels = normalizeChannels(config, anyaigcSite);
     const models = modelOptionsFromChannels(channels);
     const mediaChannel = channels.find((channel) => channel.id === ANYAIGC_MEDIA_CHANNEL_ID);
     const textChannel = channels.find((channel) => channel.id === ANYAIGC_TEXT_CHANNEL_ID);
@@ -442,7 +466,8 @@ export function normalizeAnyAIGCConfig(config: AiConfig): AiConfig {
     return {
         ...config,
         channelMode: "local",
-        baseUrl: ANYAIGC_BASE_URL,
+        anyaigcSite,
+        baseUrl: anyAIGCBaseUrl(anyaigcSite),
         apiKey: mediaApiKey,
         mediaApiKey,
         textApiKey,
@@ -478,13 +503,21 @@ export function normalizeAnyAIGCConfig(config: AiConfig): AiConfig {
     };
 }
 
-function normalizeChannels(config: AiConfig) {
+function normalizeChannels(config: AiConfig, site: AnyAIGCSite) {
     const persistedChannels = Array.isArray(config.channels) ? config.channels : [];
     const mediaChannel = persistedChannels.find((channel) => channel.id === ANYAIGC_MEDIA_CHANNEL_ID);
     const textChannel = persistedChannels.find((channel) => channel.id === ANYAIGC_TEXT_CHANNEL_ID);
     const mediaApiKey = config.mediaApiKey || config.apiKey || mediaChannel?.apiKey || "";
     const textApiKey = config.textApiKey || textChannel?.apiKey || "";
-    return [createAnyAIGCMediaChannel(mediaApiKey, mediaChannel?.models || []), createAnyAIGCTextChannel(textApiKey, textChannel?.models || [])];
+    return [createAnyAIGCMediaChannel(mediaApiKey, mediaChannel?.models || [], site), createAnyAIGCTextChannel(textApiKey, textChannel?.models || [], site)];
+}
+
+export function anyAIGCBaseUrl(site: AnyAIGCSite) {
+    return site === "global" ? ANYAIGC_GLOBAL_BASE_URL : ANYAIGC_BASE_URL;
+}
+
+function normalizeAnyAIGCSite(site: unknown): AnyAIGCSite {
+    return site === "global" ? "global" : "asia";
 }
 
 function preferredModelOption(models: string[], preferredModel: string) {

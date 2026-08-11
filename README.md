@@ -26,10 +26,10 @@ AnyAIGC Canvas 是面向 AnyAIGC 用户的浏览器端 AI 创作工作台。它�
 
 ## 🚀 使用方式
 
-1. ⚙️ 打开应用右上角的“设置”。
-2. 🔑 分别填写自己的媒体 API Key 和文本 API Key；Key 仅保存在当前浏览器中。
+1. ⚙️ 打开应用右上角的“设置”，选择平台：默认亚洲站 [anyaigc.com](https://anyaigc.com)，也可切换国际站 [anyaigc.ai](https://anyaigc.ai)。
+2. 🔑 分别填写所选平台的媒体 API Key 和文本 API Key；Key 仅保存在当前浏览器中。
 3. 🧠 创建 Key 时推荐选择“智能自动 / Smart Auto”分组。
-4. ✨ 点击“获取模型”，再在图片、视频或画布中选择可用模型并开始创作。
+4. ✨ 点击“获取模型”，再在图片、视频或画布中选择可用模型并开始创作；切换平台后需重新获取该平台的模型。
 
 > ⚠️ 智能自动分组可能不返回 Gemini 图片模型。需要使用 Nano Banana 2 / Pro 时，请创建已设置 Gemini 支持的分组 Key（例如特价 banana），然后重新点击“获取模型”。
 
@@ -75,7 +75,7 @@ bun run build
 
 ## 🌟 关于 AnyAIGC
 
-AnyAIGC [API 中转站](https://anyaigc.com) 提供多模型 AI API 与控制台服务。你可以在 [API Key 管理页](https://anyaigc.com/console/token) 创建自己的 Key，在 [控制台](https://anyaigc.com/console) 查看和管理账户信息。本项目使用用户自有 Key 接入 AnyAIGC 的模型能力。
+AnyAIGC 在[亚洲站](https://anyaigc.com)和[国际站](https://anyaigc.ai)提供多模型 AI API 与控制台服务。请在设置中选择对应平台，再使用该平台创建的 Key；本项目使用用户自有 Key 接入模型能力。
 
 ## 📜 上游项目与许可证
 

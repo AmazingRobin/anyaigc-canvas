@@ -1,7 +1,7 @@
 "use client";
 
-import { App, Button, Form, Input, Modal, Select, Tabs } from "antd";
-import { RefreshCw } from "lucide-react";
+import { App, Button, Form, Input, Modal, Radio, Tabs } from "antd";
+import { ExternalLink, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ModelPicker } from "@/components/model-picker";
@@ -10,11 +10,12 @@ import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent }
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { sharedErrorText, sharedText } from "@/lib/i18n-shared";
 import {
-    ANYAIGC_BASE_URL,
     ANYAIGC_MEDIA_CHANNEL_ID,
     ANYAIGC_TEXT_CHANNEL_ID,
+    anyAIGCBaseUrl,
     replaceChannelModels,
     useConfigStore,
+    type AnyAIGCSite,
     type ModelChannel,
 } from "@/stores/use-config-store";
 import { filterMediaModels } from "@/lib/anyaigc-media-models";
@@ -69,7 +70,7 @@ export function AppConfigModal() {
         kind === "media" ? setLoadingMedia(true) : setLoadingText(true);
         const channelId = kind === "media" ? ANYAIGC_MEDIA_CHANNEL_ID : ANYAIGC_TEXT_CHANNEL_ID;
         try {
-            const channel: ModelChannel = { id: channelId, name: kind === "media" ? "AnyAIGC Media" : "AnyAIGC Text", baseUrl: ANYAIGC_BASE_URL, apiKey, apiFormat: "openai", models: [] };
+            const channel: ModelChannel = { id: channelId, name: kind === "media" ? "AnyAIGC Media" : "AnyAIGC Text", baseUrl: anyAIGCBaseUrl(config.anyaigcSite), apiKey, apiFormat: "openai", models: [] };
             const discovered = await fetchChannelModels(channel, { signal: controller.signal });
             if (controller.signal.aborted) return;
             const models = kind === "media" ? filterMediaModels(discovered.map((model) => model.id)) : discovered.map((model) => model.id);
@@ -116,6 +117,13 @@ export function AppConfigModal() {
                     label: t("API 配置", "API settings"),
                     children: <div className="space-y-5 pt-2">
                         <p className="text-sm text-stone-500 dark:text-stone-400">{t("API Key 仅保存在当前浏览器，并由前端直接请求 AnyAIGC 接口。两个 Key 都建议在控制台选择“智能自动”分组。", "API keys stay in this browser and are sent directly to AnyAIGC. Choose the Smart Auto group for both keys.")}</p>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium block pb-1">{t("平台", "Platform")}</label>
+                            <Radio.Group value={config.anyaigcSite} onChange={(event) => updateConfig("anyaigcSite", event.target.value)} className="!grid w-full grid-cols-2 gap-4">
+                                <div className="flex min-w-0 items-center justify-between gap-4 rounded-xl border border-stone-200 px-4 py-3 dark:border-stone-700"><Radio value="asia" className="!mr-0 min-w-0">{t("亚洲站", "Asia")}：anyaigc.com</Radio><SiteLink site="asia" label={t("打开亚洲站", "Open Asia site")} /></div>
+                                <div className="flex min-w-0 items-center justify-between gap-4 rounded-xl border border-stone-200 px-4 py-3 dark:border-stone-700"><Radio value="global" className="!mr-0 min-w-0">{t("国际站", "International")}：anyaigc.ai</Radio><SiteLink site="global" label={t("打开国际站", "Open international site")} /></div>
+                            </Radio.Group>
+                        </div>
                         <KeySection label={t("媒体 API Key", "Media API Key")} value={config.mediaApiKey} onChange={(value) => updateConfig("mediaApiKey", value)} loading={loadingMedia} onRefresh={() => void refreshModels("media")} models={config.imageModels.length + config.videoModels.length} hint={t("推荐分组：智能自动", "Recommended group: Smart Auto")} language={language} />
                         <p className="-mt-3 text-xs text-red-600 dark:text-red-400">{t("智能自动分组可能不返回 Gemini 图片模型。使用 Nano Banana 2 / Pro 前，请创建已设置 Gemini 支持的分组 Key（比如：特价banana），再点击“获取模型”。", "The Smart Auto group may not return Gemini image models. Before using Nano Banana 2 / Pro, create a key in a group with Gemini enabled (for example, Special Banana), then click Load models.")}</p>
                         <div className="grid gap-3 md:grid-cols-2">
@@ -146,6 +154,11 @@ export function AppConfigModal() {
             ]} />
         </Modal>
     );
+}
+
+function SiteLink({ site, label }: { site: AnyAIGCSite; label: string }) {
+    const url = anyAIGCBaseUrl(site);
+    return <a className="inline-flex shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" href={url} target="_blank" rel="noreferrer" aria-label={label} title={label}><ExternalLink className="size-4" /></a>;
 }
 
 function KeySection({ label, value, onChange, loading, onRefresh, models, hint, language }: { label: string; value: string; onChange: (value: string) => void; loading: boolean; onRefresh: () => void; models: number; hint: string; language: LanguageName }) {

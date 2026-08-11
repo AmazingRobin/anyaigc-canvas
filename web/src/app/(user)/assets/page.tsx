@@ -190,17 +190,29 @@ export default function AssetsPage() {
     const importAssetZip = async (file?: File) => {
         if (!file) return;
         try {
-            const importedAssets = await readAssetPackage(file);
-            importedAssets.forEach((asset) => {
+            const result = await readAssetPackage(file);
+            result.assets.forEach((asset) => {
                 const payload = { ...asset } as Record<string, unknown>;
                 delete payload.id;
                 delete payload.createdAt;
                 delete payload.updatedAt;
                 addAsset(payload as Parameters<typeof addAsset>[0]);
             });
-            message.success(language === "en" ? `Imported ${importedAssets.length} ${importedAssets.length === 1 ? "asset" : "assets"}` : `已导入 ${importedAssets.length} 个素材`);
-        } catch {
-            message.error(sharedText("导入失败，请选择有效的素材压缩包", "Import failed. Choose a valid asset archive.", language));
+            if (result.mode === "images") {
+                message.success(
+                    language === "en"
+                        ? `Imported ${result.assets.length} ${result.assets.length === 1 ? "image" : "images"}${result.skippedFiles ? `; skipped ${result.skippedFiles} files` : ""}`
+                        : `已导入 ${result.assets.length} 张图片${result.skippedFiles ? `，跳过 ${result.skippedFiles} 个文件` : ""}`,
+                );
+            } else {
+                message.success(language === "en" ? `Imported ${result.assets.length} ${result.assets.length === 1 ? "asset" : "assets"}` : `已导入 ${result.assets.length} 个素材`);
+            }
+        } catch (error) {
+            if (error instanceof Error && error.message === "no supported images") {
+                message.error(sharedText("ZIP 中没有可导入的图片", "No supported images were found in the ZIP", language));
+            } else {
+                message.error(sharedText("导入失败，请选择有效的素材压缩包", "Import failed. Choose a valid asset archive.", language));
+            }
         } finally {
             if (assetInputRef.current) assetInputRef.current.value = "";
         }
