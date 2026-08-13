@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /c/Users/yijia/Documents/GitHub/anyaigc-canvas/web/src 2>/dev/null || ls /mnt/c/Users/yijia/Documents/GitHub/anyaigc-canvas/web/src 2>/dev/null || echo \"Path not accessible from this environment\")",
+      "Read(//mnt/c/Users/yijia/Documents/GitHub/anyaigc-canvas/web/**)"
+    ]
+  }
+}
