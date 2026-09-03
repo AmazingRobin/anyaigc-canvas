@@ -7,7 +7,7 @@ import "./globals.css";
 import React from "react";
 
 export const metadata: Metadata = {
-    title: "AnyAIGC Canvas",
+    title: "一张画布，承载完整 AI 创作流程 - AnyAIGC Canvas",
     description: "AnyAIGC workspace for image, video, prompt, and agent creation.",
 };
 
