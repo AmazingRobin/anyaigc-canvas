@@ -2,6 +2,10 @@ import { useLanguageStore, type LanguageName } from "@/stores/use-language-store
 
 export const GPT_IMAGE_2_MODEL = "gpt-image-2";
 export const GPT_IMAGE_2_C_MODEL = "gpt-image-2-c";
+export const GPT_IMAGE_2_5_SUNBURST_MODEL = "gpt-image-2.5-sunburst";
+export const GPT_IMAGE_2_5_SUNBURST_C_MODEL = "gpt-image-2.5-sunburst-c";
+export const GPT_IMAGE_2_5_FLARE_MODEL = "gpt-image-2.5-flare";
+export const GPT_IMAGE_2_5_FLARE_C_MODEL = "gpt-image-2.5-flare-c";
 export const GEMINI_FLASH_IMAGE_MODEL = "gemini-3.1-flash-image-preview";
 export const GEMINI_PRO_IMAGE_MODEL = "gemini-3-pro-image-preview";
 export const GROK_IMAGINE_IMAGE_MODEL = "grok-imagine-image";
@@ -18,6 +22,10 @@ export const MINIMAX_HAILUO_23_MODEL = "MiniMax-Hailuo-2.3";
 export const ANYAIGC_MEDIA_MODEL_IDS = [
     GPT_IMAGE_2_MODEL,
     GPT_IMAGE_2_C_MODEL,
+    GPT_IMAGE_2_5_SUNBURST_MODEL,
+    GPT_IMAGE_2_5_SUNBURST_C_MODEL,
+    GPT_IMAGE_2_5_FLARE_MODEL,
+    GPT_IMAGE_2_5_FLARE_C_MODEL,
     GEMINI_FLASH_IMAGE_MODEL,
     GEMINI_PRO_IMAGE_MODEL,
     GROK_IMAGINE_IMAGE_MODEL,
@@ -56,6 +64,10 @@ export type MediaModelCapability = ImageCapability | VideoCapability;
 export const ANYAIGC_MEDIA_MODEL_CAPABILITIES: Record<AnyAIGCMediaModelId, MediaModelCapability> = {
     [GPT_IMAGE_2_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
     [GPT_IMAGE_2_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
+    [GPT_IMAGE_2_5_SUNBURST_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
+    [GPT_IMAGE_2_5_SUNBURST_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
+    [GPT_IMAGE_2_5_FLARE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
+    [GPT_IMAGE_2_5_FLARE_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
     [GEMINI_FLASH_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false },
     [GEMINI_PRO_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false },
     [GROK_IMAGINE_IMAGE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false },

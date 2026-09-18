@@ -58,8 +58,11 @@ assert.deepEqual(
 assert.deepEqual(responseCapableModelIds([{ id: "gpt-5.5", supportedEndpointTypes: ["openai-response"] }, { id: "chat-only", supportedEndpointTypes: ["openai-chat"] }]), ["gpt-5.5"]);
 
 assert.deepEqual(
-    filterMediaModels(["gpt-image-2", "gemini-3.1-flash-image-preview", "grok-imagine-image", "grok-imagine-image-pro", "nana-banana-2_sync", "veo-3-1"], "image"),
-    ["gpt-image-2", "gemini-3.1-flash-image-preview", "grok-imagine-image", "grok-imagine-image-pro"],
+    filterMediaModels(
+        ["gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.5-sunburst-c", "gpt-image-2.5-flare", "gpt-image-2.5-flare-c", "gemini-3.1-flash-image-preview", "grok-imagine-image", "grok-imagine-image-pro", "nana-banana-2_sync", "veo-3-1"],
+        "image",
+    ),
+    ["gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.5-sunburst-c", "gpt-image-2.5-flare", "gpt-image-2.5-flare-c", "gemini-3.1-flash-image-preview", "grok-imagine-image", "grok-imagine-image-pro"],
 );
 assert.deepEqual(
     filterMediaModels(["grok-imagine-video", "grok-imagine-video-1.5", "kling-motion-control", "kling-omni-video", "kling-3.0-turbo", "MiniMax-Hailuo-02", "MiniMax-Hailuo-2.3", "veo-3-1", "video-pro-720p"], "video"),
