@@ -1,4 +1,4 @@
-import { isKling3TurboVideoModel, mediaModelCapability, normalizeAspectRatio, normalizeKling3TurboResolution, normalizeVideoDurationForModel, normalizeVideoOperation } from "@/lib/anyaigc-media-models";
+import { isKling3TurboVideoModel, isSeedanceVideoModel, mediaModelCapability, normalizeAspectRatio, normalizeKling3TurboResolution, normalizeSeedanceResolution, normalizeVideoDurationForModel, normalizeVideoOperation } from "@/lib/anyaigc-media-models";
 import { defaultConfig, normalizeModelOptionValue, normalizeVideoCallMode, selectableModelsByCapability, type AiConfig } from "@/stores/use-config-store";
 import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "../types";
 
@@ -17,11 +17,11 @@ export function buildCanvasGenerationConfig(config: AiConfig, node: CanvasNodeDa
         textModel: mode === "text" ? selectedModel : config.textModel,
         audioModel: mode === "audio" ? selectedModel : config.audioModel,
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
-        size: video ? normalizeAspectRatio(storedSize) : storedSize,
+        size: video ? normalizeAspectRatio(storedSize, selectedModel) : storedSize,
         videoSeconds: video ? String(normalizeVideoDurationForModel(selectedModel, storedSeconds)) : storedSeconds,
         videoCallMode: video ? "async" : normalizeVideoCallMode(node?.metadata?.videoCallMode || config.videoCallMode),
         videoOperation,
-        vquality: video ? isKling3TurboVideoModel(selectedModel) ? normalizeKling3TurboResolution(storedResolution) : "" : storedResolution,
+        vquality: video ? isSeedanceVideoModel(selectedModel) ? normalizeSeedanceResolution(selectedModel, storedResolution) : isKling3TurboVideoModel(selectedModel) ? normalizeKling3TurboResolution(storedResolution) : "" : storedResolution,
         videoGenerateAudio: node?.metadata?.generateAudio || config.videoGenerateAudio || defaultConfig.videoGenerateAudio,
         videoWatermark: node?.metadata?.watermark || config.videoWatermark || defaultConfig.videoWatermark,
         audioVoice: node?.metadata?.audioVoice || config.audioVoice || defaultConfig.audioVoice,
@@ -35,7 +35,9 @@ export function buildCanvasGenerationConfig(config: AiConfig, node: CanvasNodeDa
 function resolveVideoOperation(model: string, node: CanvasNodeData | undefined, configuredMode: AiConfig["videoOperation"]) {
     const capability = mediaModelCapability(model);
     if (!capability || capability.kind !== "video") return configuredMode;
-    if (capability.invocation !== "minimax-hailuo" && capability.operations.includes("image-to-video") && node?.type === CanvasNodeType.Image && node.metadata?.content) return "image-to-video";
+    // Models with an explicit mode selector keep the user's choice instead of being forced onto image-to-video.
+    const selectableOperations = capability.invocation === "minimax-hailuo" || capability.invocation === "seedance";
+    if (!selectableOperations && capability.operations.includes("image-to-video") && node?.type === CanvasNodeType.Image && node.metadata?.content) return "image-to-video";
     return normalizeVideoOperation(model, node?.metadata?.videoOperation || configuredMode);
 }
 

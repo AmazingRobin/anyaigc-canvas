@@ -20,12 +20,21 @@ import {
     mediaRequestError,
     isKling3TurboVideoModel,
     isMiniMaxHailuoVideoModel,
+    isSeedanceVideoModel,
     normalizeAspectRatio,
     normalizeKling3TurboResolution,
+    normalizeSeedanceResolution,
+    seedanceForcesAdaptiveRatio,
+    videoReferenceVideoLimit,
     normalizeVideoDurationForModel,
     normalizeVideoOperation,
+    seedanceAspectRatioOptions,
+    seedanceResolutionOptions,
+    supportsVideoAudioGeneration,
+    supportsVideoResolution,
     videoDurationLimits,
     videoDurationOptions,
+    videoReferenceAudioLimit,
     videoReferenceImageLimit,
     type VideoOperation,
 } from "@/lib/anyaigc-media-models";
@@ -183,14 +192,16 @@ export default function VideoPage() {
     const videoCapability = mediaModelCapability(model);
     const videoOperation = isKling3TurboVideoModel(modelName) ? (references.length ? "image-to-video" : "text-to-video") : normalizeVideoOperation(modelName, effectiveConfig.videoOperation);
     const referenceLimits = videoReferenceLimits(modelName, videoOperation);
-    const ratioValue = normalizeAspectRatio(effectiveConfig.size);
+    const ratioValue = normalizeAspectRatio(effectiveConfig.size, modelName);
     const durationLimits = videoDurationLimits(modelName);
     const secondsValue = String(normalizeVideoDurationForModel(modelName, effectiveConfig.videoSeconds));
-    const ratioOptions = videoRatioOptions(language);
+    const ratioOptions = videoRatioOptions(modelName, language);
     const secondsOptions = videoSecondsOptions(modelName, language);
-    const resolutionValue = normalizeKling3TurboResolution(effectiveConfig.vquality);
-    const supportsResolution = isKling3TurboVideoModel(modelName);
-    const supportsOperationSelection = videoCapability?.kind === "video" && videoCapability.invocation === "minimax-hailuo";
+    const resolutionValue = isSeedanceVideoModel(modelName) ? normalizeSeedanceResolution(modelName, effectiveConfig.vquality) : normalizeKling3TurboResolution(effectiveConfig.vquality);
+    const supportsResolution = supportsVideoResolution(modelName);
+    const supportsAudioToggle = supportsVideoAudioGeneration(modelName);
+    const supportsOperationSelection = videoCapability?.kind === "video" && (videoCapability.invocation === "minimax-hailuo" || videoCapability.invocation === "seedance");
+    const hidesAspectRatio = seedanceForcesAdaptiveRatio(modelName, videoOperation);
     const canGenerate = Boolean(prompt.trim() || (isKling3TurboVideoModel(modelName) && references.length));
     const activeLogId = previewLog?.id || activeResultLogId;
     const activeRunning = activeLogId ? runningByLog[activeLogId] : undefined;
@@ -512,7 +523,7 @@ export default function VideoPage() {
             return null;
         }
         const requestConfig = { ...buildVideoConfig(effectiveConfig, model), videoOperation };
-        const requestError = mediaRequestError(modelName, { imageCount: references.length, videoCount: videoReferences.length, operation: requestConfig.videoOperation }, language);
+        const requestError = mediaRequestError(modelName, { imageCount: references.length, videoCount: videoReferences.length, audioCount: audioReferences.length, operation: requestConfig.videoOperation }, language);
         if (requestError) {
             message.error(requestError);
             return null;
@@ -560,7 +571,7 @@ export default function VideoPage() {
             openConfigDialog(true);
             return null;
         }
-        const retryError = mediaRequestError(retryModel, { imageCount: hydrated.references.length, videoCount: hydrated.videoReferences.length, operation: retryConfig.videoOperation }, language);
+        const retryError = mediaRequestError(retryModel, { imageCount: hydrated.references.length, videoCount: hydrated.videoReferences.length, audioCount: hydrated.audioReferences.length, operation: retryConfig.videoOperation }, language);
         if (retryError) {
             message.error(retryError);
             return null;
@@ -1144,9 +1155,10 @@ export default function VideoPage() {
                                         <ModelPicker config={effectiveConfig} value={model} onChange={(value) => updateConfig("videoModel", value)} capability="video" className={`${COMPOSER_CONTROL_CLASS} max-w-[240px]`} onMissingConfig={() => openConfigDialog(false)} />
                                         {supportsOperationSelection ? <VideoComposerSelect label={workbenchText("生成方式", "Generation mode", language)} value={videoOperation} options={videoCapability.operations.map((operation) => ({ value: operation, label: videoOperationLabel(operation, language) }))} onChange={(value) => { const operation = value as VideoOperation; updateConfig("videoOperation", operation); setReferences((items) => items.slice(0, videoReferenceImageLimit(modelName, operation))); }} /> : videoCapability?.kind === "video" ? <VideoComposerMetric label={workbenchText("生成方式", "Generation mode", language)} value={videoOperationLabel(videoOperation, language)} /> : null}
                                         <VideoComposerMetric label={workbenchText("调用", "Call", language)} value={workbenchText("异步", "Async", language)} />
-                                        <VideoComposerSelect label={workbenchText("比例", "Aspect ratio", language)} value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />
-                                        {supportsResolution ? <VideoComposerSelect label={workbenchText("分辨率", "Resolution", language)} value={resolutionValue} options={[{ value: "720p", label: "720p" }, { value: "1080p", label: "1080p" }]} onChange={(value) => updateConfig("vquality", value)} /> : null}
+                                        {hidesAspectRatio ? null : <VideoComposerSelect label={workbenchText("比例", "Aspect ratio", language)} value={ratioValue} options={ratioOptions} onChange={(value) => updateConfig("size", value)} />}
+                                        {supportsResolution ? <VideoComposerSelect label={workbenchText("分辨率", "Resolution", language)} value={resolutionValue} options={(isSeedanceVideoModel(modelName) ? seedanceResolutionOptions(modelName) : ["720p", "1080p"]).map((value) => ({ value, label: value }))} onChange={(value) => updateConfig("vquality", value)} /> : null}
                                         <VideoComposerDurationControl value={secondsValue} options={secondsOptions} min={durationLimits.min} max={durationLimits.max} presetOnly={isMiniMaxHailuoVideoModel(modelName)} onChange={(value) => updateConfig("videoSeconds", value)} />
+                                        {supportsAudioToggle ? <VideoComposerSelect label={workbenchText("声音", "Audio", language)} value={effectiveConfig.videoGenerateAudio === "false" ? "false" : "true"} options={[{ value: "true", label: workbenchText("开", "On", language) }, { value: "false", label: workbenchText("关", "Off", language) }]} onChange={(value) => updateConfig("videoGenerateAudio", value)} /> : null}
                                     </div>
                                     <Button type="primary" size="large" icon={<Sparkles className="size-4" />} disabled={!canGenerate} onClick={() => void generate()} className="xl:min-w-36">
                                         {workbenchText("开始生成", "Generate", language)}
@@ -1369,11 +1381,11 @@ function videoReferenceLimits(model: string, operation?: VideoOperation): VideoR
     if (!capability || capability.kind !== "video") return { images: 0, videos: 0, audios: 0, imageMaxBytes: 10 * 1024 * 1024, videoMaxBytes: 100 * 1024 * 1024, audioMaxBytes: 0 };
     return {
         images: videoReferenceImageLimit(model, operation),
-        videos: capability.videoCount.max,
-        audios: 0,
+        videos: videoReferenceVideoLimit(model, operation),
+        audios: videoReferenceAudioLimit(model, operation),
         imageMaxBytes: 10 * 1024 * 1024,
         videoMaxBytes: 100 * 1024 * 1024,
-        audioMaxBytes: 0,
+        audioMaxBytes: videoReferenceAudioLimit(model, operation) ? 15 * 1024 * 1024 : 0,
     };
 }
 
@@ -1425,10 +1437,22 @@ function videoReferenceRequirements(model: string, operation: VideoOperation, li
         if (operation === "first-last-frame") return { image: language === "en" ? "Exactly 2 images in order: first frame, then last frame · PNG/JPG" : "必须且只能使用 2 张图片，顺序为首帧、尾帧 · PNG/JPG", video: language === "en" ? "Not supported" : "不支持", audio: language === "en" ? "Not supported" : "不支持" };
         return { image: language === "en" ? "Not used for text to video" : "文生视频不使用参考图", video: language === "en" ? "Not supported" : "不支持", audio: language === "en" ? "Not supported" : "不支持" };
     }
+    if (capability?.kind === "video" && capability.invocation === "seedance" && (operation === "image-to-video" || operation === "first-last-frame")) {
+        const notInFrameMode = language === "en" ? "Not used in frame mode" : "首尾帧模式不使用";
+        const image =
+            operation === "image-to-video"
+                ? language === "en"
+                    ? "Exactly 1 first-frame image · PNG/JPG"
+                    : "必须且只能使用 1 张首帧图片 · PNG/JPG"
+                : language === "en"
+                  ? "Exactly 2 images in order: first frame, then last frame · PNG/JPG"
+                  : "必须且只能使用 2 张图片，顺序为首帧、尾帧 · PNG/JPG";
+        return { image, video: notInFrameMode, audio: notInFrameMode };
+    }
     return {
         image: limits.images ? (language === "en" ? `PNG/JPG · up to ${limits.images}` : `PNG/JPG · 最多 ${limits.images} 张`) : language === "en" ? "Not used" : "不使用",
         video: limits.videos ? (language === "en" ? `MP4/MOV · up to ${limits.videos} · max ${formatReferenceLimit(limits.videoMaxBytes)}` : `MP4/MOV · 最多 ${limits.videos} 个 · 最大 ${formatReferenceLimit(limits.videoMaxBytes)}`) : language === "en" ? "Not used" : "不使用",
-        audio: language === "en" ? "Not supported" : "不支持",
+        audio: limits.audios ? (language === "en" ? `MP3/WAV · up to ${limits.audios} · max ${formatReferenceLimit(limits.audioMaxBytes)}` : `MP3/WAV · 最多 ${limits.audios} 个 · 最大 ${formatReferenceLimit(limits.audioMaxBytes)}`) : language === "en" ? "Not used" : "不使用",
     };
 }
 
@@ -1597,8 +1621,9 @@ function VideoReferenceStrip({ title, detail, empty, children }: { title: string
     );
 }
 
-function videoRatioOptions(language?: WorkbenchLanguage) {
-    return VIDEO_RATIO_OPTIONS.map((item) => ({ ...item, label: workbenchText(item.label, undefined, language) }));
+function videoRatioOptions(model: string, language?: WorkbenchLanguage) {
+    const values = isSeedanceVideoModel(model) ? seedanceAspectRatioOptions() : VIDEO_RATIO_OPTIONS.map((item) => item.value);
+    return values.map((value) => ({ value, label: value === "adaptive" ? workbenchText("自适应", "Adaptive", language) : value === "16:9" ? workbenchText("横屏", "Landscape", language) : value === "9:16" ? workbenchText("竖屏", "Portrait", language) : value === "1:1" ? workbenchText("方形", "Square", language) : value === "21:9" ? workbenchText("宽银幕", "Widescreen", language) : value }));
 }
 
 function videoSecondsOptions(model: string, _language?: WorkbenchLanguage) {
@@ -2984,10 +3009,10 @@ function buildVideoConfig(config: AiConfig, model: string): AiConfig {
         videoModel: model,
         videoCallMode: "async",
         videoOperation,
-        size: normalizeAspectRatio(config.size),
+        size: normalizeAspectRatio(config.size, model),
         videoSeconds: String(normalizeVideoDurationForModel(model, config.videoSeconds)),
-        vquality: isKling3TurboVideoModel(model) ? normalizeKling3TurboResolution(config.vquality) : "",
-        videoGenerateAudio: "false",
+        vquality: isSeedanceVideoModel(model) ? normalizeSeedanceResolution(model, config.vquality) : isKling3TurboVideoModel(model) ? normalizeKling3TurboResolution(config.vquality) : "",
+        videoGenerateAudio: isSeedanceVideoModel(model) ? (config.videoGenerateAudio === "false" ? "false" : "true") : "false",
         videoWatermark: "false",
     };
 }

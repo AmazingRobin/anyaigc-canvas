@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { uploadImageReference, uploadVideoReference } from "@/services/api/media-upload";
+import { uploadAudioReference, uploadImageReference, uploadVideoReference } from "@/services/api/media-upload";
 
 const originalFetch = globalThis.fetch;
 const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -35,6 +35,11 @@ try {
     assert.equal(calls[1].init?.method, "PUT");
     assert.equal(calls[1].init?.body, video);
     assert.deepEqual(JSON.parse(String(calls[2].init?.body)), { filename: "reference.mp4", size: 5, content_type: "video/mp4", r2_key: "r2-key" });
+
+    calls.length = 0;
+    const audio = new File(["audio"], "reference.mp3", { type: "audio/mpeg" });
+    assert.equal(await uploadAudioReference(audio), "https://storage.to/FQxyz1234");
+    assert.deepEqual(JSON.parse(String(calls[2].init?.body)), { filename: "reference.mp3", size: 5, content_type: "audio/mpeg", r2_key: "r2-key" });
 
     calls.length = 0;
     globalThis.fetch = (async (input, init) => {
