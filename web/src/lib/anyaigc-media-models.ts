@@ -22,6 +22,10 @@ export const KLING_OMNI_VIDEO_API_MODEL = "kling-v3-omni";
 export const KLING_3_TURBO_MODEL = "kling-3.0-turbo";
 export const MINIMAX_HAILUO_02_MODEL = "MiniMax-Hailuo-02";
 export const MINIMAX_HAILUO_23_MODEL = "MiniMax-Hailuo-2.3";
+export const SEEDANCE_2_5_MODEL = "doubao-seedance-2-5-260628";
+export const SEEDANCE_2_0_MODEL = "doubao-seedance-2-0-260128";
+export const SEEDANCE_2_0_FAST_MODEL = "doubao-seedance-2-0-fast-260128";
+const SEEDANCE_ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "adaptive"] as const;
 
 export const ANYAIGC_MEDIA_MODEL_IDS = [
     GPT_IMAGE_2_MODEL,
@@ -45,6 +49,9 @@ export const ANYAIGC_MEDIA_MODEL_IDS = [
     KLING_3_TURBO_MODEL,
     MINIMAX_HAILUO_02_MODEL,
     MINIMAX_HAILUO_23_MODEL,
+    SEEDANCE_2_5_MODEL,
+    SEEDANCE_2_0_MODEL,
+    SEEDANCE_2_0_FAST_MODEL,
 ] as const;
 
 export type AnyAIGCMediaModelId = (typeof ANYAIGC_MEDIA_MODEL_IDS)[number];
@@ -62,11 +69,12 @@ type ImageCapability = {
 
 type VideoCapability = {
     kind: "video";
-    invocation: "grok" | "kling-motion-control" | "kling-omni-video" | "kling-3-turbo" | "minimax-hailuo";
+    invocation: "grok" | "kling-motion-control" | "kling-omni-video" | "kling-3-turbo" | "minimax-hailuo" | "seedance";
     defaultOperation: VideoOperation;
     operations: VideoOperation[];
     imageCount: MediaLimits;
     videoCount: MediaLimits;
+    audioCount?: MediaLimits;
 };
 
 export type MediaModelCapability = ImageCapability | VideoCapability;
@@ -142,7 +150,22 @@ export const ANYAIGC_MEDIA_MODEL_CAPABILITIES: Record<AnyAIGCMediaModelId, Media
         imageCount: { min: 0, max: 2 },
         videoCount: { min: 0, max: 0 },
     },
+    [SEEDANCE_2_5_MODEL]: seedanceCapability({ images: 30, videos: 10, audios: 10 }),
+    [SEEDANCE_2_0_MODEL]: seedanceCapability({ images: 9, videos: 3, audios: 3 }),
+    [SEEDANCE_2_0_FAST_MODEL]: seedanceCapability({ images: 9, videos: 3, audios: 3 }),
 };
+
+function seedanceCapability(limits: { images: number; videos: number; audios: number }): VideoCapability {
+    return {
+        kind: "video",
+        invocation: "seedance",
+        defaultOperation: "omni-video",
+        operations: ["omni-video", "image-to-video", "first-last-frame"],
+        imageCount: { min: 0, max: limits.images },
+        videoCount: { min: 0, max: limits.videos },
+        audioCount: { min: 0, max: limits.audios },
+    };
+}
 
 export function mediaModelName(value: string) {
     const index = value.indexOf("::");
@@ -219,19 +242,34 @@ export function isMiniMaxHailuoVideoModel(value: string) {
     return mediaModelCapability(value)?.kind === "video" && mediaModelCapability(value)?.invocation === "minimax-hailuo";
 }
 
+export function isSeedanceVideoModel(value: string) {
+    return mediaModelCapability(value)?.kind === "video" && mediaModelCapability(value)?.invocation === "seedance";
+}
+
+export function isSeedanceFrameOperation(model: string, operation: unknown) {
+    if (!isSeedanceVideoModel(model)) return false;
+    const selected = normalizeVideoOperation(model, operation);
+    return selected === "image-to-video" || selected === "first-last-frame";
+}
+
+export function seedanceForcesAdaptiveRatio(model: string, operation: unknown) {
+    return mediaModelName(model) === SEEDANCE_2_5_MODEL && isSeedanceFrameOperation(model, operation);
+}
+
 export function normalizeVideoOperation(model: string, value: unknown): VideoOperation {
     const capability = mediaModelCapability(model);
     if (!capability || capability.kind !== "video") return "text-to-video";
     return capability.operations.includes(value as VideoOperation) ? (value as VideoOperation) : capability.defaultOperation;
 }
 
-export type MediaRequestState = { imageCount?: number; videoCount?: number; hasMask?: boolean; operation?: unknown };
+export type MediaRequestState = { imageCount?: number; videoCount?: number; audioCount?: number; hasMask?: boolean; operation?: unknown };
 
 export function mediaRequestError(model: string, state: MediaRequestState, language: LanguageName = useLanguageStore.getState().language) {
     const capability = mediaModelCapability(model);
     if (!capability) return mediaText("当前模型未接入 AnyAIGC Canvas", "The selected model is not supported by AnyAIGC Canvas.", language);
     const images = state.imageCount || 0;
     const videos = state.videoCount || 0;
+    const audios = state.audioCount || 0;
     if (capability.kind === "image") {
         if (images && !capability.allowsReferences) return mediaText("当前图片模型不支持参考图片", "The selected image model does not support reference images.", language);
         if (images > capability.maxReferences) return mediaText(`当前图片模型最多支持 ${capability.maxReferences} 张参考图`, `The selected image model supports up to ${capability.maxReferences} reference image${capability.maxReferences === 1 ? "" : "s"}.`, language);
@@ -246,8 +284,15 @@ export function mediaRequestError(model: string, state: MediaRequestState, langu
         const requiredImages = operation === "text-to-video" ? 0 : operation === "image-to-video" ? 1 : 2;
         if (images !== requiredImages) return countError("图片", "image", { min: requiredImages, max: requiredImages }, language);
     }
+    if (capability.invocation === "seedance" && isSeedanceFrameOperation(model, state.operation)) {
+        const requiredImages = normalizeVideoOperation(model, state.operation) === "image-to-video" ? 1 : 2;
+        if (images !== requiredImages) return countError("图片", "image", { min: requiredImages, max: requiredImages }, language);
+        if (videos || audios) return mediaText("首帧和首尾帧模式不能同时使用参考视频或参考音频", "First-frame and first & last frame modes cannot be combined with reference video or audio.", language);
+    }
     if (images < capability.imageCount.min || images > capability.imageCount.max) return countError("图片", "image", capability.imageCount, language);
     if (videos < capability.videoCount.min || videos > capability.videoCount.max) return countError("视频", "video", capability.videoCount, language);
+    const audioLimits = capability.audioCount || { min: 0, max: 0 };
+    if (audios < audioLimits.min || audios > audioLimits.max) return countError("音频", "audio", audioLimits, language);
     return "";
 }
 
@@ -363,6 +408,54 @@ function greatestCommonDivisor(a: number, b: number): number {
     return b ? greatestCommonDivisor(b, a % b) : a || 1;
 }
 
+export type SeedanceImageRole = "reference_image" | "first_frame" | "last_frame";
+export type SeedanceContentItem =
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string }; role: SeedanceImageRole }
+    | { type: "video_url"; video_url: { url: string }; role: "reference_video" }
+    | { type: "audio_url"; audio_url: { url: string }; role: "reference_audio" };
+
+export function buildSeedanceVideoPayload(input: {
+    model: string;
+    prompt: string;
+    duration?: number | string;
+    operation?: unknown;
+    aspectRatio?: string;
+    resolution?: string;
+    generateAudio?: boolean;
+    watermark?: boolean;
+    imageUrls?: string[];
+    videoUrls?: string[];
+    audioUrls?: string[];
+}) {
+    const operation = normalizeVideoOperation(input.model, input.operation);
+    const frameMode = operation === "image-to-video" || operation === "first-last-frame";
+    const images = input.imageUrls || [];
+    const content: SeedanceContentItem[] = [{ type: "text", text: input.prompt }];
+    if (operation === "first-last-frame") {
+        const roles: SeedanceImageRole[] = ["first_frame", "last_frame"];
+        images.slice(0, 2).forEach((url, index) => content.push({ type: "image_url", image_url: { url }, role: roles[index] }));
+    } else if (operation === "image-to-video") {
+        for (const url of images.slice(0, 1)) content.push({ type: "image_url", image_url: { url }, role: "first_frame" });
+    } else {
+        for (const url of images) content.push({ type: "image_url", image_url: { url }, role: "reference_image" });
+    }
+    // The three image modes are mutually exclusive upstream: frame modes must not carry omni references.
+    if (!frameMode) {
+        for (const url of input.videoUrls || []) content.push({ type: "video_url", video_url: { url }, role: "reference_video" });
+        for (const url of input.audioUrls || []) content.push({ type: "audio_url", audio_url: { url }, role: "reference_audio" });
+    }
+    return {
+        model: mediaModelName(input.model),
+        content,
+        generate_audio: input.generateAudio !== false,
+        ratio: seedanceForcesAdaptiveRatio(input.model, operation) ? "adaptive" : normalizeSeedanceAspectRatio(input.aspectRatio || "adaptive"),
+        duration: normalizeSeedanceDuration(input.model, input.duration),
+        resolution: normalizeSeedanceResolution(input.model, input.resolution),
+        watermark: input.watermark === true,
+    };
+}
+
 export function normalizeVideoDuration(value: number | string) {
     const seconds = Math.round(Number(value) || 5);
     return Math.min(10, Math.max(3, seconds));
@@ -375,6 +468,7 @@ export function normalizeKling3TurboDuration(value: number | string) {
 
 export function videoDurationLimits(model: string) {
     if (isMiniMaxHailuoVideoModel(model)) return { min: 6, max: 10 };
+    if (isSeedanceVideoModel(model)) return { min: 4, max: mediaModelName(model) === SEEDANCE_2_5_MODEL ? 30 : 15 };
     return isKling3TurboVideoModel(model) ? { min: 3, max: 15 } : { min: 3, max: 10 };
 }
 
@@ -387,14 +481,35 @@ export function videoDurationOptions(model: string) {
 export function videoReferenceImageLimit(model: string, operation: unknown) {
     if (!isMiniMaxHailuoVideoModel(model)) {
         const capability = mediaModelCapability(model);
-        return capability?.kind === "video" ? capability.imageCount.max : 0;
+        if (capability?.kind !== "video") return 0;
+        if (isSeedanceFrameOperation(model, operation)) return normalizeVideoOperation(model, operation) === "image-to-video" ? 1 : 2;
+        return capability.imageCount.max;
     }
     const selectedOperation = normalizeVideoOperation(model, operation);
     return selectedOperation === "text-to-video" ? 0 : selectedOperation === "image-to-video" ? 1 : 2;
 }
 
+export function videoReferenceVideoLimit(model: string, operation: unknown) {
+    const capability = mediaModelCapability(model);
+    if (capability?.kind !== "video") return 0;
+    return isSeedanceFrameOperation(model, operation) ? 0 : capability.videoCount.max;
+}
+
+export function videoReferenceAudioLimit(model: string, operation?: unknown) {
+    const capability = mediaModelCapability(model);
+    if (capability?.kind !== "video") return 0;
+    return isSeedanceFrameOperation(model, operation) ? 0 : capability.audioCount?.max || 0;
+}
+
 export function normalizeVideoDurationForModel(model: string, value: number | string) {
     if (isMiniMaxHailuoVideoModel(model)) return normalizeMiniMaxHailuoDuration(value);
+    if (isSeedanceVideoModel(model)) return normalizeSeedanceDuration(model, value);
+    const limits = videoDurationLimits(model);
+    const seconds = Math.round(Number(value) || 5);
+    return Math.min(limits.max, Math.max(limits.min, seconds));
+}
+
+export function normalizeSeedanceDuration(model: string, value?: number | string) {
     const limits = videoDurationLimits(model);
     const seconds = Math.round(Number(value) || 5);
     return Math.min(limits.max, Math.max(limits.min, seconds));
@@ -408,7 +523,28 @@ export function normalizeKling3TurboResolution(value: string) {
     return value === "1080" || value === "1080p" ? "1080p" : "720p";
 }
 
-export function normalizeAspectRatio(value: string) {
+export function normalizeSeedanceResolution(model: string, value?: string) {
+    const normalized = String(value || "")
+        .toLowerCase()
+        .replace(/^(480|720|1080)$/, "$1p");
+    const options = seedanceResolutionOptions(model);
+    if (normalized === "480p") return "480p";
+    // Values above the model ceiling step down to the highest supported option instead of dropping to 720p.
+    if (normalized === "4k") return options.includes("4k") ? "4k" : options.includes("1080p") ? "1080p" : "720p";
+    if (normalized === "1080p") return options.includes("1080p") ? "1080p" : "720p";
+    return "720p";
+}
+
+export function seedanceResolutionOptions(model: string) {
+    // Upstream ceilings differ per model: 2.0 standard reaches 4k, 2.5 stops at 1080p, 2.0-fast at 720p.
+    const name = mediaModelName(model);
+    if (name === SEEDANCE_2_0_FAST_MODEL) return ["480p", "720p"];
+    if (name === SEEDANCE_2_0_MODEL) return ["480p", "720p", "1080p", "4k"];
+    return ["480p", "720p", "1080p"];
+}
+
+export function normalizeAspectRatio(value: string, model = "") {
+    if (isSeedanceVideoModel(model)) return normalizeSeedanceAspectRatio(value);
     return value === "9:16" || value === "1:1" ? value : "16:9";
 }
 
@@ -456,6 +592,23 @@ export function seedreamImageSize(model: string, quality: string, size: string) 
 
 function sizeDistance(width: number, height: number, candidate: { width: number; height: number }) {
     return Math.abs(Math.log(width / height) - Math.log(candidate.width / candidate.height)) + Math.abs(Math.log(Math.max(width, height)) - Math.log(Math.max(candidate.width, candidate.height))) * 0.25;
+}
+
+export function normalizeSeedanceAspectRatio(value: string) {
+    // Unsupported values fall back to the upstream default rather than forcing a crop to 16:9.
+    return (SEEDANCE_ASPECT_RATIOS as readonly string[]).includes(value) ? value : "adaptive";
+}
+
+export function seedanceAspectRatioOptions() {
+    return [...SEEDANCE_ASPECT_RATIOS];
+}
+
+export function supportsVideoResolution(model: string) {
+    return isKling3TurboVideoModel(model) || isSeedanceVideoModel(model);
+}
+
+export function supportsVideoAudioGeneration(model: string) {
+    return isSeedanceVideoModel(model);
 }
 
 function countError(zh: string, en: string, limits: MediaLimits, language: LanguageName) {

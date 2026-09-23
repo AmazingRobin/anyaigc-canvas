@@ -65,8 +65,8 @@ assert.deepEqual(
     ["gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.5-sunburst-c", "gpt-image-2.5-flare", "gpt-image-2.5-flare-c", "gemini-3.1-flash-image-preview", "grok-imagine-image", "grok-imagine-image-pro", "doubao-seedream-5-0-260128", "doubao-seedream-5-0-pro-260628"],
 );
 assert.deepEqual(
-    filterMediaModels(["grok-imagine-video", "grok-imagine-video-1.5", "kling-motion-control", "kling-omni-video", "kling-3.0-turbo", "MiniMax-Hailuo-02", "MiniMax-Hailuo-2.3", "veo-3-1", "video-pro-720p"], "video"),
-    ["grok-imagine-video", "grok-imagine-video-1.5", "kling-motion-control", "kling-omni-video", "kling-3.0-turbo", "MiniMax-Hailuo-02", "MiniMax-Hailuo-2.3"],
+    filterMediaModels(["grok-imagine-video", "grok-imagine-video-1.5", "kling-motion-control", "kling-omni-video", "kling-3.0-turbo", "MiniMax-Hailuo-02", "MiniMax-Hailuo-2.3", "doubao-seedance-2-5-260628", "doubao-seedance-2-0-260128", "doubao-seedance-2-0-fast-260128", "veo-3-1", "video-pro-720p"], "video"),
+    ["grok-imagine-video", "grok-imagine-video-1.5", "kling-motion-control", "kling-omni-video", "kling-3.0-turbo", "MiniMax-Hailuo-02", "MiniMax-Hailuo-2.3", "doubao-seedance-2-5-260628", "doubao-seedance-2-0-260128", "doubao-seedance-2-0-fast-260128"],
 );
 
 const normalized = normalizeAnyAIGCConfig(

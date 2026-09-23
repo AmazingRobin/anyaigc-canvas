@@ -35,7 +35,15 @@ export async function uploadImageReference(file: File, signal?: AbortSignal) {
 }
 
 export async function uploadVideoReference(file: File, signal?: AbortSignal) {
-    const metadata = { filename: file.name || "reference.mp4", size: file.size, content_type: file.type || "video/mp4" };
+    return uploadStorageReference(file, { filename: file.name || "reference.mp4", contentType: file.type || "video/mp4", error: "视频参考素材上传失败 / Failed to upload video reference" }, signal);
+}
+
+export async function uploadAudioReference(file: File, signal?: AbortSignal) {
+    return uploadStorageReference(file, { filename: file.name || "reference.mp3", contentType: file.type || "audio/mpeg", error: "音频参考素材上传失败 / Failed to upload audio reference" }, signal);
+}
+
+async function uploadStorageReference(file: File, options: { filename: string; contentType: string; error: string }, signal?: AbortSignal) {
+    const metadata = { filename: options.filename, size: file.size, content_type: options.contentType };
     try {
         const initResponse = await fetch(`${STORAGE_API_URL}/upload/init`, {
             method: "POST",
@@ -66,7 +74,7 @@ export async function uploadVideoReference(file: File, signal?: AbortSignal) {
         return confirm.file.url;
     } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") throw error;
-        throw new Error("视频参考素材上传失败 / Failed to upload video reference");
+        throw new Error(options.error);
     }
 }
 

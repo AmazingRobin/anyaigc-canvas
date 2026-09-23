@@ -19,6 +19,7 @@ import { AZURE_IMAGE_EDIT_ACCEPT, getDataUrlByteSize, readImageMeta, toMjMaskBas
 import {
     isKling3TurboVideoModel,
     isMjImageModel,
+    isSeedanceFrameOperation,
     mediaModelCapability,
     mediaRequestError,
     normalizeVideoOperation,
@@ -2335,7 +2336,7 @@ function InfiniteCanvasPage() {
                     const videoOperation = isKling3TurboVideoModel(generationConfig.model) ? (videoGenerationContext.referenceImages.length ? "image-to-video" : "text-to-video") : normalizeVideoOperation(generationConfig.model, generationConfig.videoOperation);
                     const videoSeconds = generationConfig.videoSeconds;
                     const videoRequestConfig = { ...generationConfig, videoOperation, videoSeconds };
-                    const videoRequestError = mediaRequestError(generationConfig.model, { imageCount: videoGenerationContext.referenceImages.length, videoCount: videoGenerationContext.referenceVideos.length, operation: videoOperation });
+                    const videoRequestError = mediaRequestError(generationConfig.model, { imageCount: videoGenerationContext.referenceImages.length, videoCount: videoGenerationContext.referenceVideos.length, audioCount: videoGenerationContext.referenceAudios.length, operation: videoOperation });
                     if (videoRequestError) throw new Error(videoRequestError);
                     const spec = nodeSizeFromRatio(generationConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
                     const isEmptyVideoNode = sourceNode?.type === CanvasNodeType.Video && !sourceNode.metadata?.content;
@@ -3599,10 +3600,20 @@ function buildCanvasVideoGenerationContext(config: AiConfig, sourceNode: CanvasN
         referenceImages = sourceImages.length ? sourceImages : referenceImages;
         referenceVideos = sourceVideos.length ? sourceVideos : referenceVideos;
     }
+    // Frame modes keep the single source image resolved above; only omni-video merges the node into the reference pool.
+    if (capability.invocation === "seedance" && operation === "omni-video") {
+        if (sourceImages.length) referenceImages = [...sourceImages, ...referenceImages.filter((image) => image.id !== sourceImages[0]?.id)].slice(0, capability.imageCount.max);
+        if (sourceVideos.length) referenceVideos = [...sourceVideos, ...referenceVideos.filter((video) => video.id !== sourceVideos[0]?.id)].slice(0, capability.videoCount.max);
+    }
+    // Seedance frame modes are mutually exclusive with omni references upstream, so drop connected video/audio.
+    const frameMode = isSeedanceFrameOperation(config.model, operation);
+    const referenceAudios = frameMode ? [] : context.referenceAudios;
+    if (frameMode) referenceVideos = [];
     return {
         ...context,
         referenceImages,
         referenceVideos,
+        referenceAudios,
         imageCount: referenceImages.length,
         videoCount: referenceVideos.length,
     };

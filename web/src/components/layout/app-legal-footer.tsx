@@ -1,9 +1,6 @@
 "use client";
 
-import { ANYAIGC_PRIVACY_URL } from "@/constant/anyaigc-links";
-
-const ORIGINAL_SOURCE_URL = "https://github.com/basketikun/infinite-canvas";
-const LICENSE_URL = `${ORIGINAL_SOURCE_URL}/blob/main/LICENSE`;
+const SUPPORT_URL = "https://anyaigc.ai/customersupport";
 
 export function AppLegalFooter() {
     return (
@@ -12,16 +9,8 @@ export function AppLegalFooter() {
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                     <span>AnyAIGC Canvas</span>
                     <span className="hidden text-stone-300 sm:inline dark:text-stone-700">/</span>
-                    <a href={ORIGINAL_SOURCE_URL} target="_blank" rel="noreferrer" className="transition hover:text-stone-700 dark:hover:text-stone-300">
-                        开源项目
-                    </a>
-                    <span className="hidden text-stone-300 sm:inline dark:text-stone-700">/</span>
-                    <a href={LICENSE_URL} target="_blank" rel="noreferrer" className="transition hover:text-stone-700 dark:hover:text-stone-300">
-                        AGPL-3.0
-                    </a>
-                    <span className="hidden text-stone-300 sm:inline dark:text-stone-700">/</span>
-                    <a href={ANYAIGC_PRIVACY_URL} target="_blank" rel="noreferrer" className="transition hover:text-stone-700 dark:hover:text-stone-300">
-                        隐私政策
+                    <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className="transition hover:text-stone-700 dark:hover:text-stone-300">
+                        联系客服
                     </a>
                 </div>
             </div>

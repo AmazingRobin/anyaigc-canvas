@@ -418,6 +418,12 @@ export const canvasZhToEn = {
     "点击": "Click",
     "打开本地 Codex 面板": "Open Local Codex Panel",
     "引用图片预览": "Referenced Image Preview",
+    "视频设置": "Video Settings",
+    "生成音频": "Generate Audio",
+    "模型默认": "Model Default",
+    "AnyAIGC 视频": "AnyAIGC Video",
+    "视频任务以异步方式创建；不会自动切换到其他模型。": "Video tasks are created asynchronously; Canvas never switches to another model automatically.",
+    "需要 1 张人物参考图和 1 个动作参考视频。": "Requires one person image and one motion-reference video.",
 } as const;
 
 const canvasEnToZh = new Map<string, string>(Object.entries(canvasZhToEn).map(([zh, en]) => [en, zh]));

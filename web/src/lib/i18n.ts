@@ -28,7 +28,7 @@ const coreZhToEn = {
     "媒体 Key": "Media Key",
     "文本 Key": "Text Key",
     "智能自动": "Smart Auto",
-    "开源项目": "Open Source Project",
+    联系客服: "Contact Support",
     图片和视频生成: "Image And Video Generation",
     "Agent 和文本模型": "Agents And Text Models",
     提示词库: "Prompt Library",
@@ -50,7 +50,6 @@ const coreZhToEn = {
     "基于 infinite-canvas 定制": "Customized From infinite-canvas",
     修改版源码: "Modified Source",
     原项目: "Original Project",
-    隐私政策: "Privacy Policy",
 
     我的画布: "My Canvas",
     生图工作台: "Image Studio",

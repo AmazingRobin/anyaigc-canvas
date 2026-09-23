@@ -6,16 +6,18 @@ import {
     buildKlingMotionControlPayload,
     buildKlingOmniVideoPayload,
     buildMiniMaxHailuoVideoPayload,
-    isGrokVideoModel,
+    buildSeedanceVideoPayload,
+    isSeedanceFrameOperation,
     mediaModelCapability,
     mediaRequestError,
     normalizeAspectRatio,
     normalizeKling3TurboDuration,
     normalizeMiniMaxHailuoDuration,
     normalizeVideoDuration,
+    normalizeVideoOperation,
 } from "@/lib/anyaigc-media-models";
 import { workbenchText } from "@/lib/i18n-workbench";
-import { uploadImageReference, uploadVideoReference } from "@/services/api/media-upload";
+import { uploadAudioReference, uploadImageReference, uploadVideoReference } from "@/services/api/media-upload";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { getImageBlob } from "@/services/image-storage";
 import { buildApiUrl, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
@@ -34,6 +36,7 @@ type VideoResponse = {
     video_url?: string | null;
     url?: string | null;
     result_urls?: string[];
+    content?: { video_url?: string | null };
     task_result?: { videos?: Array<{ url?: string | null }> };
     data?: VideoResponse | null;
     file?: { download_url?: string | null };
@@ -46,7 +49,7 @@ type VideoResponse = {
 };
 
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
-export type VideoGenerationTask = { id: string; provider: "grok" | "kling-motion-control" | "kling-omni-video" | "kling-3-turbo-text" | "kling-3-turbo-image" | "minimax-hailuo"; model: string; startedAt?: number };
+export type VideoGenerationTask = { id: string; provider: "grok" | "kling-motion-control" | "kling-omni-video" | "kling-3-turbo-text" | "kling-3-turbo-image" | "minimax-hailuo" | "seedance"; model: string; startedAt?: number };
 export type VideoGenerationTaskState = { status: "pending" } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
 export type VideoGenerationPollConfig = { attempts: number; delayMs: number; timeoutMessage: string };
 
@@ -74,20 +77,21 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
     const capability = mediaModelCapability(requestConfig.model);
     if (!capability || capability.kind !== "video") throw new Error(workbenchText("请先配置 AnyAIGC 支持的视频模型", "Configure a supported AnyAIGC video model first"));
     if (!requestConfig.apiKey.trim()) throw new Error(workbenchText("请先配置媒体 API Key", "Configure a media API key first"));
-    if (audioReferences.length) throw new Error(workbenchText("当前视频模型不支持参考音频", "The selected video model does not support audio references."));
-    const validationError = mediaRequestError(requestConfig.model, { imageCount: references.length, videoCount: videoReferences.length, operation: config.videoOperation });
+    const validationError = mediaRequestError(requestConfig.model, { imageCount: references.length, videoCount: videoReferences.length, audioCount: audioReferences.length, operation: config.videoOperation });
     if (validationError) throw new Error(validationError);
 
     if (capability.invocation === "grok") return createGrokTask(requestConfig, selectedModel, prompt, references, videoReferences, options);
     if (capability.invocation === "kling-motion-control") return createKlingMotionControlTask(requestConfig, selectedModel, prompt, references[0], videoReferences[0], options);
     if (capability.invocation === "kling-3-turbo") return createKling3TurboTask(requestConfig, selectedModel, prompt, references, options);
     if (capability.invocation === "minimax-hailuo") return createMiniMaxHailuoTask(requestConfig, selectedModel, prompt, references, config.videoOperation, options);
+    if (capability.invocation === "seedance") return createSeedanceTask(requestConfig, selectedModel, prompt, references, videoReferences, audioReferences, options);
+    if (audioReferences.length) throw new Error(workbenchText("当前视频模型不支持参考音频", "The selected video model does not support audio references."));
     return createKlingOmniVideoTask(requestConfig, selectedModel, prompt, references, videoReferences, options);
 }
 
 export async function pollVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
     const requestConfig = resolveModelRequestConfig(config, task.model);
-    const path = task.provider === "grok" ? `/video/query?id=${encodeURIComponent(task.id)}` : task.provider === "kling-motion-control" ? `/kling/v1/videos/motion-control/${encodeURIComponent(task.id)}` : task.provider === "kling-3-turbo-text" ? `/kling/text-to-video/kling-3.0-turbo/${encodeURIComponent(task.id)}` : task.provider === "kling-3-turbo-image" ? `/kling/image-to-video/kling-3.0-turbo/${encodeURIComponent(task.id)}` : task.provider === "minimax-hailuo" ? `/minimax/v1/query/video_generation?task_id=${encodeURIComponent(task.id)}` : `/kling/v1/videos/omni-video/${encodeURIComponent(task.id)}`;
+    const path = task.provider === "grok" ? `/video/query?id=${encodeURIComponent(task.id)}` : task.provider === "kling-motion-control" ? `/kling/v1/videos/motion-control/${encodeURIComponent(task.id)}` : task.provider === "kling-3-turbo-text" ? `/kling/text-to-video/kling-3.0-turbo/${encodeURIComponent(task.id)}` : task.provider === "kling-3-turbo-image" ? `/kling/image-to-video/kling-3.0-turbo/${encodeURIComponent(task.id)}` : task.provider === "minimax-hailuo" ? `/minimax/v1/query/video_generation?task_id=${encodeURIComponent(task.id)}` : task.provider === "seedance" ? `/api/v3/contents/generations/tasks/${encodeURIComponent(task.id)}` : `/kling/v1/videos/omni-video/${encodeURIComponent(task.id)}`;
     try {
         const response = await axios.get<VideoResponse>(apiUrl(requestConfig, path), { headers: apiHeaders(requestConfig), signal: options?.signal });
         const video = unwrap(response.data);
@@ -146,6 +150,32 @@ async function createMiniMaxHailuoTask(config: AiConfig, selectedModel: string, 
     return { id: taskId(created), provider: "minimax-hailuo", model: selectedModel, startedAt: Date.now() };
 }
 
+async function createSeedanceTask(config: AiConfig, selectedModel: string, prompt: string, references: ReferenceImage[], videoReferences: ReferenceVideo[], audioReferences: ReferenceAudio[], options?: RequestOptions): Promise<VideoGenerationTask> {
+    const operation = normalizeVideoOperation(config.model, config.videoOperation);
+    // Frame modes are mutually exclusive with omni references upstream, so skip uploads that would be dropped.
+    const frameMode = isSeedanceFrameOperation(config.model, operation);
+    const [imageUrls, videoUrls, audioUrls] = await Promise.all([
+        Promise.all(references.map((image) => referenceImageUrl(image, options))),
+        frameMode ? [] : Promise.all(videoReferences.map((video) => referenceVideoUrl(video, options))),
+        frameMode ? [] : Promise.all(audioReferences.map((audio) => referenceAudioUrl(audio, options))),
+    ]);
+    const payload = buildSeedanceVideoPayload({
+        model: config.model,
+        prompt,
+        operation,
+        duration: config.videoSeconds,
+        aspectRatio: config.size,
+        resolution: config.vquality,
+        generateAudio: config.videoGenerateAudio !== "false",
+        watermark: config.videoWatermark === "true",
+        imageUrls,
+        videoUrls,
+        audioUrls,
+    });
+    const created = await createTask(config, "/api/v3/contents/generations/tasks", payload, options);
+    return { id: taskId(created), provider: "seedance", model: selectedModel, startedAt: Date.now() };
+}
+
 async function createTask(config: AiConfig, path: string, body: FormData | Record<string, unknown>, options?: RequestOptions) {
     try {
         const response = await axios.post<VideoResponse>(apiUrl(config, path), body, { headers: body instanceof FormData ? apiHeaders(config) : apiHeaders(config, "application/json"), signal: options?.signal });
@@ -170,8 +200,15 @@ async function referenceVideoUrl(video: ReferenceVideo, options?: RequestOptions
     return uploadVideoReference(new File([blob], video.name || "reference.mp4", { type: blob.type || video.type || "video/mp4" }), options?.signal);
 }
 
+async function referenceAudioUrl(audio: ReferenceAudio, options?: RequestOptions) {
+    if (isPublicUrl(audio.url)) return audio.url;
+    const blob = audio.storageKey ? await getMediaBlob(audio.storageKey) : await fetch(audio.url).then((response) => response.blob());
+    if (!blob) throw new Error(workbenchText("参考音频读取失败，请重新添加 MP3 或 WAV", "Failed to read the audio reference. Add the MP3 or WAV again."));
+    return uploadAudioReference(new File([blob], audio.name || "reference.mp3", { type: blob.type || audio.type || "audio/mpeg" }), options?.signal);
+}
+
 function apiUrl(config: AiConfig, path: string) {
-    return path.startsWith("/kling/") || path.startsWith("/minimax/") ? `${config.baseUrl.replace(/\/+$/, "")}${path}` : buildApiUrl(config.baseUrl, path);
+    return path.startsWith("/kling/") || path.startsWith("/minimax/") || path.startsWith("/api/v3/") ? `${config.baseUrl.replace(/\/+$/, "")}${path}` : buildApiUrl(config.baseUrl, path);
 }
 
 function apiHeaders(config: AiConfig, contentType?: string) {
@@ -190,7 +227,7 @@ function taskId(video: VideoResponse) {
 }
 
 function resultUrl(video: VideoResponse) {
-    return video.video_url || video.url || video.result_urls?.find(Boolean) || video.task_result?.videos?.find((item) => item.url)?.url || video.file?.download_url || video.data?.file?.download_url || "";
+    return video.video_url || video.url || video.content?.video_url || video.result_urls?.find(Boolean) || video.task_result?.videos?.find((item) => item.url)?.url || video.file?.download_url || video.data?.file?.download_url || video.data?.content?.video_url || "";
 }
 
 function statuses(video: VideoResponse): string[] {
