@@ -18,7 +18,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { useI18n } from "@/lib/i18n";
 import { normalizeWorkbenchQuality, workbenchCount, workbenchErrorText, workbenchFormatDate, workbenchPinLabel, workbenchQualityLabel, workbenchText, workbenchTrashExpiry, workbenchTrashLabel, type WorkbenchLanguage } from "@/lib/i18n-workbench";
-import { isGrokImageModel, mediaModelCapability, mediaRequestError } from "@/lib/anyaigc-media-models";
+import { imageReferenceLimit as modelImageReferenceLimit, mediaModelCapability, mediaRequestError } from "@/lib/anyaigc-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
@@ -131,7 +131,7 @@ type GenerationLog = {
 
 type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "size" | "count">;
 
-const IMAGE_REFERENCE_LIMIT = 5;
+const IMAGE_REFERENCE_LIMIT = 14;
 const INITIAL_LOG_VISIBLE_COUNT = 60;
 const LOG_VISIBLE_BATCH_SIZE = 60;
 const LOG_THUMBNAIL_SIZE = 512;
@@ -195,7 +195,7 @@ export default function ImagePage() {
 
     const model = effectiveConfig.imageModel || effectiveConfig.model;
     const imageCapability = mediaModelCapability(model);
-    const imageReferenceLimit = imageCapability?.kind === "image" && !imageCapability.allowsReferences ? 0 : isGrokImageModel(model) ? 1 : IMAGE_REFERENCE_LIMIT;
+    const imageReferenceLimit = modelImageReferenceLimit(model) || (imageCapability?.kind === "image" ? 0 : IMAGE_REFERENCE_LIMIT);
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(15, Number(config.count) || 1));
     const results = resultsBySession[activeSessionId] || [];
@@ -265,7 +265,7 @@ export default function ImagePage() {
         try {
             const draft = JSON.parse(window.localStorage.getItem(IMAGE_WORKBENCH_DRAFT_KEY) || "{}") as Partial<Pick<WorkbenchSession, "prompt" | "references">>;
             if (typeof draft.prompt === "string") setPrompt(draft.prompt);
-            if (Array.isArray(draft.references)) setReferences(draft.references.slice(0, IMAGE_REFERENCE_LIMIT));
+            if (Array.isArray(draft.references)) setReferences(draft.references.slice(0, imageReferenceLimit || IMAGE_REFERENCE_LIMIT));
         } catch {}
         setDraftHydrated(true);
     }, []);
@@ -278,7 +278,7 @@ export default function ImagePage() {
                 IMAGE_WORKBENCH_DRAFT_KEY,
                 JSON.stringify({
                     prompt,
-                    references: references.slice(0, IMAGE_REFERENCE_LIMIT),
+                    references: references.slice(0, imageReferenceLimit || IMAGE_REFERENCE_LIMIT),
                 }),
             );
         }, 150);
@@ -306,7 +306,7 @@ export default function ImagePage() {
                 createdAt: value[sessionId]?.createdAt || Date.now(),
                 requestCount: (value[sessionId]?.requestCount || 0) + requestCountDelta,
                 ...next,
-                references: next.references.slice(0, IMAGE_REFERENCE_LIMIT),
+                references: next.references.slice(0, imageReferenceLimit || IMAGE_REFERENCE_LIMIT),
             },
         }));
     };
@@ -787,7 +787,7 @@ export default function ImagePage() {
         if (requestId !== previewRequestIdRef.current) return;
         setPreviewLog(hydratedLog);
         setPrompt(hydratedLog.prompt);
-        setReferences((hydratedLog.references || []).slice(0, IMAGE_REFERENCE_LIMIT));
+        setReferences((hydratedLog.references || []).slice(0, imageReferenceLimit || IMAGE_REFERENCE_LIMIT));
         if (hydratedLog.config.imageModel || hydratedLog.model) updateConfig("imageModel", hydratedLog.config.imageModel || hydratedLog.model);
         if (hydratedLog.config.quality) updateConfig("quality", hydratedLog.config.quality);
         if (hydratedLog.config.size) updateConfig("size", hydratedLog.config.size);
@@ -805,7 +805,7 @@ export default function ImagePage() {
         setSelectedResultIds([]);
         setLogsOpen(false);
         setPrompt(session.prompt);
-        setReferences(session.references.slice(0, IMAGE_REFERENCE_LIMIT));
+        setReferences(session.references.slice(0, imageReferenceLimit || IMAGE_REFERENCE_LIMIT));
         if (session.config.imageModel || session.model) updateConfig("imageModel", session.config.imageModel || session.model);
         if (session.config.quality) updateConfig("quality", session.config.quality);
         if (session.config.size) updateConfig("size", session.config.size);
@@ -818,7 +818,7 @@ export default function ImagePage() {
             return;
         }
         setPrompt(request.prompt);
-        setReferences((request.references || []).slice(0, IMAGE_REFERENCE_LIMIT));
+        setReferences((request.references || []).slice(0, imageReferenceLimit || IMAGE_REFERENCE_LIMIT));
         if (request.config.imageModel || request.model) updateConfig("imageModel", request.config.imageModel || request.model);
         if (request.config.quality) updateConfig("quality", request.config.quality);
         if (request.config.size) updateConfig("size", request.config.size);

@@ -4,6 +4,8 @@
 
 + [变更] 品牌升级为 AnyAIGC Canvas，默认请求地址为 `https://anyaigc.com`；用户在浏览器中分别配置媒体与文本 API Key，并推荐选择“智能自动 / Smart Auto”分组。
 + [新增] 媒体模型继续依赖 `/v1/models` 动态发现，仅显示当前 Key 返回且 Canvas 已支持的模型：`gpt-image-2`、Gemini 图片、Grok 图片、Grok 视频与 Kling 视频模型。
++ [新增] 接入动态发现的 `doubao-seedream-5-0-260128` 与 `doubao-seedream-5-0-pro-260628`：文生图和图生图均走 JSON `/images/generations`，Lite 使用 `/v1`，Pro 使用 `/api/v3`；参考图上传后写入 `image`，关闭水印，不提交组图/流式参数。
++ [修复] Seedream 返回的 `b64_json` 已是完整 data URL 时不再二次拼接 `data:image/png;base64,` 前缀，避免图片生成成功但无法显示。
 + [新增] 接入 AnyAIGC Grok 与 Kling 视频端点；`kling-motion-control` 支持图片和动作视频参考，视频参考素材通过 storage.to 上传。
 + [变更] 移除原云同步，仅保留浏览器本地数据与用户自有 WebDAV 的可选同步。
 + [修复] 刷新页面后保留当前 API Key 已获取的模型列表和默认模型选择；更换 Key 时仍会清空该 Key 的旧模型。

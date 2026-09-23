@@ -10,6 +10,8 @@ export const GEMINI_FLASH_IMAGE_MODEL = "gemini-3.1-flash-image-preview";
 export const GEMINI_PRO_IMAGE_MODEL = "gemini-3-pro-image-preview";
 export const GROK_IMAGINE_IMAGE_MODEL = "grok-imagine-image";
 export const GROK_IMAGINE_IMAGE_PRO_MODEL = "grok-imagine-image-pro";
+export const DOUBAO_SEEDREAM_5_MODEL = "doubao-seedream-5-0-260128";
+export const DOUBAO_SEEDREAM_5_PRO_MODEL = "doubao-seedream-5-0-pro-260628";
 export const GROK_IMAGINE_VIDEO_MODEL = "grok-imagine-video";
 export const GROK_IMAGINE_VIDEO_15_MODEL = "grok-imagine-video-1.5";
 export const KLING_MOTION_CONTROL_MODEL = "kling-motion-control";
@@ -30,6 +32,8 @@ export const ANYAIGC_MEDIA_MODEL_IDS = [
     GEMINI_PRO_IMAGE_MODEL,
     GROK_IMAGINE_IMAGE_MODEL,
     GROK_IMAGINE_IMAGE_PRO_MODEL,
+    DOUBAO_SEEDREAM_5_MODEL,
+    DOUBAO_SEEDREAM_5_PRO_MODEL,
     GROK_IMAGINE_VIDEO_MODEL,
     GROK_IMAGINE_VIDEO_15_MODEL,
     KLING_MOTION_CONTROL_MODEL,
@@ -45,9 +49,10 @@ type MediaLimits = { min: number; max: number };
 
 type ImageCapability = {
     kind: "image";
-    invocation: "openai" | "gemini";
+    invocation: "openai" | "gemini" | "seedream";
     allowsReferences: boolean;
     allowsMask: boolean;
+    maxReferences: number;
 };
 
 type VideoCapability = {
@@ -62,16 +67,18 @@ type VideoCapability = {
 export type MediaModelCapability = ImageCapability | VideoCapability;
 
 export const ANYAIGC_MEDIA_MODEL_CAPABILITIES: Record<AnyAIGCMediaModelId, MediaModelCapability> = {
-    [GPT_IMAGE_2_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
-    [GPT_IMAGE_2_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
-    [GPT_IMAGE_2_5_SUNBURST_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
-    [GPT_IMAGE_2_5_SUNBURST_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
-    [GPT_IMAGE_2_5_FLARE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
-    [GPT_IMAGE_2_5_FLARE_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true },
-    [GEMINI_FLASH_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false },
-    [GEMINI_PRO_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false },
-    [GROK_IMAGINE_IMAGE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false },
-    [GROK_IMAGINE_IMAGE_PRO_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false },
+    [GPT_IMAGE_2_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true, maxReferences: 5 },
+    [GPT_IMAGE_2_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true, maxReferences: 5 },
+    [GPT_IMAGE_2_5_SUNBURST_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true, maxReferences: 5 },
+    [GPT_IMAGE_2_5_SUNBURST_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true, maxReferences: 5 },
+    [GPT_IMAGE_2_5_FLARE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true, maxReferences: 5 },
+    [GPT_IMAGE_2_5_FLARE_C_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: true, maxReferences: 5 },
+    [GEMINI_FLASH_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false, maxReferences: 5 },
+    [GEMINI_PRO_IMAGE_MODEL]: { kind: "image", invocation: "gemini", allowsReferences: true, allowsMask: false, maxReferences: 5 },
+    [GROK_IMAGINE_IMAGE_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false, maxReferences: 1 },
+    [GROK_IMAGINE_IMAGE_PRO_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false, maxReferences: 1 },
+    [DOUBAO_SEEDREAM_5_MODEL]: { kind: "image", invocation: "seedream", allowsReferences: true, allowsMask: false, maxReferences: 14 },
+    [DOUBAO_SEEDREAM_5_PRO_MODEL]: { kind: "image", invocation: "seedream", allowsReferences: true, allowsMask: false, maxReferences: 10 },
     [GROK_IMAGINE_VIDEO_MODEL]: {
         kind: "video",
         invocation: "grok",
@@ -160,6 +167,21 @@ export function isGrokImageModel(value: string) {
     return capability?.kind === "image" && mediaModelName(value).startsWith("grok-imagine-image");
 }
 
+export function isSeedreamImageModel(value: string) {
+    const capability = mediaModelCapability(value);
+    return capability?.kind === "image" && capability.invocation === "seedream";
+}
+
+export function isSeedreamProImageModel(value: string) {
+    return mediaModelName(value) === DOUBAO_SEEDREAM_5_PRO_MODEL;
+}
+
+export function imageReferenceLimit(model: string) {
+    const capability = mediaModelCapability(model);
+    if (!capability || capability.kind !== "image" || !capability.allowsReferences) return 0;
+    return capability.maxReferences;
+}
+
 export function isGrokVideoModel(value: string) {
     return mediaModelCapability(value)?.kind === "video" && mediaModelCapability(value)?.invocation === "grok";
 }
@@ -192,7 +214,7 @@ export function mediaRequestError(model: string, state: MediaRequestState, langu
     const videos = state.videoCount || 0;
     if (capability.kind === "image") {
         if (images && !capability.allowsReferences) return mediaText("当前图片模型不支持参考图片", "The selected image model does not support reference images.", language);
-        if (isGrokImageModel(model) && images > 1) return mediaText("当前 Grok 图片模型仅支持一张参考图", "The selected Grok image model supports exactly one reference image.", language);
+        if (images > capability.maxReferences) return mediaText(`当前图片模型最多支持 ${capability.maxReferences} 张参考图`, `The selected image model supports up to ${capability.maxReferences} reference image${capability.maxReferences === 1 ? "" : "s"}.`, language);
         if (state.hasMask && !capability.allowsMask) return mediaText("当前图片模型不支持蒙版编辑", "The selected image model does not support masked editing.", language);
         return "";
     }
@@ -311,6 +333,52 @@ export function normalizeKling3TurboResolution(value: string) {
 
 export function normalizeAspectRatio(value: string) {
     return value === "9:16" || value === "1:1" ? value : "16:9";
+}
+
+const SEEDREAM_SIZE_PRESETS = [
+    { value: "1024x1024", width: 1024, height: 1024, tier: "1K" as const },
+    { value: "1152x864", width: 1152, height: 864, tier: "1K" as const },
+    { value: "864x1152", width: 864, height: 1152, tier: "1K" as const },
+    { value: "1424x800", width: 1424, height: 800, tier: "1K" as const },
+    { value: "800x1424", width: 800, height: 1424, tier: "1K" as const },
+    { value: "1248x832", width: 1248, height: 832, tier: "1K" as const },
+    { value: "832x1248", width: 832, height: 1248, tier: "1K" as const },
+    { value: "1568x672", width: 1568, height: 672, tier: "1K" as const },
+    { value: "2048x2048", width: 2048, height: 2048, tier: "2K" as const },
+    { value: "2368x1776", width: 2368, height: 1776, tier: "2K" as const },
+    { value: "1776x2368", width: 1776, height: 2368, tier: "2K" as const },
+    { value: "2816x1584", width: 2816, height: 1584, tier: "2K" as const },
+    { value: "1584x2816", width: 1584, height: 2816, tier: "2K" as const },
+    { value: "2496x1664", width: 2496, height: 1664, tier: "2K" as const },
+    { value: "1664x2496", width: 1664, height: 2496, tier: "2K" as const },
+    { value: "3136x1344", width: 3136, height: 1344, tier: "2K" as const },
+];
+const SEEDREAM_LITE_TIER_SIZES = ["2K", "3K", "4K"] as const;
+const SEEDREAM_PRO_TIER_SIZES = ["1K", "2K"] as const;
+
+export function seedreamImageSize(model: string, quality: string, size: string) {
+    const pro = isSeedreamProImageModel(model);
+    const requested = size.trim();
+    if (/^[1-4]K$/i.test(requested)) {
+        const tier = requested.toUpperCase();
+        if (pro) return SEEDREAM_PRO_TIER_SIZES.includes(tier as (typeof SEEDREAM_PRO_TIER_SIZES)[number]) ? tier : "2K";
+        return SEEDREAM_LITE_TIER_SIZES.includes(tier as (typeof SEEDREAM_LITE_TIER_SIZES)[number]) ? tier : "2K";
+    }
+    const dimensions = requested.match(/^(\d+)x(\d+)$/i);
+    if (dimensions) {
+        const width = Number(dimensions[1]);
+        const height = Number(dimensions[2]);
+        const presets = pro ? SEEDREAM_SIZE_PRESETS : SEEDREAM_SIZE_PRESETS.filter((item) => item.tier !== "1K");
+        return presets.reduce((best, item) => (sizeDistance(width, height, item) < sizeDistance(width, height, best) ? item : best)).value;
+    }
+    const normalizedQuality = quality.trim().toLowerCase();
+    if (normalizedQuality === "low") return pro ? "1K" : "2K";
+    if (normalizedQuality === "high") return pro ? "2K" : "4K";
+    return "2K";
+}
+
+function sizeDistance(width: number, height: number, candidate: { width: number; height: number }) {
+    return Math.abs(Math.log(width / height) - Math.log(candidate.width / candidate.height)) + Math.abs(Math.log(Math.max(width, height)) - Math.log(Math.max(candidate.width, candidate.height))) * 0.25;
 }
 
 function countError(zh: string, en: string, limits: MediaLimits, language: LanguageName) {

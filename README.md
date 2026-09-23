@@ -19,7 +19,7 @@ AnyAIGC Canvas 是面向 AnyAIGC 用户的浏览器端 AI 创作工作台。它�
 
 | 类型 | 已接入模型 |
 | --- | --- |
-| 🖼️ 图片 | `gpt-image-2`、`gemini-3.1-flash-image-preview`（Nano Banana 2）、`gemini-3-pro-image-preview`（Nano Banana Pro）、`grok-imagine-image`、`grok-imagine-image-pro` |
+| 🖼️ 图片 | `gpt-image-2`、`gemini-3.1-flash-image-preview`（Nano Banana 2）、`gemini-3-pro-image-preview`（Nano Banana Pro）、`grok-imagine-image`、`grok-imagine-image-pro`、`doubao-seedream-5-0-260128`（Seedream 5.0）、`doubao-seedream-5-0-pro-260628`（Seedream 5.0 Pro） |
 | 🎬 视频 | `grok-imagine-video`、`grok-imagine-video-1.5`、`kling-motion-control`、`kling-omni-video`、`kling-3.0-turbo`、`MiniMax-Hailuo-02`、`MiniMax-Hailuo-2.3` |
 
 不同模型支持的生成方式和参考素材不同，界面会根据所选模型限制可用参数。比如 `kling-motion-control` 需要一张图片和一个动作视频参考，MiniMax Hailuo 支持文生、首帧图生和首尾帧视频。

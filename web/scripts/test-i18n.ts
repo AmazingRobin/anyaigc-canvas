@@ -51,6 +51,8 @@ assert.equal(workbenchErrorText("视频2 宽高比需要在 0.4-2.5 之间", "en
 assert.equal(workbenchErrorText("Video 2 aspect ratio must be between 0.4 and 2.5", "zh"), "视频2 宽高比需要在 0.4-2.5 之间");
 assert.equal(workbenchErrorText("Gemini 拒绝了本次请求：SAFETY", "en"), "Gemini rejected this request: SAFETY");
 assert.equal(workbenchErrorText("Gemini rejected this request: SAFETY", "zh"), "Gemini 拒绝了本次请求：SAFETY");
+assert.equal(workbenchErrorText("当前图片模型最多支持 10 张参考图", "en"), "The selected image model supports up to 10 reference images.");
+assert.equal(workbenchErrorText("The selected image model supports up to 1 reference image.", "zh"), "当前图片模型最多支持 1 张参考图");
 assert.equal(workbenchErrorText("Gemini upstream rejected this request: SAFETY", "en"), "Gemini upstream rejected this request: SAFETY");
 assert.equal(workbenchErrorText("图片生成失败：500", "en"), "Image generation failed: 500");
 assert.equal(workbenchErrorText("Image generation failed：500", "zh"), "图片生成失败：500");

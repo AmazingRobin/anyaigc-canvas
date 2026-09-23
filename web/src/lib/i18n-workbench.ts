@@ -211,6 +211,8 @@ export const workbenchZhToEn = {
     "自适应": "Adaptive",
     "模型固定": "Fixed by model",
     "fast 模型不支持 1080p，会自动使用 720p。": "Fast models do not support 1080p and will automatically use 720p.",
+    "参考图读取失败，请重新添加": "Failed to read the image reference. Add it again.",
+    "当前图片模型不支持蒙版编辑": "The selected image model does not support masked editing",
 } as const satisfies Record<string, string>;
 
 const workbenchEnToZh = new Map<string, string>(Object.entries(workbenchZhToEn).map(([zh, en]) => [en, zh]));
@@ -221,6 +223,7 @@ const dynamicWorkbenchErrorRules = [
     [/^视频(\d+) 宽高需要在 300-6000px 之间$/u, /^Video (\d+) width and height must each be 300-6000 px$/u, (number: string) => `视频${number} 宽高需要在 300-6000px 之间`, (number: string) => `Video ${number} width and height must each be 300-6000 px`],
     [/^视频(\d+) 宽高比需要在 0\.4-2\.5 之间$/u, /^Video (\d+) aspect ratio must be between 0\.4 and 2\.5$/u, (number: string) => `视频${number} 宽高比需要在 0.4-2.5 之间`, (number: string) => `Video ${number} aspect ratio must be between 0.4 and 2.5`],
     [/^Gemini 拒绝了本次请求：(.*)$/u, /^Gemini rejected this request: (.*)$/u, (detail: string) => `Gemini 拒绝了本次请求：${detail}`, (detail: string) => `Gemini rejected this request: ${detail}`],
+    [/^当前图片模型最多支持 (\d+) 张参考图$/u, /^The selected image model supports up to (\d+) reference images?\.?$/u, (count: string) => `当前图片模型最多支持 ${count} 张参考图`, (count: string) => `The selected image model supports up to ${count} reference image${count === "1" ? "" : "s"}.`],
 ] as const;
 
 export type WorkbenchLanguage = LanguageName;

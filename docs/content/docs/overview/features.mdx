@@ -61,8 +61,9 @@ description: 当前项目已实现的主要功能
 
 OpenAI 兼容图像和文本能力继续复用现有接口：
 
-- `/v1/images/generations`：文生图。
-- `/v1/images/edits`：图生图/参考图编辑。
+- `/v1/images/generations`：文生图；Seedream 5.0 Lite 图生图也走该端点，参考图写入 JSON `image`。
+- `/api/v3/images/generations`：Seedream 5.0 Pro 文生图/图生图。
+- `/v1/images/edits`：GPT Image / Grok 图生图/参考图编辑。
 - `/v1/responses`：文本问答、带图问答和在线 Agent 工具调用。
 - `/v1/models`：读取模型列表；火山方舟 Agent Plan 专属 `/api/plan/v3` 当前未提供 OpenAI `/models` 模型列表接口，需要手动填写模型名。
 

@@ -1,0 +1,2633 @@
+- generic [ref=e6]:
+  - banner [ref=e7]:
+    - link "AnyAIGC AnyAIGC" [ref=e8] [cursor=pointer]:
+      - /url: /tutorials/00-intro
+      - img "AnyAIGC" [ref=e9]
+      - generic [ref=e10]: AnyAIGC
+    - generic [ref=e11]:
+      - button "浏览全部平台与教程" [ref=e2496] [cursor=pointer]:
+        - generic [ref=e19]: 浏览接口
+        - generic [aria-hidden] [ref=e20]: ▾
+      - group "主题" [ref=e2497]:
+        - button "浅色" [pressed] [ref=e2498] [cursor=pointer]
+        - button "深色" [ref=e2499] [cursor=pointer]
+      - group "Language" [ref=e32]:
+        - button "中文" [pressed] [ref=e33] [cursor=pointer]: 中
+        - button "English" [ref=e34] [cursor=pointer]: E
+    - progressbar [aria-hidden]
+  - generic [ref=e35]:
+    - navigation [ref=e37]:
+      - generic [ref=e40]:
+        - searchbox "Ctrl+K" [ref=e41]
+        - generic: Ctrl+K
+      - generic [ref=e42]:
+        - generic [ref=e2500]:
+          - button "快速开始" [ref=e2501] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e2505]:
+                - link "入门指南" [ref=e2506] [cursor=pointer]:
+                  - /url: /tutorials/00-intro
+              - listitem [ref=e2508]:
+                - link "Quick Start" [ref=e2509] [cursor=pointer]:
+                  - /url: /tutorials/quickstart-python
+              - listitem [ref=e2511]:
+                - link "异步任务通用说明" [ref=e2512] [cursor=pointer]:
+                  - /url: /tutorials/async-task-general
+        - generic [ref=e2514]:
+          - button "使用帮助" [ref=e2515] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e2519]:
+                - link "HTTP 状态码及其含义" [ref=e2520] [cursor=pointer]:
+                  - /url: /tutorials/http-status-codes
+              - listitem [ref=e2522]:
+                - button "中转站基本介绍" [ref=e2523] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2527]:
+                      - link "分组的特殊性及价格差异" [ref=e2528] [cursor=pointer]:
+                        - /url: /tutorials/relay-intro-5459008
+                    - listitem [ref=e2530]:
+                      - link "代理接口调用地址" [ref=e2531] [cursor=pointer]:
+                        - /url: /tutorials/relay-intro-5459027
+                    - listitem [ref=e2533]:
+                      - link "API Key 额度查询服务" [ref=e2534] [cursor=pointer]:
+                        - /url: /tutorials/relay-intro-5459028
+                    - listitem [ref=e2536]:
+                      - link "如何新建指定分组的令牌" [ref=e2537] [cursor=pointer]:
+                        - /url: /tutorials/relay-intro-5459010
+                    - listitem [ref=e2539]:
+                      - link "免费AI聊天项目导航" [ref=e2540] [cursor=pointer]:
+                        - /url: /tutorials/relay-intro-5459029
+                    - listitem [ref=e2542]:
+                      - link "分组详细表格" [ref=e2543] [cursor=pointer]:
+                        - /url: /tutorials/relay-intro-5459009
+                    - listitem [ref=e2545]:
+                      - link "API 快速开始指南" [ref=e2546] [cursor=pointer]:
+                        - /url: /tutorials/relay-intro-5459030
+              - listitem [ref=e2548]:
+                - button "Python 配置方式" [ref=e2549] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2553]:
+                      - link "python 使用 语音转文本" [ref=e2554] [cursor=pointer]:
+                        - /url: /tutorials/python-5459036
+                    - listitem [ref=e2556]:
+                      - link "python 使用文本转语音" [ref=e2557] [cursor=pointer]:
+                        - /url: /tutorials/python-5459037
+                    - listitem [ref=e2559]:
+                      - link "python 使用Embeddings 向量化" [ref=e2560] [cursor=pointer]:
+                        - /url: /tutorials/python-5459038
+                    - listitem [ref=e2562]:
+                      - link "python 调用DALL·E" [ref=e2563] [cursor=pointer]:
+                        - /url: /tutorials/python-5459039
+                    - listitem [ref=e2565]:
+                      - link "python简单调用 openai function-calling demo" [ref=e2566] [cursor=pointer]:
+                        - /url: /tutorials/python-5459040
+                    - listitem [ref=e2568]:
+                      - link "python 简单langchain 调用openai demo" [ref=e2569] [cursor=pointer]:
+                        - /url: /tutorials/python-5459053
+                    - listitem [ref=e2571]:
+                      - link "python llama_index 配置" [ref=e2572] [cursor=pointer]:
+                        - /url: /tutorials/python-5459054
+                    - listitem [ref=e2574]:
+                      - link "Python基础对话" [ref=e2575] [cursor=pointer]:
+                        - /url: /tutorials/python-5459019
+                    - listitem [ref=e2577]:
+                      - link "Python使用gpt-4o识别图片-本地图片" [ref=e2578] [cursor=pointer]:
+                        - /url: /tutorials/python-5564627
+                    - listitem [ref=e2580]:
+                      - link "Python使用gpt-4o识别图片" [ref=e2581] [cursor=pointer]:
+                        - /url: /tutorials/python-5459020
+                    - listitem [ref=e2583]:
+                      - link "Python使用Claude识别图片" [ref=e2584] [cursor=pointer]:
+                        - /url: /tutorials/python-5459021
+                    - listitem [ref=e2586]:
+                      - link "python 库流式输出" [ref=e2587] [cursor=pointer]:
+                        - /url: /tutorials/python-5808445
+                    - listitem [ref=e2589]:
+                      - link "gpt realtime模型调用" [ref=e2590] [cursor=pointer]:
+                        - /url: /tutorials/python-5918157
+                    - listitem [ref=e2592]:
+                      - link "python request 请求 流式输出demo" [ref=e2593] [cursor=pointer]:
+                        - /url: /tutorials/python-6002210
+                    - listitem [ref=e2595]:
+                      - link "python 使用gpt-image-1 创建编辑图片" [ref=e2596] [cursor=pointer]:
+                        - /url: /tutorials/python-6562372
+                    - listitem [ref=e2598]:
+                      - link "python openai官方库（使用AutoGPT，langchain等）" [ref=e2599] [cursor=pointer]:
+                        - /url: /tutorials/python-5459034
+                    - listitem [ref=e2601]:
+                      - link "python 连续对话" [ref=e2602] [cursor=pointer]:
+                        - /url: /tutorials/python-5459035
+              - listitem [ref=e2604]:
+                - button "Node.js 配置方式" [ref=e2605] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2609]:
+                      - link "nodejs 基础对话" [ref=e2610] [cursor=pointer]:
+                        - /url: /tutorials/nodejs-5459042
+              - listitem [ref=e2612]:
+                - button "PHP 配置方式" [ref=e2613] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2617]:
+                      - link "php使用图片编辑demo" [ref=e2618] [cursor=pointer]:
+                        - /url: /tutorials/php-6786581
+              - listitem [ref=e2620]:
+                - button "插件与软件教程" [ref=e2621] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2625]:
+                      - link "coze 工作流使用中转API 教程" [ref=e2626] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7540676
+                    - listitem [ref=e2628]:
+                      - link "RikkaHub 配置教程" [ref=e2629] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7467073
+                    - listitem [ref=e2631]:
+                      - link "Codex 配置教程" [ref=e2632] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7422014
+                    - listitem [ref=e2634]:
+                      - link "OpenClaw Clawdbot 自定义中转站配置教程" [ref=e2635] [cursor=pointer]:
+                        - /url: /tutorials/plugins-8130178
+                    - listitem [ref=e2637]:
+                      - link "OpenClaw 最新版本 自定义中转站配置教程" [ref=e2638] [cursor=pointer]:
+                        - /url: /tutorials/plugins-8221829
+                    - listitem [ref=e2640]:
+                      - link "N8N 工作流使用中转API 教程" [ref=e2641] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7248718
+                    - listitem [ref=e2643]:
+                      - link "Gemini CLI 中转站配置使用教程" [ref=e2644] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7146919
+                    - listitem [ref=e2646]:
+                      - link "Claude Code 安装使用教程" [ref=e2647] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7010249
+                    - listitem [ref=e2649]:
+                      - link "CherryStudio调用cluade MCP" [ref=e2650] [cursor=pointer]:
+                        - /url: /tutorials/plugins-6458685
+                    - listitem [ref=e2652]:
+                      - link "Cherry Studio配置教程" [ref=e2653] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5987397
+                    - listitem [ref=e2655]:
+                      - link "Cherry Studio配置 banana pro 4K和分辨率教程" [ref=e2656] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7865129
+                    - listitem [ref=e2658]:
+                      - link "CherryStudio配置o4推理级别" [ref=e2659] [cursor=pointer]:
+                        - /url: /tutorials/plugins-6874585
+                    - listitem [ref=e2661]:
+                      - link "dify添加模型" [ref=e2662] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5900725
+                    - listitem [ref=e2664]:
+                      - link "cline 配置教程" [ref=e2665] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5901956
+                    - listitem [ref=e2667]:
+                      - link "aider 配置教程" [ref=e2668] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459060
+                    - listitem [ref=e2670]:
+                      - link "Cursor 配置教程" [ref=e2671] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459061
+                    - listitem [ref=e2673]:
+                      - link "lobechat 设置教程" [ref=e2674] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459062
+                    - listitem [ref=e2676]:
+                      - link "ChatBox(推荐使用)" [ref=e2677] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459067
+                    - listitem [ref=e2679]:
+                      - link "开源gpt_academic" [ref=e2680] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459068
+                    - listitem [ref=e2682]:
+                      - link "nextchat 设置教程" [ref=e2683] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459059
+                    - listitem [ref=e2685]:
+                      - link "zotero gpt 配置方法" [ref=e2686] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459064
+                    - listitem [ref=e2688]:
+                      - link "CLAUDE DEV 配置教程" [ref=e2689] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459055
+                    - listitem [ref=e2691]:
+                      - link "沉浸式翻译 设置gpt翻译" [ref=e2692] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459057
+                    - listitem [ref=e2694]:
+                      - link "浏览器插件ChatGPT Sidebar" [ref=e2695] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459066
+                    - listitem [ref=e2697]:
+                      - link "chatgpt-on-wechat 配置教程" [ref=e2698] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459056
+                    - listitem [ref=e2700]:
+                      - link "chatgpt GPT Academic 学术优化配置gpt教程" [ref=e2701] [cursor=pointer]:
+                        - /url: /tutorials/plugins-5459063
+                    - listitem [ref=e2703]:
+                      - link "n8n 工作流获取本地图片生成视频例子" [ref=e2704] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7906925
+                    - listitem [ref=e2706]:
+                      - link "扣子工作流简单配置从输入到获取url" [ref=e2707] [cursor=pointer]:
+                        - /url: /tutorials/plugins-7989459
+                    - listitem [ref=e2709]:
+                      - link "opencode 配置教程" [ref=e2710] [cursor=pointer]:
+                        - /url: /tutorials/plugins-8105901
+                    - listitem [ref=e2712]:
+                      - link "OpenClaw配合CC switch自定义中转站配置教程" [ref=e2713] [cursor=pointer]:
+                        - /url: /tutorials/plugins-8274043
+              - listitem [ref=e2715]:
+                - link "AI 返回字段：思考相关" [ref=e2716] [cursor=pointer]:
+                  - /url: /tutorials/ai-thinking-fields
+              - listitem [ref=e2718]:
+                - link "自建图床 API 说明" [ref=e2719] [cursor=pointer]:
+                  - /url: /tutorials/image-host
+        - generic [ref=e2721]:
+          - button "文生音乐" [ref=e2722] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e2726]:
+                - button "Suno" [ref=e2727] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2731]:
+                      - button "任务提交" [ref=e2732] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2736]:
+                            - link "生成歌曲(灵感模式)" [ref=e2737] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-music&leaf=462521592
+                              - generic "POST /suno/submit/music · 17 demos" [ref=e2738]: 生成歌曲(灵感模式)
+                              - generic [aria-hidden] [ref=e2739]: POST
+                          - listitem [ref=e2740]:
+                            - link "生成歌曲(拼接歌曲)" [ref=e2741] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-concat&leaf=462523443
+                              - generic "POST /suno/submit/concat · 生成歌曲(拼接歌曲)" [ref=e2742]: 生成歌曲(拼接歌曲)
+                              - generic [aria-hidden] [ref=e2743]: POST
+                          - listitem [ref=e2744]:
+                            - link "创建歌手风格(Persona)" [ref=e2745] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-persona&leaf=462523448
+                              - generic "POST /suno/submit/persona · 创建歌手风格(Persona)" [ref=e2746]: 创建歌手风格(Persona)
+                              - generic [aria-hidden] [ref=e2747]: POST
+                          - listitem [ref=e2748]:
+                            - link "生成歌词" [ref=e2749] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-lyrics&leaf=462523454
+                              - generic "POST /suno/submit/lyrics · 生成歌词" [ref=e2750]: 生成歌词
+                              - generic [aria-hidden] [ref=e2751]: POST
+                          - listitem [ref=e2752]:
+                            - link "提升音乐风格" [ref=e2753] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-upsample-tags&leaf=462523493
+                              - generic "POST /suno/submit/upsample-tags · 提升音乐风格" [ref=e2754]: 提升音乐风格
+                              - generic [aria-hidden] [ref=e2755]: POST
+                          - listitem [ref=e2756]:
+                            - link "上传参考音频" [ref=e2757] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-uploads-audio&leaf=462523546
+                              - generic "POST /suno/uploads/audio · 2 demos" [ref=e2758]: 上传参考音频
+                              - generic [aria-hidden] [ref=e2759]: POST
+                    - listitem [ref=e2760]:
+                      - button "查询接口" [ref=e2761] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2765]:
+                            - link "查询单个任务（主用）" [ref=e2766] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-fetch-id&leaf=462523566
+                              - 'generic "GET /suno/fetch/{task_id} · 查询单个任务（主用）" [ref=e2767]': 查询单个任务（主用）
+                              - generic [aria-hidden] [ref=e2768]: GET
+                          - listitem [ref=e2769]:
+                            - link "批量获取任务" [ref=e2770] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-fetch&leaf=462523592
+                              - generic "POST /suno/fetch · 批量获取任务" [ref=e2771]: 批量获取任务
+                              - generic [aria-hidden] [ref=e2772]: POST
+                          - listitem [ref=e2773]:
+                            - link "获取wav" [ref=e2774] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-act-wav-clip-id&leaf=357249347
+                              - 'generic "GET /suno/act/wav/{clip_id} · 获取wav" [ref=e2775]': 获取wav
+                              - generic [aria-hidden] [ref=e2776]: GET
+                          - listitem [ref=e2777]:
+                            - link "Timing:歌词、音频时间线" [ref=e2778] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-act-timing-id&leaf=408281974
+                              - 'generic "GET /suno/act/timing/{id} · Timing:歌词、音频时间线" [ref=e2779]': Timing:歌词、音频时间线
+                              - generic [aria-hidden] [ref=e2780]: GET
+                          - listitem [ref=e2781]:
+                            - link "我的音乐列表" [ref=e2782] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-act-my-musics&leaf=468623861
+                              - generic "GET /suno/act/my-musics · 我的音乐列表" [ref=e2783]: 我的音乐列表
+                              - generic [aria-hidden] [ref=e2784]: GET
+                          - listitem [ref=e2785]:
+                            - link "生成 MIDI" [ref=e2786] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-act-midi&leaf=468660544
+                              - generic "GET /suno/act/midi · 生成 MIDI" [ref=e2787]: 生成 MIDI
+                              - generic [aria-hidden] [ref=e2788]: GET
+                          - listitem [ref=e2789]:
+                            - link "波形图数据" [ref=e2790] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-act-waveform&leaf=468660545
+                              - generic "GET /suno/act/waveform · 波形图数据" [ref=e2791]: 波形图数据
+                              - generic [aria-hidden] [ref=e2792]: GET
+                          - listitem [ref=e2793]:
+                            - link "MP4 生成状态" [ref=e2794] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-act-mp4-state&leaf=468660546
+                              - generic "GET /suno/act/mp4-state · MP4 生成状态" [ref=e2795]: MP4 生成状态
+                              - generic [aria-hidden] [ref=e2796]: GET
+                          - listitem [ref=e2797]:
+                            - link "账户积分余额" [ref=e2798] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-account-integral&leaf=462503146
+                              - generic "GET /suno/account/integral · 账户积分余额" [ref=e2799]: 账户积分余额
+                              - generic [aria-hidden] [ref=e2800]: GET
+                          - listitem [ref=e2801]:
+                            - link "获取音乐风格" [ref=e2802] [cursor=pointer]:
+                              - /url: /reference/suno?op=get-suno-act-music-style&leaf=472777926
+                              - generic "GET /suno/act/music-style · 获取音乐风格" [ref=e2803]: 获取音乐风格
+                              - generic [aria-hidden] [ref=e2804]: GET
+                    - listitem [ref=e2805]:
+                      - button "音频处理" [ref=e2806] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2810]:
+                            - link "人声/伴奏分离（clipId）" [ref=e2811] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-stems&leaf=468660547
+                              - generic "POST /suno/submit/stems · 人声/伴奏分离（clipId）" [ref=e2812]: 人声/伴奏分离（clipId）
+                              - generic [aria-hidden] [ref=e2813]: POST
+                          - listitem [ref=e2814]:
+                            - link "人声/伴奏分离（URL）" [ref=e2815] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-stems-by-url&leaf=468660548
+                              - generic "POST /suno/submit/stems-by-url · 人声/伴奏分离（URL）" [ref=e2816]: 人声/伴奏分离（URL）
+                              - generic [aria-hidden] [ref=e2817]: POST
+                          - listitem [ref=e2818]:
+                            - link "全轨12路分离（clipId）" [ref=e2819] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-stems-all&leaf=468660549
+                              - generic "POST /suno/submit/stems-all · 全轨12路分离（clipId）" [ref=e2820]: 全轨12路分离（clipId）
+                              - generic [aria-hidden] [ref=e2821]: POST
+                          - listitem [ref=e2822]:
+                            - link "全轨12路分离（URL）" [ref=e2823] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-stems-all-by-url&leaf=468660550
+                              - generic "POST /suno/submit/stems-all-by-url · 全轨12路分离（URL）" [ref=e2824]: 全轨12路分离（URL）
+                              - generic [aria-hidden] [ref=e2825]: POST
+                          - listitem [ref=e2826]:
+                            - link "生成 MP4 视频" [ref=e2827] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-mp4&leaf=468660551
+                              - generic "POST /suno/submit/mp4 · 生成 MP4 视频" [ref=e2828]: 生成 MP4 视频
+                              - generic [aria-hidden] [ref=e2829]: POST
+                          - listitem [ref=e2830]:
+                            - link "重新生成封面图" [ref=e2831] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-regen-img&leaf=468660552
+                              - generic "POST /suno/submit/regen-img · 重新生成封面图" [ref=e2832]: 重新生成封面图
+                              - generic [aria-hidden] [ref=e2833]: POST
+                          - listitem [ref=e2834]:
+                            - link "调整播放速度" [ref=e2835] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-adjust-speed&leaf=468660553
+                              - generic "POST /suno/submit/adjust-speed · 调整播放速度" [ref=e2836]: 调整播放速度
+                              - generic [aria-hidden] [ref=e2837]: POST
+                          - listitem [ref=e2838]:
+                            - link "修改标题/封面" [ref=e2839] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-set-metadata&leaf=468660554
+                              - generic "POST /suno/submit/set-metadata · 修改标题/封面" [ref=e2840]: 修改标题/封面
+                              - generic [aria-hidden] [ref=e2841]: POST
+                          - listitem [ref=e2842]:
+                            - link "Fade 淡入淡出" [ref=e2843] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-fade&leaf=468660555
+                              - generic "POST /suno/submit/fade · Fade 淡入淡出" [ref=e2844]: Fade 淡入淡出
+                              - generic [aria-hidden] [ref=e2845]: POST
+                          - listitem [ref=e2846]:
+                            - link "资源转临时地址" [ref=e2847] [cursor=pointer]:
+                              - /url: /reference/suno?op=post-suno-submit-url-transfer&leaf=468660556
+                              - generic "POST /suno/submit/url-transfer · 资源转临时地址" [ref=e2848]: 资源转临时地址
+                              - generic [aria-hidden] [ref=e2849]: POST
+              - listitem [ref=e2850]:
+                - link "文生音乐（Chat格式）" [ref=e2851] [cursor=pointer]:
+                  - /url: /reference/v1?op=post-v1-chat-completions&leaf=232421953
+                  - generic "POST /v1/chat/completions · 文生音乐（Chat格式）" [ref=e2852]: 文生音乐（Chat格式）
+                  - generic [aria-hidden] [ref=e2853]: POST
+        - generic [ref=e2854]:
+          - button "系统管理" [ref=e2855] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e2859]:
+                - link "获取令牌列表" [ref=e2860] [cursor=pointer]:
+                  - /url: /reference/system?op=get-api-token&leaf=278499776
+                  - generic "GET /api/token/ · 获取令牌列表" [ref=e2861]: 获取令牌列表
+                  - generic [aria-hidden] [ref=e2862]: GET
+              - listitem [ref=e2863]:
+                - link "搜索令牌" [ref=e2864] [cursor=pointer]:
+                  - /url: /reference/system?op=get-api-token-search&leaf=356116296
+                  - generic "GET /api/token/search · 搜索令牌" [ref=e2865]: 搜索令牌
+                  - generic [aria-hidden] [ref=e2866]: GET
+              - listitem [ref=e2867]:
+                - link "新增令牌" [ref=e2868] [cursor=pointer]:
+                  - /url: /reference/system?op=post-api-token&leaf=278500390
+                  - generic "POST /api/token/ · 新增令牌" [ref=e2869]: 新增令牌
+                  - generic [aria-hidden] [ref=e2870]: POST
+              - listitem [ref=e2871]:
+                - link "修改令牌" [ref=e2872] [cursor=pointer]:
+                  - /url: /reference/system?op=put-api-token&leaf=356116138
+                  - generic "PUT /api/token/ · 修改令牌" [ref=e2873]: 修改令牌
+                  - generic [aria-hidden] [ref=e2874]: PUT
+              - listitem [ref=e2875]:
+                - link "删除令牌" [ref=e2876] [cursor=pointer]:
+                  - /url: /reference/system?op=delete-api-token-id&leaf=356116177
+                  - generic "DELETE /api/token/194804/ · 删除令牌" [ref=e2877]: 删除令牌
+                  - generic [aria-hidden] [ref=e2878]: DELETE
+              - listitem [ref=e2879]:
+                - link "获取账号信息" [ref=e2880] [cursor=pointer]:
+                  - /url: /reference/system?op=get-api-user-self&leaf=303316036
+                  - generic "GET /api/user/self · 获取账号信息" [ref=e2881]: 获取账号信息
+                  - generic [aria-hidden] [ref=e2882]: GET
+              - listitem [ref=e2883]:
+                - link "获取令牌支持模型" [ref=e2884] [cursor=pointer]:
+                  - /url: /reference/v1?op=get-v1-models&leaf=301363879
+                  - generic "GET /v1/models · 获取令牌支持模型" [ref=e2885]: 获取令牌支持模型
+                  - generic [aria-hidden] [ref=e2886]: GET
+              - listitem [ref=e2887]:
+                - link "获取令牌使用情况" [ref=e2888] [cursor=pointer]:
+                  - /url: /reference/system?op=get-api-usage-token&leaf=413990840
+                  - generic "GET /api/usage/token/ · 获取令牌使用情况" [ref=e2889]: 获取令牌使用情况
+                  - generic [aria-hidden] [ref=e2890]: GET
+              - listitem [ref=e2891]:
+                - link "批量修改令牌" [ref=e2892] [cursor=pointer]:
+                  - /url: /reference/system?op=put-api-token-batch&leaf=429806889
+                  - generic "PUT /api/token/batch · 批量修改令牌" [ref=e2893]: 批量修改令牌
+                  - generic [aria-hidden] [ref=e2894]: PUT
+        - generic [ref=e2895]:
+          - button "聊天对话" [ref=e2896] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e2900]:
+                - button "ChatGpt" [ref=e2901] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2905]:
+                      - button "ChatGPT聊天（Chat）" [ref=e2906] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2910]:
+                            - link "创建聊天" [ref=e2911] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-chat-completions&leaf=464482855
+                              - generic "POST /v1/chat/completions · 15 demos" [ref=e2912]: 创建聊天
+                              - generic [aria-hidden] [ref=e2913]: POST
+                          - listitem [ref=e2914]:
+                            - link "列出模型" [ref=e2915] [cursor=pointer]:
+                              - /url: /reference/v1?op=get-v1-models&leaf=232421922
+                              - generic "GET /v1/models · 列出模型" [ref=e2916]: 列出模型
+                              - generic [aria-hidden] [ref=e2917]: GET
+                    - listitem [ref=e2918]:
+                      - button "ChatGPT自动补全（Completions）" [ref=e2919] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2923]:
+                            - link "创建完成" [ref=e2924] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-completions&leaf=232421925
+                              - generic "POST /v1/completions · 创建完成" [ref=e2925]: 创建完成
+                              - generic [aria-hidden] [ref=e2926]: POST
+                    - listitem [ref=e2927]:
+                      - button "ChatGPT嵌入（Embeddings）" [ref=e2928] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2932]:
+                            - link "创建嵌入" [ref=e2933] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-embeddings&leaf=232421926
+                              - generic "POST /v1/embeddings · 创建嵌入" [ref=e2934]: 创建嵌入
+                              - generic [aria-hidden] [ref=e2935]: POST
+                    - listitem [ref=e2936]:
+                      - button "Web 搜索" [ref=e2937] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2941]:
+                            - link "web搜索" [ref=e2942] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-chat-completions&leaf=306423418
+                              - generic "POST /v1/chat/completions · 2 demos" [ref=e2943]: web搜索
+                              - generic [aria-hidden] [ref=e2944]: POST
+                    - listitem [ref=e2945]:
+                      - button "ChatGPT音频（Audio）" [ref=e2946] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2950]:
+                            - link "创建语音 gpt-4o-mini-tts" [ref=e2951] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-audio-speech&leaf=232421913
+                              - generic "POST /v1/audio/speech · 创建语音 gpt-4o-mini-tts" [ref=e2952]: 创建语音 gpt-4o-mini-tts
+                              - generic [aria-hidden] [ref=e2953]: POST
+                          - listitem [ref=e2954]:
+                            - link "音频转文字 gpt-4o-transcribe" [ref=e2955] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-audio-transcriptions&leaf=232421914
+                              - generic "POST /v1/audio/transcriptions · 2 demos" [ref=e2956]: 音频转文字 gpt-4o-transcribe
+                              - generic [aria-hidden] [ref=e2957]: POST
+                          - listitem [ref=e2958]:
+                            - link "创建翻译 (不支持)" [ref=e2959] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-audio-translations&leaf=232421915
+                              - generic "POST /v1/audio/translations · 创建翻译 (不支持)" [ref=e2960]: 创建翻译 (不支持)
+                              - generic [aria-hidden] [ref=e2961]: POST
+                          - listitem [ref=e2962]:
+                            - link "GPT-4o-audio" [ref=e2963] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-chat-completions&leaf=258427485
+                              - generic "POST /v1/chat/completions · GPT-4o-audio" [ref=e2964]: GPT-4o-audio
+                              - generic [aria-hidden] [ref=e2965]: POST
+              - listitem [ref=e2966]:
+                - button "Claude" [ref=e2967] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e2971]:
+                      - button "原生格式" [ref=e2972] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2976]:
+                            - link "创建聊天补全 （流式） [原生格式]" [ref=e2977] [cursor=pointer]:
+                              - /url: /reference/minimax?op=post-v1-messages&leaf=264600675
+                              - generic "POST /v1/messages · 5 demos" [ref=e2978]: 创建聊天补全 （流式） [原生格式]
+                              - generic [aria-hidden] [ref=e2979]: POST
+                    - listitem [ref=e2980]:
+                      - button "兼容格式" [ref=e2981] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2985]:
+                            - link "创建思考聊天" [ref=e2986] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-chat-completions&leaf=324157379
+                              - generic "POST /v1/chat/completions · 5 demos" [ref=e2987]: 创建思考聊天
+                              - generic [aria-hidden] [ref=e2988]: POST
+                    - listitem [ref=e2989]:
+                      - button "原生格式 · 格式化/联网" [ref=e2990] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e2994]:
+                            - link "创建格式化输出" [ref=e2995] [cursor=pointer]:
+                              - /url: /reference/minimax?op=post-v1-messages&leaf=406138223
+                              - generic "POST /v1/messages · 2 demos" [ref=e2996]: 创建格式化输出
+                              - generic [aria-hidden] [ref=e2997]: POST
+              - listitem [ref=e2998]:
+                - button "Gemini" [ref=e2999] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3003]:
+                      - button "原生格式" [ref=e3004] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3008]:
+                            - link "文本生成" [ref=e3009] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-2-5-pro-generatecontent&leaf=305048984
+                              - generic "POST /v1beta/models/gemini-2.5-pro:generateContent · 11 demos" [ref=e3010]: 文本生成
+                              - generic [aria-hidden] [ref=e3011]: POST
+                          - listitem [ref=e3012]:
+                            - link "文本生成-流" [ref=e3013] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-3-pro-preview-streamgeneratecontent&leaf=318990658
+                              - generic "POST /v1beta/models/gemini-3-pro-preview:streamGenerateContent · 文本生成-流" [ref=e3014]: 文本生成-流
+                              - generic [aria-hidden] [ref=e3015]: POST
+                          - listitem [ref=e3016]:
+                            - link "文本生成+思考-流" [ref=e3017] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-2-5-pro-streamgeneratecontent&leaf=338836071
+                              - generic "POST /v1beta/models/gemini-2.5-pro:streamGenerateContent · 文本生成+思考-流" [ref=e3018]: 文本生成+思考-流
+                              - generic [aria-hidden] [ref=e3019]: POST
+                          - listitem [ref=e3020]:
+                            - link "图片生成" [ref=e3021] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-modename-generatecontent&leaf=305486200
+                              - 'generic "POST /v1beta/models/{modeName}:generateContent · 图片生成" [ref=e3022]': 图片生成
+                              - generic [aria-hidden] [ref=e3023]: POST
+                          - listitem [ref=e3024]:
+                            - link "图片生成 gemini-2.5-flash-image" [ref=e3025] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-2-5-flash-image-generatecontent&leaf=341597142
+                              - generic "POST /v1beta/models/gemini-2.5-flash-image:generateContent · 2 demos" [ref=e3026]: 图片生成 gemini-2.5-flash-image
+                              - generic [aria-hidden] [ref=e3027]: POST
+                          - listitem [ref=e3028]:
+                            - link "图片生成 gemini-3-pro-image-preview 控制宽高比 +清晰度" [ref=e3029] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-3-pro-image-preview-generatecontent&leaf=379838953
+                              - generic "POST /v1beta/models/gemini-3-pro-image-preview:generateContent · 2 demos" [ref=e3030]: 图片生成 gemini-3-pro-image-preview 控制宽高比 +清晰度
+                              - generic [aria-hidden] [ref=e3031]: POST
+                          - listitem [ref=e3032]:
+                            - link "google search" [ref=e3033] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-2-5-flash-generatecontent&leaf=350446379
+                              - generic "POST /v1beta/models/gemini-2.5-flash:generateContent · 2 demos" [ref=e3034]: google search
+                              - generic [aria-hidden] [ref=e3035]: POST
+                          - listitem [ref=e3036]:
+                            - link "Imagen 4 开发中" [ref=e3037] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-imagen-4-0-generate-001-predict&leaf=305494860
+                              - generic "POST /v1beta/models/imagen-4.0-generate-001:predict · Imagen 4 开发中" [ref=e3038]: Imagen 4 开发中
+                              - generic [aria-hidden] [ref=e3039]: POST
+                          - listitem [ref=e3040]:
+                            - link "文本生成 gemini-3-pro-preview:generateContent" [ref=e3041] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-3-pro-preview-generatecontent&leaf=381390942
+                              - generic "POST /v1beta/models/gemini-3-pro-preview:generateContent · 文本生成 gemini-3-pro-preview:generateContent" [ref=e3042]: 文本生成 gemini-3-pro-preview:generateContent
+                              - generic [aria-hidden] [ref=e3043]: POST
+                          - listitem [ref=e3044]:
+                            - link "gemini-tts文本转语音" [ref=e3045] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-2-5-pro-preview-tts-generatecontent&leaf=405712508
+                              - generic "POST /v1beta/models/gemini-2.5-pro-preview-tts:generateContent · gemini-tts文本转语音" [ref=e3046]: gemini-tts文本转语音
+                              - generic [aria-hidden] [ref=e3047]: POST
+                          - listitem [ref=e3048]:
+                            - link "文本嵌入" [ref=e3049] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-embedding-001-embedcontent&leaf=417121858
+                              - generic "POST /v1beta/models/gemini-embedding-001:embedContent · 文本嵌入" [ref=e3050]: 文本嵌入
+                              - generic [aria-hidden] [ref=e3051]: POST
+                          - listitem [ref=e3052]:
+                            - link "gemini-3.1-flash-lite-image" [ref=e3053] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-3-1-flash-lite-image-generatecontent&leaf=480926826
+                              - generic "POST /v1beta/models/gemini-3.1-flash-lite-image:generateContent · gemini-3.1-flash-lite-image" [ref=e3054]: gemini-3.1-flash-lite-image
+                              - generic [aria-hidden] [ref=e3055]: POST
+                          - listitem [ref=e3056]:
+                            - link "TTS 文本转语音" [ref=e3057] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-gemini-2-5-flash-preview-tts-generatecontent&leaf=412889020
+                              - generic "POST /v1beta/models/gemini-2.5-flash-preview-tts:generateContent · TTS 文本转语音" [ref=e3058]: TTS 文本转语音
+                              - generic [aria-hidden] [ref=e3059]: POST
+                          - listitem [ref=e3060]:
+                            - link "Imagen 生成图片" [ref=e3061] [cursor=pointer]:
+                              - /url: /reference/gemini-v1beta?op=post-v1beta-models-imagen-4-0-ultra-generate-001-predict&leaf=413581329
+                              - generic "POST /v1beta/models/imagen-4.0-ultra-generate-001:predict · Imagen 生成图片" [ref=e3062]: Imagen 生成图片
+                              - generic [aria-hidden] [ref=e3063]: POST
+                    - listitem [ref=e3064]:
+                      - button "chat兼容格式" [ref=e3065] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3069]:
+                            - link "gemini图片创作接口 [chat兼容格式]" [ref=e3070] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-chat-completions&leaf=275101024
+                              - generic "POST /v1/chat/completions · 6 demos" [ref=e3071]: gemini图片创作接口 [chat兼容格式]
+                              - generic [aria-hidden] [ref=e3072]: POST
+                          - listitem [ref=e3073]:
+                            - link "文本嵌入 [chat兼容格式]" [ref=e3074] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-embeddings&leaf=417140613
+                              - generic "POST /v1/embeddings · 文本嵌入 [chat兼容格式]" [ref=e3075]: 文本嵌入 [chat兼容格式]
+                              - generic [aria-hidden] [ref=e3076]: POST
+              - listitem [ref=e3077]:
+                - button "聊天(Responses)" [ref=e3078] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3082]:
+                      - link "创建模型响应" [ref=e3083] [cursor=pointer]:
+                        - /url: /reference/v1?op=post-v1-responses&leaf=302363809
+                        - generic "POST /v1/responses · 7 demos" [ref=e3084]: 创建模型响应
+                        - generic [aria-hidden] [ref=e3085]: POST
+                    - listitem [ref=e3086]:
+                      - link "gpt 上下文压缩" [ref=e3087] [cursor=pointer]:
+                        - /url: /reference/v1?op=post-v1-responses-compact&leaf=460035912
+                        - generic "POST /v1/responses/compact · gpt 上下文压缩" [ref=e3088]: gpt 上下文压缩
+                        - generic [aria-hidden] [ref=e3089]: POST
+        - generic [ref=e3090]:
+          - button "图像生成" [expanded] [ref=e3091] [cursor=pointer]
+          - list [ref=e3096]:
+            - listitem [ref=e3097]:
+              - button "Midjourney" [ref=e3098] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3102]:
+                    - button "提交任务" [ref=e3103] [cursor=pointer]
+                    - generic:
+                      - list:
+                        - listitem [ref=e3107]:
+                          - link "绘图（文生图 / 图生图）" [ref=e3108] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-imagine&leaf=472893085
+                            - generic "POST /mj/submit/imagine · 绘图（文生图 / 图生图）" [ref=e3109]: 绘图（文生图 / 图生图）
+                            - generic [aria-hidden] [ref=e3110]: POST
+                        - listitem [ref=e3111]:
+                          - link "执行动作（放大/变体/平移/重绘等）" [ref=e3112] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-action&leaf=472893923
+                            - generic "POST /mj/submit/action · 执行动作（放大/变体/平移/重绘等）" [ref=e3113]: 执行动作（放大/变体/平移/重绘等）
+                            - generic [aria-hidden] [ref=e3114]: POST
+                        - listitem [ref=e3115]:
+                          - link "窗口确认（action 返回 code:21 后的第二步）" [ref=e3116] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-modal&leaf=472895595
+                            - generic "POST /mj/submit/modal · 窗口确认（action 返回 code:21 后的第二步）" [ref=e3117]: 窗口确认（action 返回 code:21 后的第二步）
+                            - generic [aria-hidden] [ref=e3118]: POST
+                        - listitem [ref=e3119]:
+                          - link "图片混合" [ref=e3120] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-blend&leaf=472896381
+                            - generic "POST /mj/submit/blend · 图片混合" [ref=e3121]: 图片混合
+                            - generic [aria-hidden] [ref=e3122]: POST
+                        - listitem [ref=e3123]:
+                          - link "图生文（反推提示词）" [ref=e3124] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-describe&leaf=472897606
+                            - generic "POST /mj/submit/describe · 图生文（反推提示词）" [ref=e3125]: 图生文（反推提示词）
+                            - generic [aria-hidden] [ref=e3126]: POST
+                        - listitem [ref=e3127]:
+                          - link "提示词分析(无渠道)" [ref=e3128] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-shorten&leaf=472888058
+                            - generic "POST /mj/submit/shorten · 提示词分析(无渠道)" [ref=e3129]: 提示词分析(无渠道)
+                            - generic [aria-hidden] [ref=e3130]: POST
+                        - listitem [ref=e3131]:
+                          - link "换脸（增强版功能）（无渠道）" [ref=e3132] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-insight-face-swap&leaf=472884069
+                            - generic "POST /mj/insight-face/swap · 换脸（增强版功能）（无渠道）" [ref=e3133]: 换脸（增强版功能）（无渠道）
+                            - generic [aria-hidden] [ref=e3134]: POST
+                        - listitem [ref=e3135]:
+                          - link "图片编辑（增强版功能）" [ref=e3136] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-edits&leaf=472885939
+                            - generic "POST /mj/submit/edits · 图片编辑（增强版功能）" [ref=e3137]: 图片编辑（增强版功能）
+                            - generic [aria-hidden] [ref=e3138]: POST
+                        - listitem [ref=e3139]:
+                          - link "图生视频（增强版功能）" [ref=e3140] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-video&leaf=472898574
+                            - generic "POST /mj/submit/video · 图生视频（增强版功能）" [ref=e3141]: 图生视频（增强版功能）
+                            - generic [aria-hidden] [ref=e3142]: POST
+                        - listitem [ref=e3143]:
+                          - link "原版放大/变体，按 index" [ref=e3144] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-change&leaf=472910691
+                            - generic "POST /mj/submit/change · 原版放大/变体，按 index" [ref=e3145]: 原版放大/变体，按 index
+                            - generic [aria-hidden] [ref=e3146]: POST
+                        - listitem [ref=e3147]:
+                          - link "文本指令变换（content）" [ref=e3148] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-simple-change&leaf=472911478
+                            - generic "POST /mj/submit/simple-change · 文本指令变换（content）" [ref=e3149]: 文本指令变换（content）
+                            - generic [aria-hidden] [ref=e3150]: POST
+                        - listitem [ref=e3151]:
+                          - note "本地 relay 尚未收录该接口文档" [ref=e3152]:
+                            - generic "POST / · 按条件批量查任务" [ref=e3153]: 按条件批量查任务待补
+                            - generic [aria-hidden] [ref=e3154]: POST
+                        - listitem [ref=e3155]:
+                          - link "上传参考图（返回 URL 数组" [ref=e3156] [cursor=pointer]:
+                            - /url: /reference/mj?op=post-mj-submit-upload-discord-images&leaf=472912183
+                            - generic "POST /mj/submit/upload-discord-images · 上传参考图（返回 URL 数组" [ref=e3157]: 上传参考图（返回 URL 数组
+                            - generic [aria-hidden] [ref=e3158]: POST
+                  - listitem [ref=e3159]:
+                    - button "查询任务" [ref=e3160] [cursor=pointer]
+                    - generic:
+                      - list:
+                        - listitem [ref=e3164]:
+                          - link "查询任务详情" [ref=e3165] [cursor=pointer]:
+                            - /url: /reference/mj?op=get-mj-task-id-fetch&leaf=472901257
+                            - 'generic "GET /mj/task/{id}/fetch · 查询任务详情" [ref=e3166]': 查询任务详情
+                            - generic [aria-hidden] [ref=e3167]: GET
+                        - listitem [ref=e3168]:
+                          - link "查 seed" [ref=e3169] [cursor=pointer]:
+                            - /url: /reference/mj?op=get-mj-task-id-image-seed&leaf=472918802
+                            - 'generic "GET /mj/task/{id}/image-seed · 查 seed" [ref=e3170]': 查 seed
+                            - generic [aria-hidden] [ref=e3171]: GET
+                  - listitem [ref=e3172]:
+                    - link "上传图片" [ref=e3173] [cursor=pointer]:
+                      - /url: /reference/mj?op=post-mj-submit-upload-discord-images&leaf=277975070
+                      - generic "POST /mj/submit/upload-discord-images · 上传图片" [ref=e3174]: 上传图片
+                      - generic [aria-hidden] [ref=e3175]: POST
+                  - listitem [ref=e3176]:
+                    - link "提交shorten 任务" [ref=e3177] [cursor=pointer]:
+                      - /url: /reference/mj?op=get-mj-submit-shorten&leaf=472874788
+                      - generic "GET /mj/submit/shorten · 提交shorten 任务" [ref=e3178]: 提交shorten 任务
+                      - generic [aria-hidden] [ref=e3179]: GET
+                  - listitem [ref=e3180]:
+                    - link "提交Imagine任务" [ref=e3181] [cursor=pointer]:
+                      - /url: /reference/mj?op=post-mj-submit-imagine&leaf=232421938
+                      - generic "POST /mj/submit/imagine · 提交Imagine任务" [ref=e3182]: 提交Imagine任务
+                      - generic [aria-hidden] [ref=e3183]: POST
+                  - listitem [ref=e3184]:
+                    - link "根据任务ID 查询任务状态" [ref=e3185] [cursor=pointer]:
+                      - /url: /reference/mj?op=get-mj-task-id-fetch&leaf=232421939
+                      - generic "GET /mj/task/1743326750223591/fetch · 根据任务ID 查询任务状态" [ref=e3186]: 根据任务ID 查询任务状态
+                      - generic [aria-hidden] [ref=e3187]: GET
+                  - listitem [ref=e3188]:
+                    - link "根据ID列表查询任务" [ref=e3189] [cursor=pointer]:
+                      - /url: /reference/mj?op=post-mj-task-list-by-condition&leaf=232421940
+                      - generic "POST /mj/task/list-by-condition · 根据ID列表查询任务" [ref=e3190]: 根据ID列表查询任务
+                      - generic [aria-hidden] [ref=e3191]: POST
+                  - listitem [ref=e3192]:
+                    - link "获取任务图片的seed" [ref=e3193] [cursor=pointer]:
+                      - /url: /reference/mj?op=get-mj-task-id-image-seed&leaf=232421941
+                      - 'generic "GET /mj/task/{id}/image-seed · 获取任务图片的seed" [ref=e3194]': 获取任务图片的seed
+                      - generic [aria-hidden] [ref=e3195]: GET
+                  - listitem [ref=e3196]:
+                    - link "执行Action动作" [ref=e3197] [cursor=pointer]:
+                      - /url: /reference/mj?op=post-mj-submit-action&leaf=232421942
+                      - generic "POST /mj/submit/action · 执行Action动作" [ref=e3198]: 执行Action动作
+                      - generic [aria-hidden] [ref=e3199]: POST
+                  - listitem [ref=e3200]:
+                    - link "提交Blend任务" [ref=e3201] [cursor=pointer]:
+                      - /url: /reference/mj?op=post-mj-submit-blend&leaf=232421943
+                      - generic "POST /mj/submit/blend · 提交Blend任务" [ref=e3202]: 提交Blend任务
+                      - generic [aria-hidden] [ref=e3203]: POST
+                  - listitem [ref=e3204]:
+                    - link "提交Describe任务" [ref=e3205] [cursor=pointer]:
+                      - /url: /reference/mj?op=post-mj-submit-describe&leaf=232421944
+                      - generic "POST /mj/submit/describe · 提交Describe任务" [ref=e3206]: 提交Describe任务
+                      - generic [aria-hidden] [ref=e3207]: POST
+                  - listitem [ref=e3208]:
+                    - link "提交Modal" [ref=e3209] [cursor=pointer]:
+                      - /url: /reference/mj?op=post-mj-submit-modal&leaf=232421946
+                      - generic "POST /mj/submit/modal · 提交Modal" [ref=e3210]: 提交Modal
+                      - generic [aria-hidden] [ref=e3211]: POST
+            - listitem [ref=e3212]:
+              - button "Ideogram" [ref=e3213] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3217]:
+                    - link "Generate 3.0（文生图）Generate" [ref=e3218] [cursor=pointer]:
+                      - /url: /reference/ideogram-v1?op=post-ideogram-v1-ideogram-v3-generate&leaf=295835676
+                      - generic "POST /ideogram/v1/ideogram-v3/generate · Generate 3.0（文生图）Generate" [ref=e3219]: Generate 3.0（文生图）Generate
+                      - generic [aria-hidden] [ref=e3220]: POST
+                  - listitem [ref=e3221]:
+                    - link "Generate 3.0（图片编辑）Edit" [ref=e3222] [cursor=pointer]:
+                      - /url: /reference/ideogram-v1?op=post-ideogram-v1-ideogram-v3-edit&leaf=295871433
+                      - generic "POST /ideogram/v1/ideogram-v3/edit · Generate 3.0（图片编辑）Edit" [ref=e3223]: Generate 3.0（图片编辑）Edit
+                      - generic [aria-hidden] [ref=e3224]: POST
+                  - listitem [ref=e3225]:
+                    - link "Generate 3.0（图片重制）Remix" [ref=e3226] [cursor=pointer]:
+                      - /url: /reference/ideogram-v1?op=post-ideogram-v1-ideogram-v3-remix&leaf=295904276
+                      - generic "POST /ideogram/v1/ideogram-v3/remix · Generate 3.0（图片重制）Remix" [ref=e3227]: Generate 3.0（图片重制）Remix
+                      - generic [aria-hidden] [ref=e3228]: POST
+                  - listitem [ref=e3229]:
+                    - link "Generate 3.0（图片重构）Reframe" [ref=e3230] [cursor=pointer]:
+                      - /url: /reference/ideogram-v1?op=post-ideogram-v1-ideogram-v3-reframe&leaf=295903393
+                      - generic "POST /ideogram/v1/ideogram-v3/reframe · Generate 3.0（图片重构）Reframe" [ref=e3231]: Generate 3.0（图片重构）Reframe
+                      - generic [aria-hidden] [ref=e3232]: POST
+                  - listitem [ref=e3233]:
+                    - link "Generate 3.0（替换背景） Replace Background" [ref=e3234] [cursor=pointer]:
+                      - /url: /reference/ideogram-v1?op=post-ideogram-v1-ideogram-v3-replace-background&leaf=295906880
+                      - generic "POST /ideogram/v1/ideogram-v3/replace-background · Generate 3.0（替换背景） Replace Background" [ref=e3235]: Generate 3.0（替换背景） Replace Background
+                      - generic [aria-hidden] [ref=e3236]: POST
+                  - listitem [ref=e3237]:
+                    - link "ideogram（文生图）" [ref=e3238] [cursor=pointer]:
+                      - /url: /reference/ideogram?op=post-ideogram-generate&leaf=244680463
+                      - generic "POST /ideogram/generate · ideogram（文生图）" [ref=e3239]: ideogram（文生图）
+                      - generic [aria-hidden] [ref=e3240]: POST
+                  - listitem [ref=e3241]:
+                    - link "Remix（混合图）" [ref=e3242] [cursor=pointer]:
+                      - /url: /reference/ideogram?op=post-ideogram-remix&leaf=244685410
+                      - generic "POST /ideogram/remix · Remix（混合图）" [ref=e3243]: Remix（混合图）
+                      - generic [aria-hidden] [ref=e3244]: POST
+                  - listitem [ref=e3245]:
+                    - link "Upscale（放大高清）" [ref=e3246] [cursor=pointer]:
+                      - /url: /reference/ideogram?op=post-ideogram-upscale&leaf=244685729
+                      - generic "POST /ideogram/upscale · Upscale（放大高清）" [ref=e3247]: Upscale（放大高清）
+                      - generic [aria-hidden] [ref=e3248]: POST
+                  - listitem [ref=e3249]:
+                    - link "Describe（描述）" [ref=e3250] [cursor=pointer]:
+                      - /url: /reference/ideogram?op=post-ideogram-describe&leaf=244685783
+                      - generic "POST /ideogram/describe · Describe（描述）" [ref=e3251]: Describe（描述）
+                      - generic [aria-hidden] [ref=e3252]: POST
+            - listitem [ref=e3253]:
+              - button "GPT Image-1" [ref=e3254] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3258]:
+                    - link "创建 gpt-image-1" [ref=e3259] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-generations&leaf=290549047
+                      - generic "POST /v1/images/generations · 6 demos" [ref=e3260]: 创建 gpt-image-1
+                      - generic [aria-hidden] [ref=e3261]: POST
+                  - listitem [ref=e3262]:
+                    - link "编辑 image" [ref=e3263] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-edits&leaf=290558485
+                      - generic "POST /v1/images/edits · 6 demos" [ref=e3264]: 编辑 image
+                      - generic [aria-hidden] [ref=e3265]: POST
+            - listitem [ref=e3266]:
+              - button "Grok" [ref=e3267] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3271]:
+                    - link "创建 Image" [ref=e3272] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-generations&leaf=425475208
+                      - generic "POST /v1/images/generations · 创建 Image" [ref=e3273]: 创建 Image
+                      - generic [aria-hidden] [ref=e3274]: POST
+                  - listitem [ref=e3275]:
+                    - link "编辑 image" [ref=e3276] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-edits&leaf=425481728
+                      - generic "POST /v1/images/edits · 编辑 image" [ref=e3277]: 编辑 image
+                      - generic [aria-hidden] [ref=e3278]: POST
+            - listitem [ref=e3279]:
+              - button "DALL·E 3" [ref=e3280] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3284]:
+                    - link "创建 DALL·E 3" [ref=e3285] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-generations&leaf=326547908
+                      - generic "POST /v1/images/generations · 创建 DALL·E 3" [ref=e3286]: 创建 DALL·E 3
+                      - generic [aria-hidden] [ref=e3287]: POST
+            - listitem [ref=e3288]:
+              - button "FLUX" [ref=e3289] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3293]:
+                    - button "gpt 兼容格式" [ref=e3294] [cursor=pointer]
+                    - generic:
+                      - list:
+                        - listitem [ref=e3298]:
+                          - link "创建/编辑 image" [ref=e3299] [cursor=pointer]:
+                            - /url: /reference/v1?op=post-v1-images-generations&leaf=232421932
+                            - generic "POST /v1/images/generations · 创建/编辑 image" [ref=e3300]: 创建/编辑 image
+                            - generic [aria-hidden] [ref=e3301]: POST
+                        - listitem [ref=e3302]:
+                          - link "Flux编辑（OpenAI dall-e-3格式）" [ref=e3303] [cursor=pointer]:
+                            - /url: /reference/v1?op=post-v1-images-edits&leaf=306816728
+                            - generic "POST /v1/images/edits · Flux编辑（OpenAI dall-e-3格式）" [ref=e3304]: Flux编辑（OpenAI dall-e-3格式）
+                            - generic [aria-hidden] [ref=e3305]: POST
+                  - listitem [ref=e3306]:
+                    - button "Replicate 官方格式" [ref=e3307] [cursor=pointer]
+                    - generic:
+                      - list:
+                        - listitem [ref=e3311]:
+                          - link "创建任务 black-forest-labs/flux-kontext-dev" [ref=e3312] [cursor=pointer]:
+                            - /url: /reference/replicate?op=post-replicate-v1-models-black-forest-labs-flux-kontext-dev-predictions&leaf=321167741
+                            - generic "POST /replicate/v1/models/black-forest-labs/flux-kontext-dev/predictions · 创建任务 black-forest-labs/flux-kontext-dev" [ref=e3313]: 创建任务 black-forest-labs/flux-kontext-dev
+                            - generic [aria-hidden] [ref=e3314]: POST
+                        - listitem [ref=e3315]:
+                          - link "查询任务" [ref=e3316] [cursor=pointer]:
+                            - /url: /reference/replicate?op=get-replicate-v1-predictions-id&leaf=321172927
+                            - 'generic "GET /replicate/v1/predictions/{任务id} · 查询任务" [ref=e3317]': 查询任务
+                            - generic [aria-hidden] [ref=e3318]: GET
+            - listitem [ref=e3319]:
+              - button "Doubao" [expanded] [ref=e3320] [cursor=pointer]
+              - list [ref=e3325]:
+                - listitem [ref=e3326]:
+                  - link "创建图片" [active] [ref=e3327] [cursor=pointer]:
+                    - /url: /reference/v1?op=post-v1-images-generations&leaf=328094105
+                    - generic "POST /v1/images/generations · 13 demos" [ref=e3328]: 创建图片
+                    - generic [aria-hidden] [ref=e3329]: POST
+                - listitem [ref=e3330]:
+                  - link "Seedream 5.0 Pro" [ref=e3331] [cursor=pointer]:
+                    - /url: /reference/volc?op=post-api-v3-images-generations&leaf=492294794
+                    - generic "POST /api/v3/images/generations · Seedream 5.0 Pro" [ref=e3332]: Seedream 5.0 Pro
+                    - generic [aria-hidden] [ref=e3333]: POST
+            - listitem [ref=e3334]:
+              - button "Fal.ai" [ref=e3335] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3339]:
+                    - link "获取请求结果" [ref=e3340] [cursor=pointer]:
+                      - /url: /reference/fal-ai?op=get-fal-ai-model-name-requests-request-id&leaf=343816375
+                      - 'generic "GET /fal-ai/{model_name}/requests/{request_id} · 获取请求结果" [ref=e3341]': 获取请求结果
+                      - generic [aria-hidden] [ref=e3342]: GET
+                  - listitem [ref=e3343]:
+                    - link "/fal-ai/nano-banana 文生图" [ref=e3344] [cursor=pointer]:
+                      - /url: /reference/fal-ai?op=post-fal-ai-nano-banana&leaf=341948426
+                      - generic "POST /fal-ai/nano-banana · /fal-ai/nano-banana 文生图" [ref=e3345]: /fal-ai/nano-banana 文生图
+                      - generic [aria-hidden] [ref=e3346]: POST
+                  - listitem [ref=e3347]:
+                    - link "/fal-ai/nano-banana/edit 图片编辑" [ref=e3348] [cursor=pointer]:
+                      - /url: /reference/fal-ai?op=post-fal-ai-nano-banana-edit&leaf=341952136
+                      - generic "POST /fal-ai/nano-banana/edit · /fal-ai/nano-banana/edit 图片编辑" [ref=e3349]: /fal-ai/nano-banana/edit 图片编辑
+                      - generic [aria-hidden] [ref=e3350]: POST
+            - listitem [ref=e3351]:
+              - button "腾讯AIGC生图" [ref=e3352] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3356]:
+                    - link "获取请求结果" [ref=e3357] [cursor=pointer]:
+                      - /url: /reference/tencent-vod?op=get-tencent-vod-v1-query-task-id&leaf=398427540
+                      - 'generic "GET /tencent-vod/v1/query/{task_id} · 获取请求结果" [ref=e3358]': 获取请求结果
+                      - generic [aria-hidden] [ref=e3359]: GET
+                  - listitem [ref=e3360]:
+                    - link "创建任务" [ref=e3361] [cursor=pointer]:
+                      - /url: /reference/tencent-vod?op=post-tencent-vod-v1-aigc-image&leaf=398427541
+                      - generic "POST /tencent-vod/v1/aigc-image · 创建任务" [ref=e3362]: 创建任务
+                      - generic [aria-hidden] [ref=e3363]: POST
+            - listitem [ref=e3364]:
+              - button "Qwen" [ref=e3365] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3369]:
+                    - link "qwen-image-edit-2509" [ref=e3370] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-generations&leaf=354490509
+                      - generic "POST /v1/images/generations · 7 demos" [ref=e3371]: qwen-image-edit-2509
+                      - generic [aria-hidden] [ref=e3372]: POST
+                  - listitem [ref=e3373]:
+                    - link "qwen-image-max-2025-12-30新地址" [ref=e3374] [cursor=pointer]:
+                      - /url: /reference/alibailian?op=post-alibailian-api-v1-services-aigc-multimodal-generation-generation&leaf=422779398
+                      - generic "POST /alibailian/api/v1/services/aigc/multimodal-generation/generation · qwen-image-max-2025-12-30新地址" [ref=e3375]: qwen-image-max-2025-12-30新地址
+                      - generic [aria-hidden] [ref=e3376]: POST
+            - listitem [ref=e3377]:
+              - button "Wan" [ref=e3378] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3382]:
+                    - link "wan2.7-image-pro" [ref=e3383] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-generations&leaf=453630963
+                      - generic "POST /v1/images/generations · wan2.7-image-pro" [ref=e3384]: wan2.7-image-pro
+                      - generic [aria-hidden] [ref=e3385]: POST
+            - listitem [ref=e3386]:
+              - button "GPT Image-1 Copy" [ref=e3387] [cursor=pointer]
+              - generic:
+                - list:
+                  - listitem [ref=e3391]:
+                    - link "创建 gpt-image-1" [ref=e3392] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-generations&leaf=453199912
+                      - generic "POST /v1/images/generations · 2 demos" [ref=e3393]: 创建 gpt-image-1
+                      - generic [aria-hidden] [ref=e3394]: POST
+                  - listitem [ref=e3395]:
+                    - link "编辑 image" [ref=e3396] [cursor=pointer]:
+                      - /url: /reference/v1?op=post-v1-images-edits&leaf=453199913
+                      - generic "POST /v1/images/edits · 3 demos" [ref=e3397]: 编辑 image
+                      - generic [aria-hidden] [ref=e3398]: POST
+        - generic [ref=e3399]:
+          - button "视频生成" [ref=e3400] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e3404]:
+                - button "Veo" [ref=e3405] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3409]:
+                      - button "OpenAI 视频格式" [ref=e3410] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3414]:
+                            - link "openai 创建视频，带图片" [ref=e3415] [cursor=pointer]:
+                              - /url: /reference/grok?op=post-v1-videos&leaf=370109881
+                              - generic "POST /v1/videos · openai 创建视频，带图片" [ref=e3416]: openai 创建视频，带图片
+                              - generic [aria-hidden] [ref=e3417]: POST
+                          - listitem [ref=e3418]:
+                            - link "openai 查询任务" [ref=e3419] [cursor=pointer]:
+                              - /url: /reference/grok?op=get-v1-videos-id&leaf=370109885
+                              - 'generic "GET /v1/videos/{id} · openai 查询任务" [ref=e3420]': openai 查询任务
+                              - generic [aria-hidden] [ref=e3421]: GET
+                          - listitem [ref=e3422]:
+                            - link "openai 下载视频" [ref=e3423] [cursor=pointer]:
+                              - /url: /reference/sora?op=get-v1-videos-id-content&leaf=370109886
+                              - 'generic "GET /v1/videos/{id}/content · openai 下载视频" [ref=e3424]': openai 下载视频
+                              - generic [aria-hidden] [ref=e3425]: GET
+                    - listitem [ref=e3426]:
+                      - button "3.1原生格式" [ref=e3427] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3431]:
+                            - link "视频生成 veo-3.1-generate-preview" [ref=e3432] [cursor=pointer]:
+                              - /url: /reference/veo?op=post-v1-video-generations&leaf=412737222
+                              - generic "POST /v1/video/generations · 视频生成 veo-3.1-generate-preview" [ref=e3433]: 视频生成 veo-3.1-generate-preview
+                              - generic [aria-hidden] [ref=e3434]: POST
+                          - listitem [ref=e3435]:
+                            - link "视频生成 veo-3.1-fast-generate-preview" [ref=e3436] [cursor=pointer]:
+                              - /url: /reference/veo?op=post-v1beta-models-veo-3-1-fast-generate-preview-predictlongrunning&leaf=412781956
+                              - generic "POST /v1beta/models/veo-3.1-fast-generate-preview:predictLongRunning · 视频生成 veo-3.1-fast-generate-preview" [ref=e3437]: 视频生成 veo-3.1-fast-generate-preview
+                              - generic [aria-hidden] [ref=e3438]: POST
+                          - listitem [ref=e3439]:
+                            - link "查询任务" [ref=e3440] [cursor=pointer]:
+                              - /url: /reference/grok?op=get-v1-videos-id&leaf=419252984
+                              - 'generic "GET /v1/videos/{id} · 查询任务" [ref=e3441]': 查询任务
+                              - generic [aria-hidden] [ref=e3442]: GET
+                    - listitem [ref=e3443]:
+                      - button "视频统一格式" [ref=e3444] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3448]:
+                            - link "创建视频（参考图）" [ref=e3449] [cursor=pointer]:
+                              - /url: /reference/omni?op=post-v1-video-create&leaf=371329190
+                              - generic "POST /v1/video/create · 3 demos" [ref=e3450]: 创建视频（参考图）
+                              - generic [aria-hidden] [ref=e3451]: POST
+                          - listitem [ref=e3452]:
+                            - link "查询任务" [ref=e3453] [cursor=pointer]:
+                              - /url: /reference/omni?op=get-v1-video-query&leaf=311081757
+                              - generic "GET /v1/video/query · 查询任务" [ref=e3454]: 查询任务
+                              - generic [aria-hidden] [ref=e3455]: GET
+              - listitem [ref=e3456]:
+                - button "Luma" [ref=e3457] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3461]:
+                      - button "官方API格式" [ref=e3462] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3466]:
+                            - link "提交生成视频任务" [ref=e3467] [cursor=pointer]:
+                              - /url: /reference/luma?op=post-luma-generations&leaf=247110323
+                              - generic "POST /luma/generations · 提交生成视频任务" [ref=e3468]: 提交生成视频任务
+                              - generic [aria-hidden] [ref=e3469]: POST
+                          - listitem [ref=e3470]:
+                            - link "扩展视频" [ref=e3471] [cursor=pointer]:
+                              - /url: /reference/luma?op=post-luma-generations-id-extend&leaf=247123616
+                              - 'generic "POST /luma/generations/{task_id}/extend · 扩展视频" [ref=e3472]': 扩展视频
+                              - generic [aria-hidden] [ref=e3473]: POST
+                    - listitem [ref=e3474]:
+                      - button "查询任务" [ref=e3475] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3479]:
+                            - link "查询单个任务" [ref=e3480] [cursor=pointer]:
+                              - /url: /reference/luma?op=get-luma-generations-id&leaf=247123648
+                              - 'generic "GET /luma/generations/{task_id} · 查询单个任务" [ref=e3481]': 查询单个任务
+                              - generic [aria-hidden] [ref=e3482]: GET
+                          - listitem [ref=e3483]:
+                            - link "批量获取任务" [ref=e3484] [cursor=pointer]:
+                              - /url: /reference/luma?op=post-luma-tasks&leaf=247123658
+                              - generic "POST /luma/tasks · 批量获取任务" [ref=e3485]: 批量获取任务
+                              - generic [aria-hidden] [ref=e3486]: POST
+              - listitem [ref=e3487]:
+                - button "Kling" [ref=e3488] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3492]:
+                      - link "图像生成" [ref=e3493] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-images-generations&leaf=242906293
+                        - generic "POST /kling/v1/images/generations · 图像生成" [ref=e3494]: 图像生成
+                        - generic [aria-hidden] [ref=e3495]: POST
+                    - listitem [ref=e3496]:
+                      - link "文生视频" [ref=e3497] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-videos-text2video&leaf=242921875
+                        - generic "POST /kling/v1/videos/text2video · 文生视频" [ref=e3498]: 文生视频
+                        - generic [aria-hidden] [ref=e3499]: POST
+                    - listitem [ref=e3500]:
+                      - link "图生视频" [ref=e3501] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-videos-image2video&leaf=243023449
+                        - generic "POST /kling/v1/videos/image2video · 图生视频" [ref=e3502]: 图生视频
+                        - generic [aria-hidden] [ref=e3503]: POST
+                    - listitem [ref=e3504]:
+                      - link "对口型" [ref=e3505] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-videos-lip-sync&leaf=374704567
+                        - generic "POST /kling/v1/videos/lip-sync · 对口型" [ref=e3506]: 对口型
+                        - generic [aria-hidden] [ref=e3507]: POST
+                    - listitem [ref=e3508]:
+                      - link "虚拟试穿" [ref=e3509] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-images-kolors-virtual-try-on&leaf=372810643
+                        - generic "POST /kling/v1/images/kolors-virtual-try-on · 虚拟试穿" [ref=e3510]: 虚拟试穿
+                        - generic [aria-hidden] [ref=e3511]: POST
+                    - listitem [ref=e3512]:
+                      - link "视频延长" [ref=e3513] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-videos-video-extend&leaf=372823843
+                        - generic "POST /kling/v1/videos/video-extend · 视频延长" [ref=e3514]: 视频延长
+                        - generic [aria-hidden] [ref=e3515]: POST
+                    - listitem [ref=e3516]:
+                      - link "视频特效" [ref=e3517] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-videos-effects&leaf=372824246
+                        - generic "POST /kling/v1/videos/effects · 视频特效" [ref=e3518]: 视频特效
+                        - generic [aria-hidden] [ref=e3519]: POST
+                    - listitem [ref=e3520]:
+                      - link "多图参考生视频" [ref=e3521] [cursor=pointer]:
+                        - /url: /reference/kling?op=post-kling-v1-videos-multi-image2video&leaf=365690007
+                        - generic "POST /kling/v1/videos/multi-image2video · 多图参考生视频" [ref=e3522]: 多图参考生视频
+                        - generic [aria-hidden] [ref=e3523]: POST
+                    - listitem [ref=e3524]:
+                      - link "查询任务(免费)" [ref=e3525] [cursor=pointer]:
+                        - /url: /reference/kling?op=get-kling-v1-action-action2-task-id&leaf=243012261
+                        - 'generic "GET /kling/v1/{action}/{action2}/{task_id} · 查询任务(免费)" [ref=e3526]': 查询任务(免费)
+                        - generic [aria-hidden] [ref=e3527]: GET
+              - listitem [ref=e3528]:
+                - button "Runway" [ref=e3529] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3533]:
+                      - link "提交视频生成任务" [ref=e3534] [cursor=pointer]:
+                        - /url: /reference/runway?op=post-runwayml-v1-image-to-video&leaf=247132317
+                        - generic "POST /runwayml/v1/image_to_video · 提交视频生成任务" [ref=e3535]: 提交视频生成任务
+                        - generic [aria-hidden] [ref=e3536]: POST
+                    - listitem [ref=e3537]:
+                      - link "查询视频任务(免费)" [ref=e3538] [cursor=pointer]:
+                        - /url: /reference/runway?op=get-runwayml-v1-tasks-task-id&leaf=247132320
+                        - 'generic "GET /runwayml/v1/tasks/{task_id} · 查询视频任务(免费)" [ref=e3539]': 查询视频任务(免费)
+                        - generic [aria-hidden] [ref=e3540]: GET
+              - listitem [ref=e3541]:
+                - button "Dreamina" [ref=e3542] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3546]:
+                      - button "视频统一格式" [ref=e3547] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3551]:
+                            - link "创建视频" [ref=e3552] [cursor=pointer]:
+                              - /url: /reference/omni?op=post-v1-video-create&leaf=384123375
+                              - generic "POST /v1/video/create · 创建视频" [ref=e3553]: 创建视频
+                              - generic [aria-hidden] [ref=e3554]: POST
+                          - listitem [ref=e3555]:
+                            - link "查询任务" [ref=e3556] [cursor=pointer]:
+                              - /url: /reference/omni?op=get-v1-video-query&leaf=384123377
+                              - generic "GET /v1/video/query · 查询任务" [ref=e3557]: 查询任务
+                              - generic [aria-hidden] [ref=e3558]: GET
+                    - listitem [ref=e3559]:
+                      - link "提交视频生成任务" [ref=e3560] [cursor=pointer]:
+                        - /url: /reference/jimeng?op=post-jimeng-submit-videos&leaf=326415500
+                        - generic "POST /jimeng/submit/videos · 提交视频生成任务" [ref=e3561]: 提交视频生成任务
+                        - generic [aria-hidden] [ref=e3562]: POST
+                    - listitem [ref=e3563]:
+                      - link "查询视频任务(免费)" [ref=e3564] [cursor=pointer]:
+                        - /url: /reference/jimeng?op=get-jimeng-fetch-task-id&leaf=326415501
+                        - 'generic "GET /jimeng/fetch/{task_id} · 查询视频任务(免费)" [ref=e3565]': 查询视频任务(免费)
+                        - generic [aria-hidden] [ref=e3566]: GET
+              - listitem [ref=e3567]:
+                - button "Hailuo" [ref=e3568] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3572]:
+                      - link "提交视频生成任务" [ref=e3573] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-minimax-v1-video-generation&leaf=327360870
+                        - generic "POST /minimax/v1/video_generation · 3 demos" [ref=e3574]: 提交视频生成任务
+                        - generic [aria-hidden] [ref=e3575]: POST
+                    - listitem [ref=e3576]:
+                      - link "视频任务状态查询" [ref=e3577] [cursor=pointer]:
+                        - /url: /reference/minimax?op=get-minimax-v1-query-video-generation&leaf=327360871
+                        - generic "GET /minimax/v1/query/video_generation · 视频任务状态查询" [ref=e3578]: 视频任务状态查询
+                        - generic [aria-hidden] [ref=e3579]: GET
+              - listitem [ref=e3580]:
+                - button "Doubao" [ref=e3581] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3585]:
+                      - link "创建任务" [ref=e3586] [cursor=pointer]:
+                        - /url: /reference/volc?op=post-volc-v1-contents-generations-tasks&leaf=350878596
+                        - generic "POST /volc/v1/contents/generations/tasks · 3 demos" [ref=e3587]: 创建任务
+                        - generic [aria-hidden] [ref=e3588]: POST
+                    - listitem [ref=e3589]:
+                      - link "查询单个任务" [ref=e3590] [cursor=pointer]:
+                        - /url: /reference/volc?op=get-volc-v1-contents-generations-tasks-task-id&leaf=350883332
+                        - 'generic "GET /volc/v1/contents/generations/tasks/{task_id} · 查询单个任务" [ref=e3591]': 查询单个任务
+                        - generic [aria-hidden] [ref=e3592]: GET
+                    - listitem [ref=e3593]:
+                      - link "查询视频生成任务列表-默认" [ref=e3594] [cursor=pointer]:
+                        - /url: /reference/volc?op=get-volc-v1-contents-generations-tasks&leaf=351558937
+                        - generic "GET /volc/v1/contents/generations/tasks · 2 demos" [ref=e3595]: 查询视频生成任务列表-默认
+                        - generic [aria-hidden] [ref=e3596]: GET
+                    - listitem [ref=e3597]:
+                      - link "创建视频生成任务" [ref=e3598] [cursor=pointer]:
+                        - /url: /reference/seedance?op=post-api-v3-contents-generations-tasks&leaf=438503106
+                        - generic "POST /api/v3/contents/generations/tasks · 创建视频生成任务" [ref=e3599]: 创建视频生成任务
+                        - generic [aria-hidden] [ref=e3600]: POST
+                    - listitem [ref=e3601]:
+                      - link "doubao-2.0 查询视频生成任务 API" [ref=e3602] [cursor=pointer]:
+                        - /url: /reference/volc?op=get-api-v3-contents-generations-tasks-id&leaf=438503236
+                        - 'generic "GET /api/v3/contents/generations/tasks/{id} · doubao-2.0 查询视频生成任务 API" [ref=e3603]': doubao-2.0 查询视频生成任务 API
+                        - generic [aria-hidden] [ref=e3604]: GET
+                    - listitem [ref=e3605]:
+                      - link "doubao-2.0 查询视频生成任务列表" [ref=e3606] [cursor=pointer]:
+                        - /url: /reference/seedance?op=get-api-v3-contents-generations-tasks&leaf=438503302
+                        - generic "GET /api/v3/contents/generations/tasks · doubao-2.0 查询视频生成任务列表" [ref=e3607]: doubao-2.0 查询视频生成任务列表
+                        - generic [aria-hidden] [ref=e3608]: GET
+              - listitem [ref=e3609]:
+                - button "sora" [ref=e3610] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3614]:
+                      - button "统一视频格式" [ref=e3615] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3619]:
+                            - link "创建视频，带图片 sora-2" [ref=e3620] [cursor=pointer]:
+                              - /url: /reference/omni?op=post-v1-video-create&leaf=358068907
+                              - generic "POST /v1/video/create · 5 demos" [ref=e3621]: 创建视频，带图片 sora-2
+                              - generic [aria-hidden] [ref=e3622]: POST
+                          - listitem [ref=e3623]:
+                            - link "查询任务" [ref=e3624] [cursor=pointer]:
+                              - /url: /reference/omni?op=get-v1-video-query&leaf=358068905
+                              - generic "GET /v1/video/query · 查询任务" [ref=e3625]: 查询任务
+                              - generic [aria-hidden] [ref=e3626]: GET
+                    - listitem [ref=e3627]:
+                      - button "OpenAI官方视频格式" [ref=e3628] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3632]:
+                            - link "openai 创建视频，带图片" [ref=e3633] [cursor=pointer]:
+                              - /url: /reference/grok?op=post-v1-videos&leaf=363028872
+                              - generic "POST /v1/videos · 4 demos" [ref=e3634]: openai 创建视频，带图片
+                              - generic [aria-hidden] [ref=e3635]: POST
+                          - listitem [ref=e3636]:
+                            - link "openai 编辑视频" [ref=e3637] [cursor=pointer]:
+                              - /url: /reference/sora?op=post-v1-videos-id-remix&leaf=363040669
+                              - 'generic "POST /v1/videos/{id}/remix · openai 编辑视频" [ref=e3638]': openai 编辑视频
+                              - generic [aria-hidden] [ref=e3639]: POST
+                          - listitem [ref=e3640]:
+                            - link "openai 查询任务" [ref=e3641] [cursor=pointer]:
+                              - /url: /reference/grok?op=get-v1-videos-id&leaf=363309789
+                              - 'generic "GET /v1/videos/{id} · openai 查询任务" [ref=e3642]': openai 查询任务
+                              - generic [aria-hidden] [ref=e3643]: GET
+                          - listitem [ref=e3644]:
+                            - link "openai 下载视频" [ref=e3645] [cursor=pointer]:
+                              - /url: /reference/sora?op=get-v1-videos-id-content&leaf=363824206
+                              - 'generic "GET /v1/videos/{id}/content · openai 下载视频" [ref=e3646]': openai 下载视频
+                              - generic [aria-hidden] [ref=e3647]: GET
+                          - listitem [ref=e3648]:
+                            - link "创建一个来自上传视频的角色" [ref=e3649] [cursor=pointer]:
+                              - /url: /reference/sora?op=post-v1-videos-characters&leaf=428630051
+                              - generic "POST /v1/videos/characters · 创建一个来自上传视频的角色" [ref=e3650]: 创建一个来自上传视频的角色
+                              - generic [aria-hidden] [ref=e3651]: POST
+                    - listitem [ref=e3652]:
+                      - button "chat格式" [ref=e3653] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3657]:
+                            - link "创建视频" [ref=e3658] [cursor=pointer]:
+                              - /url: /reference/v1?op=post-v1-chat-completions&leaf=357808481
+                              - generic "POST /v1/chat/completions · 3 demos" [ref=e3659]: 创建视频
+                              - generic [aria-hidden] [ref=e3660]: POST
+                    - listitem [ref=e3661]:
+                      - link "创建角色" [ref=e3662] [cursor=pointer]:
+                        - /url: /reference/sora?op=post-sora-v1-characters&leaf=376104874
+                        - generic "POST /sora/v1/characters · 创建角色" [ref=e3663]: 创建角色
+                        - generic [aria-hidden] [ref=e3664]: POST
+              - listitem [ref=e3665]:
+                - button "通义万象" [ref=e3666] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3670]:
+                      - link "生成视频" [ref=e3671] [cursor=pointer]:
+                        - /url: /reference/alibailian?op=post-alibailian-api-v1-services-aigc-video-generation-video-synthesis&leaf=359496147
+                        - generic "POST /alibailian/api/v1/services/aigc/video-generation/video-synthesis · 8 demos" [ref=e3672]: 生成视频
+                        - generic [aria-hidden] [ref=e3673]: POST
+                    - listitem [ref=e3674]:
+                      - link "视频查询" [ref=e3675] [cursor=pointer]:
+                        - /url: /reference/alibailian?op=get-alibailian-api-v1-tasks-task-id&leaf=359507346
+                        - 'generic "GET /alibailian/api/v1/tasks/{task_id} · 视频查询" [ref=e3676]': 视频查询
+                        - generic [aria-hidden] [ref=e3677]: GET
+              - listitem [ref=e3678]:
+                - button "grok" [ref=e3679] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3683]:
+                      - button "视频统一格式" [ref=e3684] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3688]:
+                            - link "扩展视频" [ref=e3689] [cursor=pointer]:
+                              - /url: /reference/veo?op=post-v1-video-extend&leaf=428472987
+                              - generic "POST /v1/video/extend · 扩展视频" [ref=e3690]: 扩展视频
+                              - generic [aria-hidden] [ref=e3691]: POST
+                          - listitem [ref=e3692]:
+                            - link "创建视频" [ref=e3693] [cursor=pointer]:
+                              - /url: /reference/omni?op=post-v1-video-create&leaf=384123355
+                              - generic "POST /v1/video/create · 2 demos" [ref=e3694]: 创建视频
+                              - generic [aria-hidden] [ref=e3695]: POST
+                          - listitem [ref=e3696]:
+                            - link "查询任务" [ref=e3697] [cursor=pointer]:
+                              - /url: /reference/omni?op=get-v1-video-query&leaf=384123358
+                              - generic "GET /v1/video/query · 2 demos" [ref=e3698]: 查询任务
+                              - generic [aria-hidden] [ref=e3699]: GET
+                    - listitem [ref=e3700]:
+                      - button "OpenAI视频格式" [ref=e3701] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3705]:
+                            - link "openai 创建视频，图生，视频生视频" [ref=e3706] [cursor=pointer]:
+                              - /url: /reference/grok?op=post-v1-videos&leaf=417457036
+                              - generic "POST /v1/videos · 2 demos" [ref=e3707]: openai 创建视频，图生，视频生视频
+                              - generic [aria-hidden] [ref=e3708]: POST
+                          - listitem [ref=e3709]:
+                            - link "查询任务" [ref=e3710] [cursor=pointer]:
+                              - /url: /reference/omni?op=get-v1-video-query&leaf=428940785
+                              - generic "GET /v1/video/query · 查询任务" [ref=e3711]: 查询任务
+                              - generic [aria-hidden] [ref=e3712]: GET
+                    - listitem [ref=e3713]:
+                      - button "官方格式" [ref=e3714] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3718]:
+                            - link "创建视频" [ref=e3719] [cursor=pointer]:
+                              - /url: /reference/grok?op=post-v1-videos-generations&leaf=472718623
+                              - generic "POST /v1/videos/generations · 创建视频" [ref=e3720]: 创建视频
+                              - generic [aria-hidden] [ref=e3721]: POST
+                          - listitem [ref=e3722]:
+                            - link "编辑视频" [ref=e3723] [cursor=pointer]:
+                              - /url: /reference/grok?op=post-v1-videos-edits&leaf=472719019
+                              - generic "POST /v1/videos/edits · 编辑视频" [ref=e3724]: 编辑视频
+                              - generic [aria-hidden] [ref=e3725]: POST
+                          - listitem [ref=e3726]:
+                            - link "查询视频" [ref=e3727] [cursor=pointer]:
+                              - /url: /reference/grok?op=get-v1-videos-id&leaf=472719601
+                              - 'generic "GET /v1/videos/{request_id} · 查询视频" [ref=e3728]': 查询视频
+                              - generic [aria-hidden] [ref=e3729]: GET
+              - listitem [ref=e3730]:
+                - button "TC-Vidu" [ref=e3731] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3735]:
+                      - button "视频统一格式" [ref=e3736] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3740]:
+                            - link "创建视频" [ref=e3741] [cursor=pointer]:
+                              - /url: /reference/vidu?op=post-vidu-native-video-generations&leaf=391200086
+                              - generic "POST /vidu-native/video/generations · 创建视频" [ref=e3742]: 创建视频
+                              - generic [aria-hidden] [ref=e3743]: POST
+                          - listitem [ref=e3744]:
+                            - link "查询任务" [ref=e3745] [cursor=pointer]:
+                              - /url: /reference/vidu?op=get-vidu-native-video-generations-task-id&leaf=391200090
+                              - 'generic "GET /vidu-native/video/generations/{task_id} · 查询任务" [ref=e3746]': 查询任务
+                              - generic [aria-hidden] [ref=e3747]: GET
+              - listitem [ref=e3748]:
+                - button "腾讯AIGC" [ref=e3749] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3753]:
+                      - link "创建任务" [ref=e3754] [cursor=pointer]:
+                        - /url: /reference/tencent-vod?op=post-tencent-vod-v1-aigc-video&leaf=399032083
+                        - generic "POST /tencent-vod/v1/aigc-video · 创建任务" [ref=e3755]: 创建任务
+                        - generic [aria-hidden] [ref=e3756]: POST
+                    - listitem [ref=e3757]:
+                      - link "特效模板创建任务" [ref=e3758] [cursor=pointer]:
+                        - /url: /reference/tencent-vod?op=post-tencent-vod-v1-template-effect&leaf=421881174
+                        - generic "POST /tencent-vod/v1/template-effect · 特效模板创建任务" [ref=e3759]: 特效模板创建任务
+                        - generic [aria-hidden] [ref=e3760]: POST
+                    - listitem [ref=e3761]:
+                      - link "获取请求结果" [ref=e3762] [cursor=pointer]:
+                        - /url: /reference/tencent-vod?op=get-tencent-vod-v1-query-task-id&leaf=399032082
+                        - 'generic "GET /tencent-vod/v1/query/{task_id} · 获取请求结果" [ref=e3763]': 获取请求结果
+                        - generic [aria-hidden] [ref=e3764]: GET
+              - listitem [ref=e3765]:
+                - button "seedance-2-0" [ref=e3766] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3770]:
+                      - link "视频生成" [ref=e3771] [cursor=pointer]:
+                        - /url: /reference/veo?op=post-v1-video-generations&leaf=461417238
+                        - generic "POST /v1/video/generations · 视频生成" [ref=e3772]: 视频生成
+                        - generic [aria-hidden] [ref=e3773]: POST
+                    - listitem [ref=e3774]:
+                      - link "查询任务" [ref=e3775] [cursor=pointer]:
+                        - /url: /reference/seedance?op=get-v1-video-generations-task-id&leaf=461417325
+                        - 'generic "GET /v1/video/generations/{task_id} · 查询任务" [ref=e3776]': 查询任务
+                        - generic [aria-hidden] [ref=e3777]: GET
+              - listitem [ref=e3778]:
+                - button "Cinema2.0" [ref=e3779] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3783]:
+                      - link "文生图 -cer" [ref=e3784] [cursor=pointer]:
+                        - /url: /reference/seedance?op=post-api-v3-contents-generations-tasks&leaf=463660326
+                        - generic "POST /api/v3/contents/generations/tasks · 3 demos" [ref=e3785]: 文生图 -cer
+                        - generic [aria-hidden] [ref=e3786]: POST
+                    - listitem [ref=e3787]:
+                      - link "任务查询" [ref=e3788] [cursor=pointer]:
+                        - /url: /reference/seedance?op=get-api-v3-contents-generations-tasks-task-id&leaf=463664261
+                        - 'generic "GET /api/v3/contents/generations/tasks/{task_id} · 任务查询" [ref=e3789]': 任务查询
+                        - generic [aria-hidden] [ref=e3790]: GET
+              - listitem [ref=e3791]:
+                - button "Omni" [ref=e3792] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3796]:
+                      - link "查询结果" [ref=e3797] [cursor=pointer]:
+                        - /url: /reference/omni?op=get-v1-video-query&leaf=463239679
+                        - generic "GET /v1/video/query · 查询结果" [ref=e3798]: 查询结果
+                        - generic [aria-hidden] [ref=e3799]: GET
+                    - listitem [ref=e3800]:
+                      - link "omni 视频生成" [ref=e3801] [cursor=pointer]:
+                        - /url: /reference/grok?op=post-v1-videos&leaf=465029143
+                        - generic "POST /v1/videos · omni 视频生成" [ref=e3802]: omni 视频生成
+                        - generic [aria-hidden] [ref=e3803]: POST
+                    - listitem [ref=e3804]:
+                      - link "google-omni-flash（异步·文生视频）" [ref=e3805] [cursor=pointer]:
+                        - /url: /reference/omni?op=post-v1beta-interactions&leaf=491614548
+                        - generic "POST /v1beta/interactions · 4 demos" [ref=e3806]: google-omni-flash（异步·文生视频）
+                        - generic [aria-hidden] [ref=e3807]: POST
+                    - listitem [ref=e3808]:
+                      - link "google-omni-flash（查询交互）" [ref=e3809] [cursor=pointer]:
+                        - /url: /reference/omni?op=get-v1beta-interactions-interaction-id&leaf=491657021
+                        - 'generic "GET /v1beta/interactions/{interaction_id} · google-omni-flash（查询交互）" [ref=e3810]': google-omni-flash（查询交互）
+                        - generic [aria-hidden] [ref=e3811]: GET
+                    - listitem [ref=e3812]:
+                      - link "google-omni-flash（下载视频（Google Files））" [ref=e3813] [cursor=pointer]:
+                        - /url: /reference/omni?op=get-v1beta-files-example-file-id-download&leaf=491664266
+                        - 'generic "GET /v1beta/files/{example-file-id}:download · google-omni-flash（下载视频（Google Files））" [ref=e3814]': google-omni-flash（下载视频（Google Files））
+                        - generic [aria-hidden] [ref=e3815]: GET
+                    - listitem [ref=e3816]:
+                      - link "google-omni-flash（下载视频（GCS））" [ref=e3817] [cursor=pointer]:
+                        - /url: /reference/omni?op=get-v1beta-files-gcs&leaf=491664883
+                        - generic "GET /v1beta/files/gcs · google-omni-flash（下载视频（GCS））" [ref=e3818]: google-omni-flash（下载视频（GCS））
+                        - generic [aria-hidden] [ref=e3819]: GET
+                    - listitem [ref=e3820]:
+                      - link "google-omni-flash（查询文件状态）" [ref=e3821] [cursor=pointer]:
+                        - /url: /reference/omni?op=get-v1beta-files-example-file-id&leaf=491668290
+                        - 'generic "GET /v1beta/files/{example-file-id} · google-omni-flash（查询文件状态）" [ref=e3822]': google-omni-flash（查询文件状态）
+                        - generic [aria-hidden] [ref=e3823]: GET
+              - listitem [ref=e3824]:
+                - button "google" [ref=e3825] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3829]:
+                      - link "文生视频" [ref=e3830] [cursor=pointer]:
+                        - /url: /reference/omni?op=post-v1beta-interactions&leaf=489958188
+                        - generic "POST /v1beta/interactions · 4 demos" [ref=e3831]: 文生视频
+                        - generic [aria-hidden] [ref=e3832]: POST
+        - generic [ref=e3833]:
+          - button "语音生成" [ref=e3834] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e3838]:
+                - button "通意万象 语音合成" [ref=e3839] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3843]:
+                      - link "语音合成" [ref=e3844] [cursor=pointer]:
+                        - /url: /reference/alibailian?op=post-alibailian-api-v1-services-aigc-multimodal-generation-generation&leaf=411146391
+                        - generic "POST /alibailian/api/v1/services/aigc/multimodal-generation/generation · 2 demos" [ref=e3845]: 语音合成
+                        - generic [aria-hidden] [ref=e3846]: POST
+        - generic [ref=e3847]:
+          - button "智能交互" [ref=e3848] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e3852]:
+                - button "GPTs" [ref=e3853] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3857]:
+                      - link "GPTs对话" [ref=e3858] [cursor=pointer]:
+                        - /url: /reference/v1?op=post-v1-chat-completions&leaf=232421952
+                        - generic "POST /v1/chat/completions · GPTs对话" [ref=e3859]: GPTs对话
+                        - generic [aria-hidden] [ref=e3860]: POST
+        - generic [ref=e3861]:
+          - button "文本嵌入" [ref=e3862] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e3866]:
+                - button "Rerank" [ref=e3867] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3871]:
+                      - link "重排序" [ref=e3872] [cursor=pointer]:
+                        - /url: /reference/v1?op=post-v1-rerank&leaf=319966930
+                        - generic "POST /v1/rerank · 重排序" [ref=e3873]: 重排序
+                        - generic [aria-hidden] [ref=e3874]: POST
+        - generic [ref=e3875]:
+          - button "品牌平台" [ref=e3876] [cursor=pointer]
+          - generic:
+            - list:
+              - listitem [ref=e3880]:
+                - button "MINIMAX" [ref=e3881] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3885]:
+                      - link "上传复刻音频" [ref=e3886] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-minimax-v1-files&leaf=415288553
+                        - generic "POST /minimax/v1/files · 2 demos" [ref=e3887]: 上传复刻音频
+                        - generic [aria-hidden] [ref=e3888]: POST
+                    - listitem [ref=e3889]:
+                      - link "音色快速复刻" [ref=e3890] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-minimax-v1-voice-clone&leaf=415301409
+                        - generic "POST /minimax/v1/voice_clone · 音色快速复刻" [ref=e3891]: 音色快速复刻
+                        - generic [aria-hidden] [ref=e3892]: POST
+                    - listitem [ref=e3893]:
+                      - link "文生图生视频生成任务" [ref=e3894] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-minimax-v1-video-generation&leaf=414203868
+                        - generic "POST /minimax/v1/video_generation · 2 demos" [ref=e3895]: 文生图生视频生成任务
+                        - generic [aria-hidden] [ref=e3896]: POST
+                    - listitem [ref=e3897]:
+                      - link "查询视频生成任务状态" [ref=e3898] [cursor=pointer]:
+                        - /url: /reference/minimax?op=get-minimax-v1-query-video-generation&leaf=414737646
+                        - generic "GET /minimax/v1/query/video_generation · 查询视频生成任务状态" [ref=e3899]: 查询视频生成任务状态
+                        - generic [aria-hidden] [ref=e3900]: GET
+                    - listitem [ref=e3901]:
+                      - link "检索(用于视频下载,异步音频下载)" [ref=e3902] [cursor=pointer]:
+                        - /url: /reference/minimax?op=get-minimax-v1-files-retrieve&leaf=415282691
+                        - generic "GET /minimax/v1/files/retrieve · 检索(用于视频下载,异步音频下载)" [ref=e3903]: 检索(用于视频下载,异步音频下载)
+                        - generic [aria-hidden] [ref=e3904]: GET
+                    - listitem [ref=e3905]:
+                      - link "文本合成" [ref=e3906] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-v1-messages&leaf=415333722
+                        - generic "POST /v1/messages · 文本合成" [ref=e3907]: 文本合成
+                        - generic [aria-hidden] [ref=e3908]: POST
+                    - listitem [ref=e3909]:
+                      - link "同步语音合成 V2" [ref=e3910] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-minimax-v1-t2a-v2&leaf=415373651
+                        - generic "POST /minimax/v1/t2a_v2 · 同步语音合成 V2" [ref=e3911]: 同步语音合成 V2
+                        - generic [aria-hidden] [ref=e3912]: POST
+                    - listitem [ref=e3913]:
+                      - link "创建异步语音合成任务 V2" [ref=e3914] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-minimax-v1-t2a-async-v2&leaf=415392319
+                        - generic "POST /minimax/v1/t2a_async_v2 · 创建异步语音合成任务 V2" [ref=e3915]: 创建异步语音合成任务 V2
+                        - generic [aria-hidden] [ref=e3916]: POST
+                    - listitem [ref=e3917]:
+                      - link "查询语音生成任务状态" [ref=e3918] [cursor=pointer]:
+                        - /url: /reference/minimax?op=get-minimax-v1-query-t2a-async-query-v2&leaf=415405044
+                        - generic "GET /minimax/v1/query/t2a_async_query_v2 · 查询语音生成任务状态" [ref=e3919]: 查询语音生成任务状态
+                        - generic [aria-hidden] [ref=e3920]: GET
+                    - listitem [ref=e3921]:
+                      - link "音色设计" [ref=e3922] [cursor=pointer]:
+                        - /url: /reference/minimax?op=post-minimax-v1-voice-design&leaf=418271561
+                        - generic "POST /minimax/v1/voice_design · 音色设计" [ref=e3923]: 音色设计
+                        - generic [aria-hidden] [ref=e3924]: POST
+              - listitem [ref=e3925]:
+                - button "可灵 Kling" [ref=e3926] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e3930]:
+                      - button "文生视频" [ref=e3931] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3935]:
+                            - link "文生视频" [ref=e3936] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-text2video&leaf=386060323
+                              - generic "POST /kling/v1/videos/text2video · 文生视频" [ref=e3937]: 文生视频
+                              - generic [aria-hidden] [ref=e3938]: POST
+                          - listitem [ref=e3939]:
+                            - link "查询任务（单个）" [ref=e3940] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-text2video-task-id&leaf=386109649
+                              - 'generic "GET /kling/v1/videos/text2video/{id} · 查询任务（单个）" [ref=e3941]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e3942]: GET
+                    - listitem [ref=e3943]:
+                      - button "图生视频" [ref=e3944] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3948]:
+                            - link "图生视频" [ref=e3949] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-image2video&leaf=386132041
+                              - generic "POST /kling/v1/videos/image2video · 图生视频" [ref=e3950]: 图生视频
+                              - generic [aria-hidden] [ref=e3951]: POST
+                          - listitem [ref=e3952]:
+                            - link "查询任务（单个）" [ref=e3953] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-image2video-id&leaf=386175789
+                              - 'generic "GET /kling/v1/videos/image2video/{id} · 查询任务（单个）" [ref=e3954]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e3955]: GET
+                    - listitem [ref=e3956]:
+                      - button "Omni-Image" [ref=e3957] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3961]:
+                            - link "Omni-Image" [ref=e3962] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-images-omni-image&leaf=393418401
+                              - generic "POST /kling/v1/images/omni-image · Omni-Image" [ref=e3963]: Omni-Image
+                              - generic [aria-hidden] [ref=e3964]: POST
+                          - listitem [ref=e3965]:
+                            - link "查询任务（单个）" [ref=e3966] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-images-omni-image-id&leaf=393436408
+                              - 'generic "GET /kling/v1/images/omni-image/{id} · 查询任务（单个）" [ref=e3967]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e3968]: GET
+                    - listitem [ref=e3969]:
+                      - button "多图参考生视频" [ref=e3970] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3974]:
+                            - link "多图参考生视频" [ref=e3975] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-multi-image2video&leaf=386179083
+                              - generic "POST /kling/v1/videos/multi-image2video · 多图参考生视频" [ref=e3976]: 多图参考生视频
+                              - generic [aria-hidden] [ref=e3977]: POST
+                          - listitem [ref=e3978]:
+                            - link "查询任务（单个）" [ref=e3979] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-multi-image2video-id&leaf=386188400
+                              - 'generic "GET /kling/v1/videos/multi-image2video/{id} · 查询任务（单个）" [ref=e3980]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e3981]: GET
+                    - listitem [ref=e3982]:
+                      - button "多模态视频编辑" [ref=e3983] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e3987]:
+                            - link "初始化待编辑视频" [ref=e3988] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-multi-elements-init-selection&leaf=386191600
+                              - generic "POST /kling/v1/videos/multi-elements/init-selection · 初始化待编辑视频" [ref=e3989]: 初始化待编辑视频
+                              - generic [aria-hidden] [ref=e3990]: POST
+                          - listitem [ref=e3991]:
+                            - link "增加视频选区" [ref=e3992] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-multi-elements-add-selection&leaf=386198862
+                              - generic "POST /kling/v1/videos/multi-elements/add-selection · 增加视频选区" [ref=e3993]: 增加视频选区
+                              - generic [aria-hidden] [ref=e3994]: POST
+                          - listitem [ref=e3995]:
+                            - link "删减视频选区" [ref=e3996] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-multi-elements-delete-selection&leaf=386224260
+                              - generic "POST /kling/v1/videos/multi-elements/delete-selection · 删减视频选区" [ref=e3997]: 删减视频选区
+                              - generic [aria-hidden] [ref=e3998]: POST
+                          - listitem [ref=e3999]:
+                            - link "预览已选区视频" [ref=e4000] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-multi-elements-preview-selection&leaf=389935176
+                              - generic "POST /kling/v1/videos/multi-elements/preview-selection · 预览已选区视频" [ref=e4001]: 预览已选区视频
+                              - generic [aria-hidden] [ref=e4002]: POST
+                          - listitem [ref=e4003]:
+                            - link "多模态视频" [ref=e4004] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-multi-elements&leaf=389936303
+                              - generic "POST /kling/v1/videos/multi-elements · 多模态视频" [ref=e4005]: 多模态视频
+                              - generic [aria-hidden] [ref=e4006]: POST
+                          - listitem [ref=e4007]:
+                            - link "查询任务（单个）" [ref=e4008] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-multi-elements-id&leaf=389951931
+                              - 'generic "GET /kling/v1/videos/multi-elements/{id} · 查询任务（单个）" [ref=e4009]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4010]: GET
+                    - listitem [ref=e4011]:
+                      - button "视频特效" [ref=e4012] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4016]:
+                            - link "视频特效" [ref=e4017] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-effects&leaf=386233275
+                              - generic "POST /kling/v1/videos/effects · 视频特效" [ref=e4018]: 视频特效
+                              - generic [aria-hidden] [ref=e4019]: POST
+                          - listitem [ref=e4020]:
+                            - link "查询任务（单个）" [ref=e4021] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-effects-id&leaf=386243241
+                              - 'generic "GET /kling/v1/videos/effects/{id} · 查询任务（单个）" [ref=e4022]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4023]: GET
+                    - listitem [ref=e4024]:
+                      - button "图像生成" [ref=e4025] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4029]:
+                            - button "视频延长" [ref=e4030] [cursor=pointer]
+                            - generic:
+                              - list:
+                                - listitem [ref=e4034]:
+                                  - link "视频延长" [ref=e4035] [cursor=pointer]:
+                                    - /url: /reference/kling?op=post-kling-v1-videos-video-extend&leaf=386231144
+                                    - generic "POST /kling/v1/videos/video-extend · 视频延长" [ref=e4036]: 视频延长
+                                    - generic [aria-hidden] [ref=e4037]: POST
+                                - listitem [ref=e4038]:
+                                  - link "查询任务（单个）" [ref=e4039] [cursor=pointer]:
+                                    - /url: /reference/kling?op=get-kling-v1-videos-video-extend-id&leaf=386232745
+                                    - 'generic "GET /kling/v1/videos/video-extend/{id} · 查询任务（单个）" [ref=e4040]': 查询任务（单个）
+                                    - generic [aria-hidden] [ref=e4041]: GET
+                          - listitem [ref=e4042]:
+                            - link "图像生成" [ref=e4043] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-images-generations&leaf=386036840
+                              - generic "POST /kling/v1/images/generations · 图像生成" [ref=e4044]: 图像生成
+                              - generic [aria-hidden] [ref=e4045]: POST
+                          - listitem [ref=e4046]:
+                            - link "查询任务（单个）" [ref=e4047] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-images-generations-id&leaf=386262319
+                              - 'generic "GET /kling/v1/images/generations/{id} · 查询任务（单个）" [ref=e4048]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4049]: GET
+                    - listitem [ref=e4050]:
+                      - button "多图参考生图" [ref=e4051] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4055]:
+                            - link "多图参考生图" [ref=e4056] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-images-multi-image2image&leaf=386264560
+                              - generic "POST /kling/v1/images/multi-image2image · 多图参考生图" [ref=e4057]: 多图参考生图
+                              - generic [aria-hidden] [ref=e4058]: POST
+                          - listitem [ref=e4059]:
+                            - link "查询任务（单个）" [ref=e4060] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-images-multi-image2image-id&leaf=386276045
+                              - 'generic "GET /kling/v1/images/multi-image2image/{id} · 查询任务（单个）" [ref=e4061]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4062]: GET
+                    - listitem [ref=e4063]:
+                      - button "可灵3.0turbo" [ref=e4064] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4068]:
+                            - link "文生视频" [ref=e4069] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-text-to-video-kling-3-0-turbo&leaf=476821977
+                              - generic "POST /kling/text-to-video/kling-3.0-turbo · 文生视频" [ref=e4070]: 文生视频
+                              - generic [aria-hidden] [ref=e4071]: POST
+                          - listitem [ref=e4072]:
+                            - link "图生视频" [ref=e4073] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-image-to-video-kling-3-0-turbo&leaf=476825560
+                              - generic "POST /kling/image-to-video/kling-3.0-turbo · 图生视频" [ref=e4074]: 图生视频
+                              - generic [aria-hidden] [ref=e4075]: POST
+                          - listitem [ref=e4076]:
+                            - link "查询视频" [ref=e4077] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-text-to-video-kling-3-0-turbo-task-id&leaf=476826216
+                              - 'generic "GET /kling/text-to-video/kling-3.0-turbo/{task_id} · 查询视频" [ref=e4078]': 查询视频
+                              - generic [aria-hidden] [ref=e4079]: GET
+                    - listitem [ref=e4080]:
+                      - button "Omni-Video" [ref=e4081] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4085]:
+                            - link "Omni-Video" [ref=e4086] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-omni-video&leaf=393296337
+                              - generic "POST /kling/v1/videos/omni-video · Omni-Video" [ref=e4087]: Omni-Video
+                              - generic [aria-hidden] [ref=e4088]: POST
+                          - listitem [ref=e4089]:
+                            - link "查询任务（单个）" [ref=e4090] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-omni-video-id&leaf=393415626
+                              - 'generic "GET /kling/v1/videos/omni-video/{id} · 查询任务（单个）" [ref=e4091]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4092]: GET
+                    - listitem [ref=e4093]:
+                      - button "扩图" [ref=e4094] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4098]:
+                            - link "扩图" [ref=e4099] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-images-editing-expand&leaf=386284418
+                              - generic "POST /kling/v1/images/editing/expand · 扩图" [ref=e4100]: 扩图
+                              - generic [aria-hidden] [ref=e4101]: POST
+                          - listitem [ref=e4102]:
+                            - link "查询任务（单个）" [ref=e4103] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-images-editing-expand-id&leaf=386301897
+                              - 'generic "GET /kling/v1/images/editing/expand/{id} · 查询任务（单个）" [ref=e4104]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4105]: GET
+                    - listitem [ref=e4106]:
+                      - button "图像识别" [ref=e4107] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4111]:
+                            - link "图像识别" [ref=e4112] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-image-recognize&leaf=386307948
+                              - generic "POST /kling/v1/videos/image-recognize · 图像识别" [ref=e4113]: 图像识别
+                              - generic [aria-hidden] [ref=e4114]: POST
+                    - listitem [ref=e4115]:
+                      - button "数字人" [ref=e4116] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4120]:
+                            - link "数字人" [ref=e4121] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-avatar-image2video&leaf=386315766
+                              - generic "POST /kling/v1/videos/avatar/image2video · 数字人" [ref=e4122]: 数字人
+                              - generic [aria-hidden] [ref=e4123]: POST
+                          - listitem [ref=e4124]:
+                            - link "查询任务（单个）" [ref=e4125] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-avatar-image2video-id&leaf=386332700
+                              - 'generic "GET /kling/v1/videos/avatar/image2video/{id} · 查询任务（单个）" [ref=e4126]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4127]: GET
+                    - listitem [ref=e4128]:
+                      - button "文生音效" [ref=e4129] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4133]:
+                            - link "文生音效" [ref=e4134] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-audio-text-to-audio&leaf=386322140
+                              - generic "POST /kling/v1/audio/text-to-audio · 文生音效" [ref=e4135]: 文生音效
+                              - generic [aria-hidden] [ref=e4136]: POST
+                          - listitem [ref=e4137]:
+                            - link "查询任务（单个）" [ref=e4138] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-audio-text-to-audio-id&leaf=386327064
+                              - 'generic "GET /kling/v1/audio/text-to-audio/{id} · 查询任务（单个）" [ref=e4139]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4140]: GET
+                    - listitem [ref=e4141]:
+                      - button "视频生音效" [ref=e4142] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4146]:
+                            - link "视频生音效" [ref=e4147] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-audio-video-to-audio&leaf=386338588
+                              - generic "POST /kling/v1/audio/video-to-audio · 视频生音效" [ref=e4148]: 视频生音效
+                              - generic [aria-hidden] [ref=e4149]: POST
+                          - listitem [ref=e4150]:
+                            - link "查询任务（单个）" [ref=e4151] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-audio-video-to-audio-id&leaf=386342547
+                              - 'generic "GET /kling/v1/audio/video-to-audio/{id} · 查询任务（单个）" [ref=e4152]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4153]: GET
+                    - listitem [ref=e4154]:
+                      - button "语音合成" [ref=e4155] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4159]:
+                            - link "语音合成" [ref=e4160] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-audio-tts&leaf=386347843
+                              - generic "POST /kling/v1/audio/tts · 语音合成" [ref=e4161]: 语音合成
+                              - generic [aria-hidden] [ref=e4162]: POST
+                    - listitem [ref=e4163]:
+                      - button "虚拟试穿" [ref=e4164] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4168]:
+                            - link "虚拟试穿" [ref=e4169] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-images-kolors-virtual-try-on&leaf=386354700
+                              - generic "POST /kling/v1/images/kolors-virtual-try-on · 虚拟试穿" [ref=e4170]: 虚拟试穿
+                              - generic [aria-hidden] [ref=e4171]: POST
+                          - listitem [ref=e4172]:
+                            - link "查询任务（单个）" [ref=e4173] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-images-kolors-virtual-try-on-id&leaf=391306292
+                              - 'generic "GET /kling/v1/images/kolors-virtual-try-on/{id} · 查询任务（单个）" [ref=e4174]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4175]: GET
+                    - listitem [ref=e4176]:
+                      - button "对口型" [ref=e4177] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4181]:
+                            - link "人脸识别" [ref=e4182] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-identify-face&leaf=386389655
+                              - generic "POST /kling/v1/videos/identify-face · 人脸识别" [ref=e4183]: 人脸识别
+                              - generic [aria-hidden] [ref=e4184]: POST
+                          - listitem [ref=e4185]:
+                            - link "对口型" [ref=e4186] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-advanced-lip-sync&leaf=386403357
+                              - generic "POST /kling/v1/videos/advanced-lip-sync · 对口型" [ref=e4187]: 对口型
+                              - generic [aria-hidden] [ref=e4188]: POST
+                          - listitem [ref=e4189]:
+                            - link "查询任务（单个）" [ref=e4190] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-advanced-lip-sync-id&leaf=386413409
+                              - 'generic "GET /kling/v1/videos/advanced-lip-sync/{id} · 查询任务（单个）" [ref=e4191]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4192]: GET
+                    - listitem [ref=e4193]:
+                      - button "自定义音色" [ref=e4194] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4198]:
+                            - link "自定义音色" [ref=e4199] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-general-custom-voices&leaf=393212449
+                              - generic "POST /kling/v1/general/custom-voices · 自定义音色" [ref=e4200]: 自定义音色
+                              - generic [aria-hidden] [ref=e4201]: POST
+                          - listitem [ref=e4202]:
+                            - link "查询自定义音色（单个）" [ref=e4203] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-general-custom-voices-id&leaf=393228289
+                              - 'generic "GET /kling/v1/general/custom-voices/{id} · 查询自定义音色（单个）" [ref=e4204]': 查询自定义音色（单个）
+                              - generic [aria-hidden] [ref=e4205]: GET
+                          - listitem [ref=e4206]:
+                            - link "查询官方音色" [ref=e4207] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-general-presets-voices&leaf=405419408
+                              - generic "GET /kling/v1/general/presets-voices · 查询官方音色" [ref=e4208]: 查询官方音色
+                              - generic [aria-hidden] [ref=e4209]: GET
+                          - listitem [ref=e4210]:
+                            - link "删除自定义音色" [ref=e4211] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-general-delete-voices&leaf=405420641
+                              - generic "POST /kling/v1/general/delete-voices · 删除自定义音色" [ref=e4212]: 删除自定义音色
+                              - generic [aria-hidden] [ref=e4213]: POST
+                    - listitem [ref=e4214]:
+                      - button "动作控制" [ref=e4215] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4219]:
+                            - link "动作控制" [ref=e4220] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-videos-motion-control&leaf=398754751
+                              - generic "POST /kling/v1/videos/motion-control · 动作控制" [ref=e4221]: 动作控制
+                              - generic [aria-hidden] [ref=e4222]: POST
+                          - listitem [ref=e4223]:
+                            - link "查询任务（单个）" [ref=e4224] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-videos-motion-control-id&leaf=398908063
+                              - 'generic "GET /kling/v1/videos/motion-control/{id} · 查询任务（单个）" [ref=e4225]': 查询任务（单个）
+                              - generic [aria-hidden] [ref=e4226]: GET
+                    - listitem [ref=e4227]:
+                      - button "主体" [ref=e4228] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4232]:
+                            - link "主体(旧)" [ref=e4233] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-general-custom-elements&leaf=398950420
+                              - generic "POST /kling/v1/general/custom-elements · 主体(旧)" [ref=e4234]: 主体(旧)
+                              - generic [aria-hidden] [ref=e4235]: POST
+                          - listitem [ref=e4236]:
+                            - link "主体（新版本）" [ref=e4237] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-general-advanced-custom-elements&leaf=432334078
+                              - generic "POST /kling/v1/general/advanced-custom-elements · 主体（新版本）" [ref=e4238]: 主体（新版本）
+                              - generic [aria-hidden] [ref=e4239]: POST
+                          - listitem [ref=e4240]:
+                            - link "查询自定义主体（单个新版本）" [ref=e4241] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-general-advanced-custom-elements-task-id&leaf=432370054
+                              - 'generic "GET /kling/v1/general/advanced-custom-elements/{task_id} · 查询自定义主体（单个新版本）" [ref=e4242]': 查询自定义主体（单个新版本）
+                              - generic [aria-hidden] [ref=e4243]: GET
+                          - listitem [ref=e4244]:
+                            - link "查询官方主体（列表新版本）" [ref=e4245] [cursor=pointer]:
+                              - /url: /reference/kling?op=get-kling-v1-general-advanced-presets-elements&leaf=432371884
+                              - generic "GET /kling/v1/general/advanced-presets-elements · 查询官方主体（列表新版本）" [ref=e4246]: 查询官方主体（列表新版本）
+                              - generic [aria-hidden] [ref=e4247]: GET
+                          - listitem [ref=e4248]:
+                            - link "删除自定义主体（新版本）" [ref=e4249] [cursor=pointer]:
+                              - /url: /reference/kling?op=post-kling-v1-general-delete-elements&leaf=432373397
+                              - generic "POST /kling/v1/general/delete-elements · 删除自定义主体（新版本）" [ref=e4250]: 删除自定义主体（新版本）
+                              - generic [aria-hidden] [ref=e4251]: POST
+              - listitem [ref=e4252]:
+                - button "阿里 Pix" [ref=e4253] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e4257]:
+                      - link "生成文生视频" [ref=e4258] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-text-generate&leaf=461278739
+                        - generic "POST /openapi/v2/video/text/generate · 生成文生视频" [ref=e4259]: 生成文生视频
+                        - generic [aria-hidden] [ref=e4260]: POST
+                    - listitem [ref=e4261]:
+                      - link "生成图生视频" [ref=e4262] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-img-generate&leaf=461514629
+                        - generic "POST /openapi/v2/video/img/generate · 2 demos" [ref=e4263]: 生成图生视频
+                        - generic [aria-hidden] [ref=e4264]: POST
+                    - listitem [ref=e4265]:
+                      - link "首尾帧生成视频" [ref=e4266] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-transition-generate&leaf=461552497
+                        - generic "POST /openapi/v2/video/transition/generate · 首尾帧生成视频" [ref=e4267]: 首尾帧生成视频
+                        - generic [aria-hidden] [ref=e4268]: POST
+                    - listitem [ref=e4269]:
+                      - link "获取视频状态" [ref=e4270] [cursor=pointer]:
+                        - /url: /reference/ali-pix?op=get-openapi-v2-video-result-video-id&leaf=461280674
+                        - 'generic "GET /openapi/v2/video/result/{video_id} · 获取视频状态" [ref=e4271]': 获取视频状态
+                        - generic [aria-hidden] [ref=e4272]: GET
+                    - listitem [ref=e4273]:
+                      - link "生成对口型(Lipsync)视频" [ref=e4274] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-lip-sync-generate&leaf=461568863
+                        - generic "POST /openapi/v2/video/lip_sync/generate · 生成对口型(Lipsync)视频" [ref=e4275]: 生成对口型(Lipsync)视频
+                        - generic [aria-hidden] [ref=e4276]: POST
+                    - listitem [ref=e4277]:
+                      - link "获取TTS 音色" [ref=e4278] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=get-openapi-v2-video-lip-sync-tts-list&leaf=461572144
+                        - generic "GET /openapi/v2/video/lip_sync/tts_list · 获取TTS 音色" [ref=e4279]: 获取TTS 音色
+                        - generic [aria-hidden] [ref=e4280]: GET
+                    - listitem [ref=e4281]:
+                      - link "生成延长(Extend)视频" [ref=e4282] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-extend-generate&leaf=461572845
+                        - generic "POST /openapi/v2/video/extend/generate · 生成延长(Extend)视频" [ref=e4283]: 生成延长(Extend)视频
+                        - generic [aria-hidden] [ref=e4284]: POST
+                    - listitem [ref=e4285]:
+                      - link "音效生成(sound_effect)接口" [ref=e4286] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-sound-effect-generate&leaf=461583143
+                        - generic "POST /openapi/v2/video/sound_effect/generate · 音效生成(sound_effect)接口" [ref=e4287]: 音效生成(sound_effect)接口
+                        - generic [aria-hidden] [ref=e4288]: POST
+                    - listitem [ref=e4289]:
+                      - link "多主体(多参考)生成视频" [ref=e4290] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-fusion-generate&leaf=461587752
+                        - generic "POST /openapi/v2/video/fusion/generate · 多主体(多参考)生成视频" [ref=e4291]: 多主体(多参考)生成视频
+                        - generic [aria-hidden] [ref=e4292]: POST
+                    - listitem [ref=e4293]:
+                      - link "重绘视频生成视频" [ref=e4294] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-restyle-generate&leaf=461657719
+                        - generic "POST /openapi/v2/video/restyle/generate · 重绘视频生成视频" [ref=e4295]: 重绘视频生成视频
+                        - generic [aria-hidden] [ref=e4296]: POST
+                    - listitem [ref=e4297]:
+                      - link "主体替换(Swap) Mask 生成" [ref=e4298] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-mask-selection&leaf=461742464
+                        - generic "POST /openapi/v2/video/mask/selection · 主体替换(Swap) Mask 生成" [ref=e4299]: 主体替换(Swap) Mask 生成
+                        - generic [aria-hidden] [ref=e4300]: POST
+                    - listitem [ref=e4301]:
+                      - link "主体替换(Swap) 视频生成" [ref=e4302] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-swap-generate&leaf=461745010
+                        - generic "POST /openapi/v2/video/swap/generate · 主体替换(Swap) 视频生成" [ref=e4303]: 主体替换(Swap) 视频生成
+                        - generic [aria-hidden] [ref=e4304]: POST
+                    - listitem [ref=e4305]:
+                      - link "多帧(Multi-transition) 视频生成" [ref=e4306] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-multi-transition-generate&leaf=461745213
+                        - generic "POST /openapi/v2/video/multi_transition/generate · 多帧(Multi-transition) 视频生成" [ref=e4307]: 多帧(Multi-transition) 视频生成
+                        - generic [aria-hidden] [ref=e4308]: POST
+                    - listitem [ref=e4309]:
+                      - link "动作模仿(Mimic) 视频生成" [ref=e4310] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-mimic-generate&leaf=461745746
+                        - generic "POST /openapi/v2/video/mimic/generate · 动作模仿(Mimic) 视频生成" [ref=e4311]: 动作模仿(Mimic) 视频生成
+                        - generic [aria-hidden] [ref=e4312]: POST
+                    - listitem [ref=e4313]:
+                      - link "视频编辑(Modify) 生成视频" [ref=e4314] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-video-modify-generate&leaf=461746188
+                        - generic "POST /openapi/v2/video/modify/generate · 视频编辑(Modify) 生成视频" [ref=e4315]: 视频编辑(Modify) 生成视频
+                        - generic [aria-hidden] [ref=e4316]: POST
+                    - listitem [ref=e4317]:
+                      - link "上传图片" [ref=e4318] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-image-upload&leaf=461746750
+                        - generic "POST /openapi/v2/image/upload · 上传图片" [ref=e4319]: 上传图片
+                        - generic [aria-hidden] [ref=e4320]: POST
+                    - listitem [ref=e4321]:
+                      - link "上传资源(视频/音频)" [ref=e4322] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-media-upload&leaf=461746956
+                        - generic "POST /openapi/v2/media/upload · 上传资源(视频/音频)" [ref=e4323]: 上传资源(视频/音频)
+                        - generic [aria-hidden] [ref=e4324]: POST
+                    - listitem [ref=e4325]:
+                      - link "图片模版生成接口" [ref=e4326] [cursor=pointer]:
+                        - /url: /reference/pixverse?op=post-openapi-v2-image-template-generate&leaf=461747650
+                        - generic "POST /openapi/v2/image/template/generate · 图片模版生成接口" [ref=e4327]: 图片模版生成接口
+                        - generic [aria-hidden] [ref=e4328]: POST
+                    - listitem [ref=e4329]:
+                      - link "图片结果查询接口" [ref=e4330] [cursor=pointer]:
+                        - /url: /reference/ali-pix?op=get-openapi-v2-image-result-image-id&leaf=461747768
+                        - 'generic "GET /openapi/v2/image/result/{image_id} · 图片结果查询接口" [ref=e4331]': 图片结果查询接口
+                        - generic [aria-hidden] [ref=e4332]: GET
+              - listitem [ref=e4333]:
+                - button "私域人像" [ref=e4334] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e4338]:
+                      - button "虚拟人像·素材组" [ref=e4339] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4343]:
+                            - link "④ 更新素材组" [ref=e4344] [cursor=pointer]:
+                              - /url: /reference/avatar?op=patch-v1-private-avatar-groups-id&leaf=467132424
+                              - 'generic "PATCH /v1/private-avatar/groups/{id} · ④ 更新素材组" [ref=e4345]': ④ 更新素材组
+                              - generic [aria-hidden] [ref=e4346]: PATCH
+                          - listitem [ref=e4347]:
+                            - link "① 创建素材组" [ref=e4348] [cursor=pointer]:
+                              - /url: /reference/avatar?op=post-v1-private-avatar-groups&leaf=467133493
+                              - generic "POST /v1/private-avatar/groups · ① 创建素材组" [ref=e4349]: ① 创建素材组
+                              - generic [aria-hidden] [ref=e4350]: POST
+                          - listitem [ref=e4351]:
+                            - link "② 查询素材组列表" [ref=e4352] [cursor=pointer]:
+                              - /url: /reference/avatar?op=post-v1-private-avatar-groups-list&leaf=467133494
+                              - generic "POST /v1/private-avatar/groups/list · ② 查询素材组列表" [ref=e4353]: ② 查询素材组列表
+                              - generic [aria-hidden] [ref=e4354]: POST
+                          - listitem [ref=e4355]:
+                            - link "③ 查询单个素材组" [ref=e4356] [cursor=pointer]:
+                              - /url: /reference/avatar?op=get-v1-private-avatar-groups-id&leaf=467132423
+                              - 'generic "GET /v1/private-avatar/groups/{id} · ③ 查询单个素材组" [ref=e4357]': ③ 查询单个素材组
+                              - generic [aria-hidden] [ref=e4358]: GET
+                          - listitem [ref=e4359]:
+                            - link "⑤ 删除素材组" [ref=e4360] [cursor=pointer]:
+                              - /url: /reference/avatar?op=delete-v1-private-avatar-groups-id&leaf=467133495
+                              - 'generic "DELETE /v1/private-avatar/groups/{id} · ⑤ 删除素材组" [ref=e4361]': ⑤ 删除素材组
+                              - generic [aria-hidden] [ref=e4362]: DELETE
+                    - listitem [ref=e4363]:
+                      - button "虚拟人像·素材" [ref=e4364] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4368]:
+                            - link "⑦ 查询素材列表" [ref=e4369] [cursor=pointer]:
+                              - /url: /reference/avatar?op=post-v1-private-avatar-assets-list&leaf=467132425
+                              - generic "POST /v1/private-avatar/assets/list · ⑦ 查询素材列表" [ref=e4370]: ⑦ 查询素材列表
+                              - generic [aria-hidden] [ref=e4371]: POST
+                          - listitem [ref=e4372]:
+                            - link "⑧ 查询素材状态" [ref=e4373] [cursor=pointer]:
+                              - /url: /reference/avatar?op=get-v1-private-avatar-assets-id&leaf=467132426
+                              - 'generic "GET /v1/private-avatar/assets/{id} · ⑧ 查询素材状态" [ref=e4374]': ⑧ 查询素材状态
+                              - generic [aria-hidden] [ref=e4375]: GET
+                          - listitem [ref=e4376]:
+                            - link "⑨ 更新素材" [ref=e4377] [cursor=pointer]:
+                              - /url: /reference/avatar?op=patch-v1-private-avatar-assets-id&leaf=467132427
+                              - 'generic "PATCH /v1/private-avatar/assets/{id} · ⑨ 更新素材" [ref=e4378]': ⑨ 更新素材
+                              - generic [aria-hidden] [ref=e4379]: PATCH
+                          - listitem [ref=e4380]:
+                            - link "⑩ 删除素材" [ref=e4381] [cursor=pointer]:
+                              - /url: /reference/avatar?op=delete-v1-private-avatar-assets-id&leaf=467132428
+                              - 'generic "DELETE /v1/private-avatar/assets/{id} · ⑩ 删除素材" [ref=e4382]': ⑩ 删除素材
+                              - generic [aria-hidden] [ref=e4383]: DELETE
+                          - listitem [ref=e4384]:
+                            - link "⑥ 上传素材" [ref=e4385] [cursor=pointer]:
+                              - /url: /reference/avatar?op=post-v1-private-avatar-assets&leaf=467133496
+                              - generic "POST /v1/private-avatar/assets · ⑥ 上传素材" [ref=e4386]: ⑥ 上传素材
+                              - generic [aria-hidden] [ref=e4387]: POST
+                    - listitem [ref=e4388]:
+                      - button "真人人像·认证" [ref=e4389] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4393]:
+                            - link "⑪ 生成真人认证链接" [ref=e4394] [cursor=pointer]:
+                              - /url: /reference/avatar?op=post-v1-real-avatar-auth-session&leaf=467132429
+                              - generic "POST /v1/real-avatar/auth/session · ⑪ 生成真人认证链接" [ref=e4395]: ⑪ 生成真人认证链接
+                              - generic [aria-hidden] [ref=e4396]: POST
+                          - listitem [ref=e4397]:
+                            - link "⑫ BytedToken 换取 GroupId" [ref=e4398] [cursor=pointer]:
+                              - /url: /reference/avatar?op=post-v1-real-avatar-groups-from-token&leaf=467133497
+                              - generic "POST /v1/real-avatar/groups/from-token · ⑫ BytedToken 换取 GroupId" [ref=e4399]: ⑫ BytedToken 换取 GroupId
+                              - generic [aria-hidden] [ref=e4400]: POST
+              - listitem [ref=e4401]:
+                - button "Fal-ai 聚合" [ref=e4402] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e4406]:
+                      - button "falai-veo3 视频生成" [ref=e4407] [cursor=pointer]
+                      - generic:
+                        - list:
+                          - listitem [ref=e4411]:
+                            - link "/fal-ai/veo3" [ref=e4412] [cursor=pointer]:
+                              - /url: /reference/fal-ai?op=post-fal-ai-veo3&leaf=352567449
+                              - generic "POST /fal-ai/veo3 · /fal-ai/veo3" [ref=e4413]: /fal-ai/veo3
+                              - generic [aria-hidden] [ref=e4414]: POST
+                          - listitem [ref=e4415]:
+                            - link "/fal-ai/veo3/fast/image-to-video" [ref=e4416] [cursor=pointer]:
+                              - /url: /reference/fal-ai?op=post-fal-ai-veo3-fast-image-to-video&leaf=352888771
+                              - generic "POST /fal-ai/veo3/fast/image-to-video · /fal-ai/veo3/fast/image-to-video" [ref=e4417]: /fal-ai/veo3/fast/image-to-video
+                              - generic [aria-hidden] [ref=e4418]: POST
+                          - listitem [ref=e4419]:
+                            - link "/fal-ai/veo3/fast" [ref=e4420] [cursor=pointer]:
+                              - /url: /reference/fal-ai?op=post-fal-ai-veo3-fast&leaf=352888996
+                              - generic "POST /fal-ai/veo3/fast · /fal-ai/veo3/fast" [ref=e4421]: /fal-ai/veo3/fast
+                              - generic [aria-hidden] [ref=e4422]: POST
+                          - listitem [ref=e4423]:
+                            - link "/fal-ai/veo3/image-to-video" [ref=e4424] [cursor=pointer]:
+                              - /url: /reference/fal-ai?op=post-fal-ai-veo3-image-to-video&leaf=353201765
+                              - generic "POST /fal-ai/veo3/image-to-video · /fal-ai/veo3/image-to-video" [ref=e4425]: /fal-ai/veo3/image-to-video
+                              - generic [aria-hidden] [ref=e4426]: POST
+                          - listitem [ref=e4427]:
+                            - 'link "/fal-ai/veo3/requests/{request_id}" [ref=e4428] [cursor=pointer]':
+                              - /url: /reference/fal-ai?op=get-fal-ai-veo3-requests-request-id&leaf=353201595
+                              - 'generic "GET /fal-ai/veo3/requests/{request_id} · /fal-ai/veo3/requests/{request_id}" [ref=e4429]': "/fal-ai/veo3/requests/{request_id}"
+                              - generic [aria-hidden] [ref=e4430]: GET
+                    - listitem [ref=e4431]:
+                      - link "获取请求结果" [ref=e4432] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=get-fal-ai-model-name-requests-request-id&leaf=321180242
+                        - 'generic "GET /fal-ai/{model_name}/requests/{request_id} · 获取请求结果" [ref=e4433]': 获取请求结果
+                        - generic [aria-hidden] [ref=e4434]: GET
+                    - listitem [ref=e4435]:
+                      - link "/fal-ai/flux-1/dev" [ref=e4436] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-1-dev&leaf=326441625
+                        - generic "POST /fal-ai/flux-1/dev · /fal-ai/flux-1/dev" [ref=e4437]: /fal-ai/flux-1/dev
+                        - generic [aria-hidden] [ref=e4438]: POST
+                    - listitem [ref=e4439]:
+                      - link "/fal-ai/flux-1/dev/image-to-image" [ref=e4440] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-1-dev-image-to-image&leaf=326476432
+                        - generic "POST /fal-ai/flux-1/dev/image-to-image · /fal-ai/flux-1/dev/image-to-image" [ref=e4441]: /fal-ai/flux-1/dev/image-to-image
+                        - generic [aria-hidden] [ref=e4442]: POST
+                    - listitem [ref=e4443]:
+                      - link "/fal-ai/flux-1/dev/redux" [ref=e4444] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-1-dev-redux&leaf=326481612
+                        - generic "POST /fal-ai/flux-1/dev/redux · /fal-ai/flux-1/dev/redux" [ref=e4445]: /fal-ai/flux-1/dev/redux
+                        - generic [aria-hidden] [ref=e4446]: POST
+                    - listitem [ref=e4447]:
+                      - link "/fal-ai/flux-1/schnell/redux" [ref=e4448] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-1-schnell-redux&leaf=326483575
+                        - generic "POST /fal-ai/flux-1/schnell/redux · /fal-ai/flux-1/schnell/redux" [ref=e4449]: /fal-ai/flux-1/schnell/redux
+                        - generic [aria-hidden] [ref=e4450]: POST
+                    - listitem [ref=e4451]:
+                      - link "/fal-ai/flux-pro/kontext" [ref=e4452] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-pro-kontext&leaf=326486293
+                        - generic "POST /fal-ai/flux-pro/kontext · /fal-ai/flux-pro/kontext" [ref=e4453]: /fal-ai/flux-pro/kontext
+                        - generic [aria-hidden] [ref=e4454]: POST
+                    - listitem [ref=e4455]:
+                      - link "/fal-ai/flux-pro/kontext/text-to-image" [ref=e4456] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-pro-kontext-text-to-image&leaf=326487979
+                        - generic "POST /fal-ai/flux-pro/kontext/text-to-image · /fal-ai/flux-pro/kontext/text-to-image" [ref=e4457]: /fal-ai/flux-pro/kontext/text-to-image
+                        - generic [aria-hidden] [ref=e4458]: POST
+                    - listitem [ref=e4459]:
+                      - link "/fal-ai/flux-pro/kontext/max" [ref=e4460] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-pro-kontext-max&leaf=326492402
+                        - generic "POST /fal-ai/flux-pro/kontext/max · /fal-ai/flux-pro/kontext/max" [ref=e4461]: /fal-ai/flux-pro/kontext/max
+                        - generic [aria-hidden] [ref=e4462]: POST
+                    - listitem [ref=e4463]:
+                      - link "/fal-ai/flux-pro/kontext/max/multi" [ref=e4464] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-pro-kontext-max-multi&leaf=321180443
+                        - generic "POST /fal-ai/flux-pro/kontext/max/multi · /fal-ai/flux-pro/kontext/max/multi" [ref=e4465]: /fal-ai/flux-pro/kontext/max/multi
+                        - generic [aria-hidden] [ref=e4466]: POST
+                    - listitem [ref=e4467]:
+                      - link "/fal-ai/wan/v2.2-a14b/image-to-image" [ref=e4468] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-wan-v2-2-a14b-image-to-image&leaf=349238006
+                        - generic "POST /fal-ai/wan/v2.2-a14b/image-to-image · /fal-ai/wan/v2.2-a14b/image-to-image" [ref=e4469]: /fal-ai/wan/v2.2-a14b/image-to-image
+                        - generic [aria-hidden] [ref=e4470]: POST
+                    - listitem [ref=e4471]:
+                      - link "/fal-ai/bytedance/seedream/v4/text-to-image" [ref=e4472] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-bytedance-seedream-v4-text-to-image&leaf=349238012
+                        - generic "POST /fal-ai/bytedance/seedream/v4/text-to-image · /fal-ai/bytedance/seedream/v4/text-to-image" [ref=e4473]: /fal-ai/bytedance/seedream/v4/text-to-image
+                        - generic [aria-hidden] [ref=e4474]: POST
+                    - listitem [ref=e4475]:
+                      - link "/fal-ai/bytedance/seedream/v4/edit" [ref=e4476] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-bytedance-seedream-v4-edit&leaf=349238014
+                        - generic "POST /fal-ai/bytedance/seedream/v4/edit · /fal-ai/bytedance/seedream/v4/edit" [ref=e4477]: /fal-ai/bytedance/seedream/v4/edit
+                        - generic [aria-hidden] [ref=e4478]: POST
+                    - listitem [ref=e4479]:
+                      - link "/fal-ai/vidu/reference-to-image" [ref=e4480] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-vidu-reference-to-image&leaf=349238015
+                        - generic "POST /fal-ai/vidu/reference-to-image · /fal-ai/vidu/reference-to-image" [ref=e4481]: /fal-ai/vidu/reference-to-image
+                        - generic [aria-hidden] [ref=e4482]: POST
+                    - listitem [ref=e4483]:
+                      - link "/fal-ai/imagen4/preview" [ref=e4484] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-imagen4-preview&leaf=349238024
+                        - generic "POST /fal-ai/imagen4/preview · /fal-ai/imagen4/preview" [ref=e4485]: /fal-ai/imagen4/preview
+                        - generic [aria-hidden] [ref=e4486]: POST
+                    - listitem [ref=e4487]:
+                      - link "/fal-ai/qwen-image-edit-lora" [ref=e4488] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-qwen-image-edit-lora&leaf=349238066
+                        - generic "POST /fal-ai/qwen-image-edit-lora · 2 demos" [ref=e4489]: /fal-ai/qwen-image-edit-lora
+                        - generic [aria-hidden] [ref=e4490]: POST
+                    - listitem [ref=e4491]:
+                      - link "/fal-ai/qwen-image-edit-plus" [ref=e4492] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-qwen-image-edit-plus&leaf=354302383
+                        - generic "POST /fal-ai/qwen-image-edit-plus · /fal-ai/qwen-image-edit-plus" [ref=e4493]: /fal-ai/qwen-image-edit-plus
+                        - generic [aria-hidden] [ref=e4494]: POST
+                    - listitem [ref=e4495]:
+                      - link "/fal-ai/kling-video/v2.5-turbo/pro/text-to-video" [ref=e4496] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-kling-video-v2-5-turbo-pro-text-to-video&leaf=355333276
+                        - generic "POST /fal-ai/kling-video/v2.5-turbo/pro/text-to-video · 2 demos" [ref=e4497]: /fal-ai/kling-video/v2.5-turbo/pro/text-to-video
+                        - generic [aria-hidden] [ref=e4498]: POST
+                    - listitem [ref=e4499]:
+                      - link "/fal-ai/kling-video/v2.5-turbo/pro/image-to-video" [ref=e4500] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-kling-video-v2-5-turbo-pro-image-to-video&leaf=355334957
+                        - generic "POST /fal-ai/kling-video/v2.5-turbo/pro/image-to-video · /fal-ai/kling-video/v2.5-turbo/pro/image-to-video" [ref=e4501]: /fal-ai/kling-video/v2.5-turbo/pro/image-to-video
+                        - generic [aria-hidden] [ref=e4502]: POST
+                    - listitem [ref=e4503]:
+                      - link "/fal-ai/flux-lora" [ref=e4504] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-lora&leaf=355348632
+                        - generic "POST /fal-ai/flux-lora · /fal-ai/flux-lora" [ref=e4505]: /fal-ai/flux-lora
+                        - generic [aria-hidden] [ref=e4506]: POST
+                    - listitem [ref=e4507]:
+                      - link "/fal-ai/flux-lora/image-to-image" [ref=e4508] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-lora-image-to-image&leaf=355348784
+                        - generic "POST /fal-ai/flux-lora/image-to-image · /fal-ai/flux-lora/image-to-image" [ref=e4509]: /fal-ai/flux-lora/image-to-image
+                        - generic [aria-hidden] [ref=e4510]: POST
+                    - listitem [ref=e4511]:
+                      - link "/fal-ai/flux-lora/inpainting" [ref=e4512] [cursor=pointer]:
+                        - /url: /reference/fal-ai?op=post-fal-ai-flux-lora-inpainting&leaf=355349527
+                        - generic "POST /fal-ai/flux-lora/inpainting · /fal-ai/flux-lora/inpainting" [ref=e4513]: /fal-ai/flux-lora/inpainting
+                        - generic [aria-hidden] [ref=e4514]: POST
+              - listitem [ref=e4515]:
+                - button "Replicate 聚合" [ref=e4516] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e4520]:
+                      - link "创建任务 black-forest-labs/flux-kontext-dev" [ref=e4521] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-black-forest-labs-flux-kontext-dev-predictions&leaf=326395170
+                        - generic "POST /replicate/v1/models/black-forest-labs/flux-kontext-dev/predictions · 创建任务 black-forest-labs/flux-kontext-dev" [ref=e4522]: 创建任务 black-forest-labs/flux-kontext-dev
+                        - generic [aria-hidden] [ref=e4523]: POST
+                    - listitem [ref=e4524]:
+                      - link "创建任务 black-forest-labs/flux-1.1-pro-ultra" [ref=e4525] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-black-forest-labs-flux-1-1-pro-ultra-predictions&leaf=326937038
+                        - generic "POST /replicate/v1/models/black-forest-labs/flux-1.1-pro-ultra/predictions · 创建任务 black-forest-labs/flux-1.1-pro-ultra" [ref=e4526]: 创建任务 black-forest-labs/flux-1.1-pro-ultra
+                        - generic [aria-hidden] [ref=e4527]: POST
+                    - listitem [ref=e4528]:
+                      - link "创建任务 black-forest-labs/flux-kontext-pro" [ref=e4529] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-black-forest-labs-flux-kontext-pro-predictions&leaf=326937091
+                        - generic "POST /replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions · 创建任务 black-forest-labs/flux-kontext-pro" [ref=e4530]: 创建任务 black-forest-labs/flux-kontext-pro
+                        - generic [aria-hidden] [ref=e4531]: POST
+                    - listitem [ref=e4532]:
+                      - link "创建任务 black-forest-labs/flux-kontext-max" [ref=e4533] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-black-forest-labs-flux-kontext-max-predictions&leaf=326937190
+                        - generic "POST /replicate/v1/models/black-forest-labs/flux-kontext-max/predictions · 创建任务 black-forest-labs/flux-kontext-max" [ref=e4534]: 创建任务 black-forest-labs/flux-kontext-max
+                        - generic [aria-hidden] [ref=e4535]: POST
+                    - listitem [ref=e4536]:
+                      - link "创建任务-通过模型version（predictions）" [ref=e4537] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-predictions&leaf=330236623
+                        - generic "POST /replicate/v1/predictions · 12 demos" [ref=e4538]: 创建任务-通过模型version（predictions）
+                        - generic [aria-hidden] [ref=e4539]: POST
+                    - listitem [ref=e4540]:
+                      - link "查询任务" [ref=e4541] [cursor=pointer]:
+                        - /url: /reference/replicate?op=get-replicate-v1-predictions-id&leaf=326395247
+                        - 'generic "GET /replicate/v1/predictions/{任务id} · 查询任务" [ref=e4542]': 查询任务
+                        - generic [aria-hidden] [ref=e4543]: GET
+                    - listitem [ref=e4544]:
+                      - link "创建任务 minimax/video-01-live" [ref=e4545] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-minimax-video-01-live-predictions&leaf=326486964
+                        - generic "POST /replicate/v1/models/minimax/video-01-live/predictions · 创建任务 minimax/video-01-live" [ref=e4546]: 创建任务 minimax/video-01-live
+                        - generic [aria-hidden] [ref=e4547]: POST
+                    - listitem [ref=e4548]:
+                      - link "创建任务 minimax/video-01" [ref=e4549] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-minimax-video-01-predictions&leaf=326487974
+                        - generic "POST /replicate/v1/models/minimax/video-01/predictions · 创建任务 minimax/video-01" [ref=e4550]: 创建任务 minimax/video-01
+                        - generic [aria-hidden] [ref=e4551]: POST
+                    - listitem [ref=e4552]:
+                      - link "创建任务 recraft-ai/recraft-v3" [ref=e4553] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-recraft-ai-recraft-v3-predictions&leaf=326489482
+                        - generic "POST /replicate/v1/models/recraft-ai/recraft-v3/predictions · 创建任务 recraft-ai/recraft-v3" [ref=e4554]: 创建任务 recraft-ai/recraft-v3
+                        - generic [aria-hidden] [ref=e4555]: POST
+                    - listitem [ref=e4556]:
+                      - link "创建任务 recraft-ai/recraft-v3-svg" [ref=e4557] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-recraft-ai-recraft-v3-svg-predictions&leaf=326491184
+                        - generic "POST /replicate/v1/models/recraft-ai/recraft-v3-svg/predictions · 创建任务 recraft-ai/recraft-v3-svg" [ref=e4558]: 创建任务 recraft-ai/recraft-v3-svg
+                        - generic [aria-hidden] [ref=e4559]: POST
+                    - listitem [ref=e4560]:
+                      - link "创建任务 flux-kontext-apps/multi-image-kontext-max" [ref=e4561] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-flux-kontext-apps-multi-image-kontext-max-predictions&leaf=327029322
+                        - generic "POST /replicate/v1/models/flux-kontext-apps/multi-image-kontext-max/predictions · 创建任务 flux-kontext-apps/multi-image-kontext-max" [ref=e4562]: 创建任务 flux-kontext-apps/multi-image-kontext-max
+                        - generic [aria-hidden] [ref=e4563]: POST
+                    - listitem [ref=e4564]:
+                      - link "创建任务 flux-kontext-apps/multi-image-kontext-pro" [ref=e4565] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-flux-kontext-apps-multi-image-kontext-pro-predictions&leaf=327030811
+                        - generic "POST /replicate/v1/models/flux-kontext-apps/multi-image-kontext-pro/predictions · 创建任务 flux-kontext-apps/multi-image-kontext-pro" [ref=e4566]: 创建任务 flux-kontext-apps/multi-image-kontext-pro
+                        - generic [aria-hidden] [ref=e4567]: POST
+                    - listitem [ref=e4568]:
+                      - link "创建任务 riffusion/riffusion" [ref=e4569] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-riffusion-riffusion-predictions&leaf=327035463
+                        - generic "POST /replicate/v1/models/riffusion/riffusion/predictions · 创建任务 riffusion/riffusion" [ref=e4570]: 创建任务 riffusion/riffusion
+                        - generic [aria-hidden] [ref=e4571]: POST
+                    - listitem [ref=e4572]:
+                      - link "创建任务 black-forest-labs/flux-fill-dev" [ref=e4573] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-black-forest-labs-flux-fill-dev-predictions&leaf=327042578
+                        - generic "POST /replicate/v1/models/black-forest-labs/flux-fill-dev/predictions · 创建任务 black-forest-labs/flux-fill-dev" [ref=e4574]: 创建任务 black-forest-labs/flux-fill-dev
+                        - generic [aria-hidden] [ref=e4575]: POST
+                    - listitem [ref=e4576]:
+                      - link "创建任务 black-forest-labs/flux-fill-pro" [ref=e4577] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-black-forest-labs-flux-fill-pro-predictions&leaf=327043723
+                        - generic "POST /replicate/v1/models/black-forest-labs/flux-fill-pro/predictions · 创建任务 black-forest-labs/flux-fill-pro" [ref=e4578]: 创建任务 black-forest-labs/flux-fill-pro
+                        - generic [aria-hidden] [ref=e4579]: POST
+                    - listitem [ref=e4580]:
+                      - link "创建任务 google/imagen-4-fast" [ref=e4581] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-google-imagen-4-fast-predictions&leaf=327045600
+                        - generic "POST /replicate/v1/models/google/imagen-4-fast/predictions · 创建任务 google/imagen-4-fast" [ref=e4582]: 创建任务 google/imagen-4-fast
+                        - generic [aria-hidden] [ref=e4583]: POST
+                    - listitem [ref=e4584]:
+                      - link "创建任务 google/imagen-4-ultra" [ref=e4585] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-google-imagen-4-ultra-predictions&leaf=327046619
+                        - generic "POST /replicate/v1/models/google/imagen-4-ultra/predictions · 创建任务 google/imagen-4-ultra" [ref=e4586]: 创建任务 google/imagen-4-ultra
+                        - generic [aria-hidden] [ref=e4587]: POST
+                    - listitem [ref=e4588]:
+                      - link "创建任务 google/imagen-4" [ref=e4589] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-google-imagen-4-predictions&leaf=327048219
+                        - generic "POST /replicate/v1/models/google/imagen-4/predictions · 创建任务 google/imagen-4" [ref=e4590]: 创建任务 google/imagen-4
+                        - generic [aria-hidden] [ref=e4591]: POST
+                    - listitem [ref=e4592]:
+                      - link "创建任务 prunaai/vace-14b" [ref=e4593] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-prunaai-vace-14b-predictions&leaf=327049569
+                        - generic "POST /replicate/v1/models/prunaai/vace-14b/predictions · 创建任务 prunaai/vace-14b" [ref=e4594]: 创建任务 prunaai/vace-14b
+                        - generic [aria-hidden] [ref=e4595]: POST
+                    - listitem [ref=e4596]:
+                      - link "创建任务 ideogram-ai/ideogram-v2-turbo" [ref=e4597] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-ideogram-ai-ideogram-v2-turbo-predictions&leaf=326492658
+                        - generic "POST /replicate/v1/models/ideogram-ai/ideogram-v2-turbo/predictions · 创建任务 ideogram-ai/ideogram-v2-turbo" [ref=e4598]: 创建任务 ideogram-ai/ideogram-v2-turbo
+                        - generic [aria-hidden] [ref=e4599]: POST
+                    - listitem [ref=e4600]:
+                      - link "创建任务 bytedance/seedream-4" [ref=e4601] [cursor=pointer]:
+                        - /url: /reference/replicate?op=post-replicate-v1-models-bytedance-seedream-4-predictions&leaf=356491310
+                        - generic "POST /replicate/v1/models/bytedance/seedream-4/predictions · 创建任务 bytedance/seedream-4" [ref=e4602]: 创建任务 bytedance/seedream-4
+                        - generic [aria-hidden] [ref=e4603]: POST
+              - listitem [ref=e4604]:
+                - button "VIDU 多媒体" [ref=e4605] [cursor=pointer]
+                - generic:
+                  - list:
+                    - listitem [ref=e4609]:
+                      - link "创建图生视频任务" [ref=e4610] [cursor=pointer]:
+                        - /url: /reference/vidu?op=post-ent-v2-img2video&leaf=407755273
+                        - generic "POST /ent/v2/img2video · 创建图生视频任务" [ref=e4611]: 创建图生视频任务
+                        - generic [aria-hidden] [ref=e4612]: POST
+                    - listitem [ref=e4613]:
+                      - link "创建参考生视频任务（主体调用）" [ref=e4614] [cursor=pointer]:
+                        - /url: /reference/vidu?op=post-ent-v2-reference2video&leaf=407866241
+                        - generic "POST /ent/v2/reference2video · 2 demos" [ref=e4615]: 创建参考生视频任务（主体调用）
+                        - generic [aria-hidden] [ref=e4616]: POST
+                    - listitem [ref=e4617]:
+                      - link "创建首尾帧生视频任务" [ref=e4618] [cursor=pointer]:
+                        - /url: /reference/vidu?op=post-ent-v2-start-end2video&leaf=407937113
+                        - generic "POST /ent/v2/start-end2video · 创建首尾帧生视频任务" [ref=e4619]: 创建首尾帧生视频任务
+                        - generic [aria-hidden] [ref=e4620]: POST
+                    - listitem [ref=e4621]:
+                      - link "创建图片生成任务" [ref=e4622] [cursor=pointer]:
+                        - /url: /reference/vidu?op=post-ent-v2-reference2image&leaf=407958636
+                        - generic "POST /ent/v2/reference2image · 创建图片生成任务" [ref=e4623]: 创建图片生成任务
+                        - generic [aria-hidden] [ref=e4624]: POST
+                    - listitem [ref=e4625]:
+                      - link "创建文生音频任务" [ref=e4626] [cursor=pointer]:
+                        - /url: /reference/vidu?op=post-ent-v2-text2audio&leaf=407976770
+                        - generic "POST /ent/v2/text2audio · 创建文生音频任务" [ref=e4627]: 创建文生音频任务
+                        - generic [aria-hidden] [ref=e4628]: POST
+                    - listitem [ref=e4629]:
+                      - link "语音合成" [ref=e4630] [cursor=pointer]:
+                        - /url: /reference/vidu?op=post-ent-v2-audio-tts&leaf=407989987
+                        - generic "POST /ent/v2/audio-tts · 语音合成" [ref=e4631]: 语音合成
+                        - generic [aria-hidden] [ref=e4632]: POST
+                    - listitem [ref=e4633]:
+                      - link "创建文生视频任务" [ref=e4634] [cursor=pointer]:
+                        - /url: /reference/vidu?op=post-ent-v2-text2video&leaf=407353658
+                        - generic "POST /ent/v2/text2video · 创建文生视频任务" [ref=e4635]: 创建文生视频任务
+                        - generic [aria-hidden] [ref=e4636]: POST
+                    - listitem [ref=e4637]:
+                      - link "获取请求结果" [ref=e4638] [cursor=pointer]:
+                        - /url: /reference/vidu?op=get-ent-v2-tasks-id-creations&leaf=407353662
+                        - 'generic "GET /ent/v2/tasks/{id}/creations · 获取请求结果" [ref=e4639]': 获取请求结果
+                        - generic [aria-hidden] [ref=e4640]: GET
+    - main [ref=e2184]:
+      - article [ref=e4951]:
+        - generic [ref=e4952]:
+          - generic [ref=e4953]:
+            - generic [ref=e4954]:
+              - heading "创建图片" [level=1] [ref=e4955]
+              - generic [ref=e4956]:
+                - button "复制 Markdown" [ref=e4957] [cursor=pointer]
+                - button "调试" [ref=e4961] [cursor=pointer]
+            - generic [ref=e4964]:
+              - generic [ref=e4965]: POST
+              - code [ref=e4968]: /v1/images/generations
+            - generic [ref=e4969]:
+              - paragraph [ref=e4970]: 给定提示和/或输入图像，模型将生成新图像。
+              - paragraph [ref=e4971]:
+                - text: 相关指南：
+                - link "图像生成" [ref=e4972] [cursor=pointer]:
+                  - /url: https://www.volcengine.com/docs/82379/1541523
+              - paragraph [ref=e4973]: 根据提示创建图像。
+            - generic [ref=e4974]:
+              - heading "Parameters" [level=2] [ref=e4975]
+              - generic [ref=e4977]:
+                - generic [ref=e4978]:
+                  - code [ref=e4980]: Authorization
+                  - generic [ref=e4981]:
+                    - generic [ref=e4982]: header
+                    - generic [ref=e4983]: string
+                - paragraph [ref=e4984]: Bearer API Key
+            - generic [ref=e4985]:
+              - heading "请求体参数 application/json JSON 全部展开" [level=2] [ref=e4986]:
+                - text: 请求体参数
+                - generic [ref=e4987]: application/json
+                - generic [ref=e4988]:
+                  - button "JSON" [ref=e4989] [cursor=pointer]
+                  - button "全部展开" [ref=e4990] [cursor=pointer]
+              - generic [ref=e4991]:
+                - generic [ref=e4992]:
+                  - generic [ref=e4993]: model*
+                  - generic [ref=e4994]: string
+                - paragraph [ref=e4995]: "- 支持：文生图 - doubao-seedream-3-0-t2i-250415 - 支持：图片编辑 - doubao-seededit-3-0-i2i-250628 - 支持：文生图、图生图 - doubao-seedream-5-0-260128 - doubao-seedream-4-5-251128 - doubao-seedream-4-0-250828"
+              - generic [ref=e4997]:
+                - generic [ref=e4998]:
+                  - generic [ref=e4999]: prompt*
+                  - generic [ref=e5000]: string
+                - paragraph [ref=e5001]: 用于生成图像的提示词。
+              - generic [ref=e5003]:
+                - generic [ref=e5004]:
+                  - generic [ref=e5005]: response_format
+                  - generic [ref=e5006]: string
+                - paragraph [ref=e5007]: 指定生成图像的返回格式。支持以下两种返回方式： - url：返回图片下载链接；链接在图片生成后24小时内有效，请及时下载图片。 - b64_json：以 Base64 编码字符串的 JSON 格式返回图像数据。 默认值 url
+              - generic [ref=e5009]: size
+              - generic [ref=e5013]:
+                - generic [ref=e5014]:
+                  - generic [ref=e5015]: seed
+                  - generic [ref=e5016]: integer
+                - paragraph [ref=e5017]: 仅 doubao-seedream-3.0-t2i/seededit-3.0-i2i 支持该参 随机数种子，用于控制模型生成内容的随机性。取值范围为 [-1, 2147483647]。 注意： - 相同的请求下，模型收到不同的seed值，如：不指定seed值或令seed取值为-1（会使用随机数替代）、或手动变更seed值，将生成不同的结果。 - 相同的请求下，模型收到相同的seed值，会生成类似的结果，但不保证完全一致。
+              - generic [ref=e5019]:
+                - generic [ref=e5020]:
+                  - generic [ref=e5021]: guidance_scale
+                  - generic [ref=e5022]: number
+                - paragraph [ref=e5023]: 模型输出结果与prompt的一致程度，生成图像的自由度，又称为文本权重；值越大，模型自由度越小，与用户输入的提示词相关性越强，取值范围：[1, 10] 。 - doubao-seedream-3.0-t2i 默认值 2.5 - doubao-seededit-3.0-i2i 默认值 5.5 - doubao-seedream-5.0-lite/4.5/4.0 不支持
+              - generic [ref=e5025]:
+                - generic [ref=e5026]:
+                  - generic [ref=e5027]: watermark
+                  - generic [ref=e5028]: boolean
+                - paragraph [ref=e5029]: 是否在生成的图片中添加水印。 - false：不添加水印。 - true：在图片右下角添加“AI生成”字样的水印标识。 默认值 true
+              - generic [ref=e5031]:
+                - generic [ref=e5032]: image
+                - paragraph [ref=e5034]: 输入的图片信息，支持 URL 或 Base64 编码。 - 图片URL：请确保图片URL可被访问。 - Base64编码：请遵循此格式data:image/<图片格式>;base64,<Base64编码>。注意 <图片格式> 需小写，如 data:image/png;base64,<base64_image>。
+              - generic [ref=e5036]:
+                - generic [ref=e5037]:
+                  - generic [ref=e5038]: sequential_image_generation
+                  - generic [ref=e5039]: string
+                - paragraph [ref=e5040]: 仅 doubao-seedream-5.0-lite/4.5/4.0 支持该参 控制是否关闭组图功能；基于您输入的内容，生成的一组内容关联的图片。 - auto：自动判断模式，模型会根据用户提供的提示词自主判断是否返回组图以及组图包含的图片数量。 - disabled：关闭组图功能，模型只会生成一张图。 默认值 disabled
+              - generic [ref=e5042]:
+                - generic [ref=e5043]:
+                  - generic [ref=e5044]: sequential_image_generation_options
+                  - generic [ref=e5045]: object
+                - paragraph [ref=e5046]: 仅 doubao-seedream-5.0-lite/4.5/4.0 支持该参 组图功能的配置。仅当 sequential_image_generation 为 auto 时生效。
+              - generic [ref=e5048]:
+                - generic [ref=e5049]:
+                  - generic [ref=e5050]: output_format
+                  - generic [ref=e5051]: string
+                - paragraph [ref=e5052]: 仅 doubao-seedream-5.0 支持该参 指定生成图像的文件格式。可选值： - png - jpeg 默认值 jpeg
+            - generic [ref=e5054]:
+              - heading "Responses" [level=2] [ref=e5055]
+              - generic [ref=e5056]:
+                - generic [ref=e5057]:
+                  - generic [ref=e5058]: "200"
+                  - generic [ref=e5059]: application/json
+                - generic [ref=e5061]:
+                  - generic [ref=e5062]:
+                    - button "▼" [expanded] [ref=e5063] [cursor=pointer]
+                    - generic [ref=e5064]: response-200
+                    - generic [ref=e5065]: object
+                    - generic [ref=e5066]: PostV1ImagesGenerationsResponse
+                  - generic [ref=e5068]:
+                    - generic [ref=e5069]: properties
+                    - generic [ref=e5070]:
+                      - generic [ref=e5071]:
+                        - generic [ref=e5072]: created*
+                        - generic [ref=e5073]: integer
+                      - paragraph [ref=e5074]: Unix 时间戳（秒）
+                    - generic [ref=e5075]:
+                      - generic [ref=e5076]:
+                        - button "▶" [ref=e5077] [cursor=pointer]
+                        - generic [ref=e5078]: data*
+                        - generic [ref=e5079]: array
+                      - paragraph [ref=e5080]: 数据载荷（常为 Base64 或结构化对象）
+              - generic [ref=e5081]:
+                - generic [ref=e5082]:
+                  - generic [ref=e5083]: "400"
+                  - generic [ref=e5084]: 参数校验失败或请求不合法
+                  - generic [ref=e5085]: application/json
+                - generic [ref=e5087]:
+                  - generic [ref=e5088]:
+                    - button "▼" [expanded] [ref=e5089] [cursor=pointer]
+                    - generic [ref=e5090]: response-400
+                    - generic [ref=e5091]: object
+                    - generic [ref=e5092]: NewApiError
+                  - generic [ref=e5094]:
+                    - generic [ref=e5095]: properties
+                    - generic [ref=e5097]:
+                      - button "▶" [ref=e5098] [cursor=pointer]
+                      - generic [ref=e5099]: error*
+                      - generic [ref=e5100]: object
+          - generic [ref=e5101]:
+            - generic [ref=e5102]:
+              - generic [ref=e5103]:
+                - generic [ref=e5107]: 请求体示例
+                - combobox "请求体示例" [ref=e5108] [cursor=pointer]:
+                  - option "创建图片" [selected]
+                  - option "doubao-seededit-3-0-i2i-250628"
+                  - option "doubao-seedream-4-0-250828-文生图"
+                  - option "doubao-seedream-4-0-250828-图生图"
+                  - option "doubao-seedream-4-0-250828-多图生图"
+                  - option "doubao-seedream 4.0（集成）"
+                  - option "doubao-seedream 4.5（集成）"
+                  - option "doubao-seedream-4-5-251128 文生图（纯文本输入单图输出）"
+                  - option "doubao-seedream-4-5-251128 图文生图（单图输入单图输出）"
+                  - option "doubao-seedream-4-5-251128 多图融合（多图输入单图输出）"
+                  - option "doubao-seedream-4-5-251128 组图输出（多图输出）"
+                  - option "doubao-seedream-4-5-251128 单张图生组图"
+                  - option "doubao-seedream-4-5-251128 多参考图生组图"
+                - button "Copy" [ref=e5109] [cursor=pointer]
+              - generic [ref=e5114]:
+                - generic [ref=e5115]:
+                  - generic [ref=e5116]: "1"
+                  - generic [ref=e5117]: "{"
+                - generic [ref=e5118]:
+                  - generic [ref=e5119]: "2"
+                  - generic [ref=e5120]: "\"model\": \"doubao-seedream-5-0-260128\","
+                - generic [ref=e5121]:
+                  - generic [ref=e5122]: "3"
+                  - generic [ref=e5123]: "\"prompt\": \"充满活力的特写编辑肖像，模特眼神犀利，头戴雕塑感帽子，色彩拼接丰富，眼部焦点锐利，景深较浅，具有Vogue杂志封面的美学风格，采用中画幅拍摄，工作室灯光效果强烈。\","
+                - generic [ref=e5124]:
+                  - generic [ref=e5125]: "4"
+                  - generic [ref=e5126]: "\"size\": \"2K\","
+                - generic [ref=e5127]:
+                  - generic [ref=e5128]: "5"
+                  - generic [ref=e5129]: "\"output_format\": \"png\","
+                - generic [ref=e5130]:
+                  - generic [ref=e5131]: "6"
+                  - generic [ref=e5132]: "\"response_format\": \"url\","
+                - generic [ref=e5133]:
+                  - generic [ref=e5134]: "7"
+                  - generic [ref=e5135]: "\"watermark\": false"
+                - generic [ref=e5136]:
+                  - generic [ref=e5137]: "8"
+                  - generic [ref=e5138]: "}"
+            - generic [ref=e5139]:
+              - generic [ref=e5140]:
+                - generic [ref=e5145]: 代码示例
+                - combobox "Language" [ref=e5146] [cursor=pointer]:
+                  - option "cURL" [selected]
+                  - option "Python"
+                  - option "JavaScript"
+                - button "Copy" [ref=e5147] [cursor=pointer]
+              - generic [ref=e5152]:
+                - generic [ref=e5153]:
+                  - generic [ref=e5154]: "1"
+                  - generic [ref=e5155]: curl -X POST "https://anyaigc.ai/v1/images/generations" \
+                - generic [ref=e5156]:
+                  - generic [ref=e5157]: "2"
+                  - generic [ref=e5158]: "-H \"Content-Type: application/json\" \\"
+                - generic [ref=e5159]:
+                  - generic [ref=e5160]: "3"
+                  - generic [ref=e5161]: "-d '{"
+                - generic [ref=e5162]:
+                  - generic [ref=e5163]: "4"
+                  - generic [ref=e5164]: "\"model\": \"doubao-seedream-5-0-260128\","
+                - generic [ref=e5165]:
+                  - generic [ref=e5166]: "5"
+                  - generic [ref=e5167]: "\"prompt\": \"充满活力的特写编辑肖像，模特眼神犀利，头戴雕塑感帽子，色彩拼接丰富，眼部焦点锐利，景深较浅，具有Vogue杂志封面的美学风格，采用中画幅拍摄，工作室灯光效果强烈。\","
+                - generic [ref=e5168]:
+                  - generic [ref=e5169]: "6"
+                  - generic [ref=e5170]: "\"size\": \"2K\","
+                - generic [ref=e5171]:
+                  - generic [ref=e5172]: "7"
+                  - generic [ref=e5173]: "\"output_format\": \"png\","
+                - generic [ref=e5174]:
+                  - generic [ref=e5175]: "8"
+                  - generic [ref=e5176]: "\"response_format\": \"url\","
+                - generic [ref=e5177]:
+                  - generic [ref=e5178]: "9"
+                  - generic [ref=e5179]: "\"watermark\": false"
+                - generic [ref=e5180]:
+                  - generic [ref=e5181]: "10"
+                  - generic [ref=e5182]: "}'"
+            - generic [ref=e5183]:
+              - generic [ref=e5184]:
+                - generic [ref=e5190]: 响应
+                - generic [ref=e5191]: "200"
+                - button "Copy" [ref=e5192] [cursor=pointer]
+              - generic [ref=e5197]:
+                - generic [ref=e5198]:
+                  - generic [ref=e5199]: "1"
+                  - generic [ref=e5200]:
+                    - button "▼" [expanded] [ref=e5201] [cursor=pointer]
+                    - generic [ref=e5202]: "{"
+                - generic [ref=e5203]:
+                  - generic [ref=e5204]: "2"
+                  - generic [ref=e5205]:
+                    - generic [ref=e5206]: "\"created\""
+                    - generic [ref=e5207]: ":"
+                    - generic [ref=e5208]: "1749819664"
+                    - text: ","
+                - generic [ref=e5209]:
+                  - generic [ref=e5210]: "3"
+                  - generic [ref=e5211]:
+                    - button "▼" [expanded] [ref=e5212] [cursor=pointer]
+                    - generic [ref=e5213]: "\"data\""
+                    - generic [ref=e5214]: ":"
+                    - generic [ref=e5215]: "["
+                - generic [ref=e5216]:
+                  - generic [ref=e5217]: "4"
+                  - generic [ref=e5218]:
+                    - button "▶" [ref=e5219] [cursor=pointer]
+                    - generic [ref=e5220]: "{"
+                    - generic [ref=e5221]: 4 keys
+                    - generic [ref=e5222]: "}"
+                - generic [ref=e5223]:
+                  - generic [ref=e5224]: "5"
+                  - generic [ref=e5225]: "]"
+                - generic [ref=e5227]:
+                  - generic [ref=e5228]: "6"
+                  - generic [ref=e5229]: "}"

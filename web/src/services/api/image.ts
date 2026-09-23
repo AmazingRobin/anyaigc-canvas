@@ -5,8 +5,9 @@ import { nanoid } from "nanoid";
 import { AZURE_IMAGE_MASK_MAX_BYTES, dataUrlToFile, validateAzureImageEditFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { workbenchText } from "@/lib/i18n-workbench";
-import { isGeminiImageModel, isGrokImageModel, mediaRequestError } from "@/lib/anyaigc-media-models";
-import { imageToDataUrl } from "@/services/image-storage";
+import { isGeminiImageModel, isGrokImageModel, isSeedreamImageModel, isSeedreamProImageModel, mediaRequestError, seedreamImageSize } from "@/lib/anyaigc-media-models";
+import { uploadImageReference } from "@/services/api/media-upload";
+import { getImageBlob, imageToDataUrl } from "@/services/image-storage";
 import type { ReferenceImage } from "@/types/image";
 
 export type AiTextMessage = {
@@ -231,7 +232,10 @@ function grokImageOptions(config: AiConfig, n: number) {
 
 function resolveImageDataUrl(item: Record<string, unknown>) {
     if (typeof item.b64_json === "string" && item.b64_json) {
-        return `data:image/png;base64,${item.b64_json}`;
+        const value = item.b64_json.trim();
+        // Seedream 等上游会直接返回完整 data URL，再套一层前缀会导致图片无法显示
+        if (/^data:image\//i.test(value)) return value;
+        return `data:image/png;base64,${value}`;
     }
     if (typeof item.url === "string" && item.url) {
         return item.url;
@@ -280,6 +284,11 @@ function withSystemPrompt(config: AiConfig, prompt: string) {
 
 function aiApiUrl(config: AiConfig, path: string) {
     return buildApiUrl(config.baseUrl, path);
+}
+
+function seedreamApiUrl(config: AiConfig) {
+    const origin = config.baseUrl.trim().replace(/\/+$/, "").replace(/\/v1$/i, "").replace(/\/api\/v3$/i, "").replace(/\/api\/plan\/v3$/i, "");
+    return `${origin}${isSeedreamProImageModel(config.model) ? "/api/v3" : "/v1"}/images/generations`;
 }
 
 function aiHeaders(config: AiConfig, contentType?: string) {
@@ -754,6 +763,48 @@ function parseGeminiImagePayload(payload: GeminiPayload) {
     return images;
 }
 
+async function requestSeedreamImages(config: AiConfig, prompt: string, references: ReferenceImage[], count: number, options?: RequestOptions) {
+    const size = seedreamImageSize(config.model, config.quality, config.size);
+    const image = references.length ? await seedreamReferenceImages(references, options) : undefined;
+    const requests = Array.from({ length: count }, () => requestSeedreamImagesOnce(config, prompt, size, image, options));
+    return (await Promise.all(requests)).flat();
+}
+
+async function requestSeedreamImagesOnce(config: AiConfig, prompt: string, size: string, image: string | string[] | undefined, options?: RequestOptions) {
+    const response = await axios.post<ImageApiResponse>(
+        seedreamApiUrl(config),
+        {
+            model: config.model,
+            prompt: withSystemPrompt(config, prompt),
+            size,
+            response_format: "b64_json",
+            output_format: IMAGE_OUTPUT_FORMAT,
+            watermark: false,
+            ...(image ? { image } : {}),
+        },
+        { headers: aiHeaders(config, "application/json"), signal: options?.signal },
+    );
+    return parseImagePayload(response.data);
+}
+
+async function seedreamReferenceImages(references: ReferenceImage[], options?: RequestOptions) {
+    const urls = await Promise.all(references.map((image) => seedreamReferenceUrl(image, options)));
+    return urls.length === 1 ? urls[0] : urls;
+}
+
+async function seedreamReferenceUrl(image: ReferenceImage, options?: RequestOptions) {
+    const directUrl = image.url || image.dataUrl || "";
+    if (isPublicHttpUrl(directUrl)) return directUrl;
+    if (directUrl.startsWith("data:")) return uploadImageReference(dataUrlToFile({ ...image, dataUrl: directUrl }), options?.signal);
+    const blob = image.storageKey ? await getImageBlob(image.storageKey) : await fetch(directUrl).then((response) => response.blob());
+    if (!blob) throw new Error(workbenchText("参考图读取失败，请重新添加", "Failed to read the image reference. Add it again."));
+    return uploadImageReference(new File([blob], image.name || "reference.png", { type: blob.type || image.type || "image/png" }), options?.signal);
+}
+
+function isPublicHttpUrl(value: string) {
+    return /^https?:\/\//i.test(value);
+}
+
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
@@ -776,6 +827,13 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },
             );
             return parseImagePayload(response.data);
+        } catch (error) {
+            throw new Error(readAxiosError(error, workbenchText("请求失败")));
+        }
+    }
+    if (isSeedreamImageModel(requestConfig.model)) {
+        try {
+            return await requestSeedreamImages(requestConfig, prompt, [], n, options);
         } catch (error) {
             throw new Error(readAxiosError(error, workbenchText("请求失败")));
         }
@@ -835,6 +893,14 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         try {
             const response = await axios.post<ImageApiResponse>(aiApiUrl(requestConfig, "/images/edits"), formData, { headers: aiHeaders(requestConfig), signal: options?.signal });
             return parseImagePayload(response.data);
+        } catch (error) {
+            throw new Error(readAxiosError(error, workbenchText("请求失败")));
+        }
+    }
+    if (isSeedreamImageModel(requestConfig.model)) {
+        if (mask) throw new Error(workbenchText("当前图片模型不支持蒙版编辑", "The selected image model does not support masked editing"));
+        try {
+            return await requestSeedreamImages(requestConfig, requestPrompt, references, n, options);
         } catch (error) {
             throw new Error(readAxiosError(error, workbenchText("请求失败")));
         }
