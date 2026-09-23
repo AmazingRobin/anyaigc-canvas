@@ -118,6 +118,40 @@ function readImageBitmap(file: Blob, label: string): Promise<{ width: number; he
     return readImageElement(file, label);
 }
 
+/**
+ * 项目内蒙版沿用 OpenAI 约定：透明处是要编辑的区域。
+ * MJ 的 maskBase64 相反，要求白色区域为重绘区域，所以这里把透明处转成白、其余转成黑。
+ */
+export function toMjMaskBase64(maskDataUrl: string) {
+    return new Promise<string>((resolve) => {
+        const image = new Image();
+        image.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = image.naturalWidth || 1;
+            canvas.height = image.naturalHeight || 1;
+            const context = canvas.getContext("2d");
+            if (!context) {
+                resolve(maskDataUrl);
+                return;
+            }
+            context.drawImage(image, 0, 0);
+            const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+            for (let index = 0; index < pixels.data.length; index += 4) {
+                const repaint = pixels.data[index + 3] === 0;
+                const value = repaint ? 255 : 0;
+                pixels.data[index] = value;
+                pixels.data[index + 1] = value;
+                pixels.data[index + 2] = value;
+                pixels.data[index + 3] = 255;
+            }
+            context.putImageData(pixels, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+        };
+        image.onerror = () => resolve(maskDataUrl);
+        image.src = maskDataUrl;
+    });
+}
+
 function readImageElement(file: Blob, label: string): Promise<{ width: number; height: number; source: CanvasImageSource; close?: () => void }> {
     return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);

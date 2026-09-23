@@ -29,6 +29,10 @@ type CanvasNodeHoverToolbarProps = {
     onDownload: (node: CanvasNodeData) => void;
     onSaveAsset: (node: CanvasNodeData) => void;
     onMaskEdit: (node: CanvasNodeData) => void;
+    onMjUpscale: (node: CanvasNodeData) => void;
+    onMjVariation: (node: CanvasNodeData) => void;
+    onMjZoom: (node: CanvasNodeData) => void;
+    onMjInpaint: (node: CanvasNodeData) => void;
     onCrop: (node: CanvasNodeData) => void;
     onSplit: (node: CanvasNodeData) => void;
     onUpscale: (node: CanvasNodeData) => void;
@@ -66,6 +70,10 @@ export function CanvasNodeHoverToolbar({
     onDownload,
     onSaveAsset,
     onMaskEdit,
+    onMjUpscale,
+    onMjVariation,
+    onMjZoom,
+    onMjInpaint,
     onCrop,
     onSplit,
     onUpscale,
@@ -126,7 +134,7 @@ export function CanvasNodeHoverToolbar({
         }
         copyText(prompt, canvasText("提示词已复制", "Prompt copied.", language));
     };
-    const imageTools = buildImageToolbarTools(node, { onUpload, onToggleFreeResize, onMaskEdit, onCrop, onSplit, onUpscale, onSuperResolve, onAngle, onViewImage, onCopyPrompt: copyImagePrompt, onReversePrompt });
+    const imageTools = buildImageToolbarTools(node, { onUpload, onToggleFreeResize, onMaskEdit, onCrop, onSplit, onUpscale, onSuperResolve, onAngle, onViewImage, onCopyPrompt: copyImagePrompt, onReversePrompt, onMjUpscale, onMjVariation, onMjZoom, onMjInpaint });
 
     function openImageToolSettings() {
         if (!node) return;

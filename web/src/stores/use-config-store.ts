@@ -53,6 +53,8 @@ export type AiConfig = {
     quality: string;
     size: string;
     count: string;
+    /** Midjourney 版本，追加为原生 `--v` 参数；`auto` 表示不追加、跟随账号默认 */
+    mjVersion: string;
     canvasImageCount: string;
     clearImageInputsAfterSubmit: string;
     clearVideoInputsAfterSubmit: string;
@@ -132,6 +134,7 @@ export const defaultConfig: AiConfig = {
     quality: "auto",
     size: "auto",
     count: "3",
+    mjVersion: "8",
     canvasImageCount: "3",
     clearImageInputsAfterSubmit: "false",
     clearVideoInputsAfterSubmit: "false",

@@ -9,14 +9,16 @@ import { saveAs } from "file-saver";
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
+import { requestMjImage, submitMjAction, submitMjCustomZoom, submitMjInpaint, submitMjZoom, waitForMjTask, findMjUpscaleButtons, findMjVariationButtons, type MjResult, type MjZoomAction } from "@/services/api/mj";
 import { recordDeletedSyncIds } from "@/services/app-sync";
 import { defaultConfig, type AiConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { resolveImageUrl, uploadImage, type UploadedImage } from "@/services/image-storage";
 import { resolveMediaUrl, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
-import { AZURE_IMAGE_EDIT_ACCEPT, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
+import { AZURE_IMAGE_EDIT_ACCEPT, getDataUrlByteSize, readImageMeta, toMjMaskBase64, validateAzureImageEditFile } from "@/lib/image-utils";
 import {
     isKling3TurboVideoModel,
+    isMjImageModel,
     mediaModelCapability,
     mediaRequestError,
     normalizeVideoOperation,
@@ -328,6 +330,7 @@ function InfiniteCanvasPage() {
     const [infoNodeId, setInfoNodeId] = useState<string | null>(null);
     const [cropNodeId, setCropNodeId] = useState<string | null>(null);
     const [maskEditNodeId, setMaskEditNodeId] = useState<string | null>(null);
+    const [mjInpaintNodeId, setMjInpaintNodeId] = useState<string | null>(null);
     const [splitNodeId, setSplitNodeId] = useState<string | null>(null);
     const [upscaleNodeId, setUpscaleNodeId] = useState<string | null>(null);
     const [superResolveNodeId, setSuperResolveNodeId] = useState<string | null>(null);
@@ -721,6 +724,7 @@ function InfiniteCanvasPage() {
     const infoNode = infoNodeId ? nodeById.get(infoNodeId) || null : null;
     const cropNode = cropNodeId ? nodeById.get(cropNodeId) || null : null;
     const maskEditNode = maskEditNodeId ? nodeById.get(maskEditNodeId) || null : null;
+    const mjInpaintNode = mjInpaintNodeId ? nodeById.get(mjInpaintNodeId) || null : null;
     const splitNode = splitNodeId ? nodeById.get(splitNodeId) || null : null;
     const upscaleNode = upscaleNodeId ? nodeById.get(upscaleNodeId) || null : null;
     const superResolveNode = superResolveNodeId ? nodeById.get(superResolveNodeId) || null : null;
@@ -1765,6 +1769,65 @@ function InfiniteCanvasPage() {
         [language, message],
     );
 
+    /**
+     * MJ 派生操作（放大 / 变体 / Zoom / 自定义 Zoom / 局部重绘）。
+     * 结果落在源节点右侧的新子节点，并把新任务的 taskId + buttons 继续写进 metadata，支持链式操作。
+     */
+    const runMjNodeAction = useCallback(
+        async (node: CanvasNodeData, title: string, submit: (source: MjResult, model: string, config: AiConfig) => Promise<{ id: string; model: string }>) => {
+            const taskId = node.metadata?.mjTaskId;
+            if (!node.metadata?.content || !taskId) return;
+            const generationConfig = { ...buildCanvasGenerationConfig(effectiveConfig, node, "image"), count: "1" };
+            const mjModel = node.metadata.mjModel || generationConfig.model || generationConfig.imageModel;
+            if (!isAiConfigReady(generationConfig, mjModel)) {
+                openConfigDialog(true);
+                return;
+            }
+            const source: MjResult = { imageUrl: node.metadata.content, taskId, buttons: node.metadata.mjButtons || [], promptEn: node.metadata.prompt };
+            const childId = nanoid();
+            setRunningNodeId(childId);
+            setNodes((prev) => [
+                ...prev,
+                {
+                    id: childId,
+                    type: CanvasNodeType.Image,
+                    title,
+                    position: { x: node.position.x + node.width + 96, y: node.position.y },
+                    width: node.width,
+                    height: node.height,
+                    metadata: { prompt: node.metadata?.prompt, status: NODE_STATUS_LOADING, model: mjModel },
+                },
+            ]);
+            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId }]);
+            setSelectedNodeIds(new Set([childId]));
+            setSelectedConnectionId(null);
+            setDialogNodeId(childId);
+            const controller = startGenerationRequest(childId, node.id, childId);
+            try {
+                const task = await submit(source, mjModel, generationConfig);
+                const result = await waitForMjTask(generationConfig, task, { signal: controller.signal });
+                const uploaded = await uploadImage(result.imageUrl);
+                const size = fitNodeSize(uploaded.width, uploaded.height, node.width, node.height);
+                setNodes((prev) =>
+                    prev.map((item) =>
+                        item.id === childId
+                            ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded), mjTaskId: result.taskId, mjButtons: result.buttons, mjModel } }
+                            : item,
+                    ),
+                );
+            } catch (error) {
+                if (isGenerationCanceled(error)) return;
+                const errorDetails = error instanceof Error ? error.message : canvasText("生成失败", "Generation failed", language);
+                message.error(errorDetails);
+                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, errorDetails } } : item)));
+            } finally {
+                finishGenerationRequest(childId, controller);
+                setRunningNodeId(null);
+            }
+        },
+        [effectiveConfig, language, message, openConfigDialog],
+    );
+
     const maskEditImageNode = useCallback(
         async (node: CanvasNodeData, payload: CanvasImageMaskEditPayload) => {
             if (!node.metadata?.content) return;
@@ -2197,9 +2260,16 @@ function InfiniteCanvasPage() {
                     await Promise.all(
                         targetIds.map(async (targetId) => {
                             try {
-                                const image = referenceImages.length
-                                    ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, undefined, { signal: controller.signal }).then((items) => items[0])
-                                    : await requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal }).then((items) => items[0]);
+                                // MJ 是异步任务模型，结果带派生操作按钮，需要单独走提交 + 轮询
+                                const mj = isMjImageModel(generationConfig.model || generationConfig.imageModel)
+                                    ? await requestMjImage({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, { signal: controller.signal })
+                                    : null;
+                                const image = mj
+                                    ? { dataUrl: mj.imageUrl }
+                                    : referenceImages.length
+                                      ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, undefined, { signal: controller.signal }).then((items) => items[0])
+                                      : await requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal }).then((items) => items[0]);
+                                const mjMetadata: CanvasNodeMetadata = mj ? { mjTaskId: mj.taskId, mjButtons: mj.buttons, mjModel: generationConfig.model || generationConfig.imageModel } : {};
                                 const uploaded = await uploadImage(image.dataUrl);
                                 const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
                                 setNodes((prev) => {
@@ -2213,7 +2283,7 @@ function InfiniteCanvasPage() {
                                                 position: { x: center.x - imageSize.width / 2, y: center.y - imageSize.height / 2 },
                                                 width: imageSize.width,
                                                 height: imageSize.height,
-                                                metadata: { ...node.metadata, ...imageMetadata(uploaded), primaryImageId: targetId },
+                                                metadata: { ...node.metadata, ...imageMetadata(uploaded), ...mjMetadata, primaryImageId: targetId },
                                             };
                                         if (node.id === targetId)
                                             return {
@@ -2221,7 +2291,7 @@ function InfiniteCanvasPage() {
                                                 position: { x: center.x - imageSize.width / 2, y: center.y - imageSize.height / 2 },
                                                 width: imageSize.width,
                                                 height: imageSize.height,
-                                                metadata: { ...node.metadata, ...imageMetadata(uploaded) },
+                                                metadata: { ...node.metadata, ...imageMetadata(uploaded), ...mjMetadata },
                                             };
                                         return node;
                                     });
@@ -2920,6 +2990,24 @@ function InfiniteCanvasPage() {
                     onDownload={downloadNodeImage}
                     onSaveAsset={(node) => void saveNodeAsset(node)}
                     onMaskEdit={(node) => setMaskEditNodeId(node.id)}
+                    onMjUpscale={(node) => {
+                        const button = findMjUpscaleButtons(node.metadata?.mjButtons)[0];
+                        if (!button) {
+                            message.warning(canvasText("当前图片没有可用的放大操作", "This image has no upscale action available.", language));
+                            return;
+                        }
+                        void runMjNodeAction(node, canvasText("MJ 放大", "MJ upscale", language), (source, mjModel, config) => submitMjAction(config, mjModel, source.taskId, button.customId));
+                    }}
+                    onMjVariation={(node) => {
+                        const button = findMjVariationButtons(node.metadata?.mjButtons)[0];
+                        if (!button) {
+                            message.warning(canvasText("当前图片没有可用的变体操作", "This image has no variation action available.", language));
+                            return;
+                        }
+                        void runMjNodeAction(node, canvasText("MJ 变体", "MJ variation", language), (source, mjModel, config) => submitMjAction(config, mjModel, source.taskId, button.customId));
+                    }}
+                    onMjZoom={(node) => void runMjNodeAction(node, canvasText("MJ 扩图", "MJ zoom out", language), (source, mjModel, config) => submitMjZoom(config, mjModel, source.taskId, "ZOOM_OUT_2X"))}
+                    onMjInpaint={(node) => setMjInpaintNodeId(node.id)}
                     onCrop={(node) => setCropNodeId(node.id)}
                     onSplit={(node) => setSplitNodeId(node.id)}
                     onUpscale={(node) => setUpscaleNodeId(node.id)}
@@ -2988,6 +3076,21 @@ function InfiniteCanvasPage() {
 
                 {maskEditNode?.metadata?.content ? (
                     <CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open={Boolean(maskEditNode)} onClose={() => setMaskEditNodeId(null)} onConfirm={(payload) => void maskEditImageNode(maskEditNode!, payload)} />
+                ) : null}
+
+                {mjInpaintNode?.metadata?.content ? (
+                    <CanvasNodeMaskEditDialog
+                        dataUrl={mjInpaintNode.metadata.content}
+                        open={Boolean(mjInpaintNode)}
+                        onClose={() => setMjInpaintNodeId(null)}
+                        onConfirm={(payload) => {
+                            const target = mjInpaintNode;
+                            setMjInpaintNodeId(null);
+                            void toMjMaskBase64(payload.maskDataUrl).then((maskBase64) =>
+                                runMjNodeAction(target, canvasText("MJ 重绘", "MJ inpaint", language), (source, mjModel, config) => submitMjInpaint(config, mjModel, source, { prompt: payload.prompt, maskBase64 })),
+                            );
+                        }}
+                    />
                 ) : null}
 
                 {splitNode?.metadata?.content ? <CanvasNodeSplitDialog dataUrl={splitNode.metadata.content} open={Boolean(splitNode)} onClose={() => setSplitNodeId(null)} onConfirm={(params) => void splitImageNode(splitNode!, params)} /> : null}

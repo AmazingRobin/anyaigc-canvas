@@ -1,4 +1,5 @@
 import type { VideoOperation } from "@/lib/anyaigc-media-models";
+import type { MjButton } from "@/services/api/mj";
 
 export type Position = {
     x: number;
@@ -54,6 +55,10 @@ export type CanvasNodeMetadata = {
     batchRootId?: string;
     batchChildIds?: string[];
     batchUsesReferenceImages?: boolean;
+    /** MJ 派生操作（放大/变体/Zoom/局部重绘）依赖的父任务信息 */
+    mjTaskId?: string;
+    mjButtons?: MjButton[];
+    mjModel?: string;
     primaryImageId?: string;
     imageBatchExpanded?: boolean;
     storageKey?: string;

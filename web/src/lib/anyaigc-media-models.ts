@@ -12,6 +12,8 @@ export const GROK_IMAGINE_IMAGE_MODEL = "grok-imagine-image";
 export const GROK_IMAGINE_IMAGE_PRO_MODEL = "grok-imagine-image-pro";
 export const DOUBAO_SEEDREAM_5_MODEL = "doubao-seedream-5-0-260128";
 export const DOUBAO_SEEDREAM_5_PRO_MODEL = "doubao-seedream-5-0-pro-260628";
+export const MJ_IMAGINE_MODEL = "mj_imagine";
+export const MJ_BLEND_MODEL = "mj_blend";
 export const GROK_IMAGINE_VIDEO_MODEL = "grok-imagine-video";
 export const GROK_IMAGINE_VIDEO_15_MODEL = "grok-imagine-video-1.5";
 export const KLING_MOTION_CONTROL_MODEL = "kling-motion-control";
@@ -34,6 +36,8 @@ export const ANYAIGC_MEDIA_MODEL_IDS = [
     GROK_IMAGINE_IMAGE_PRO_MODEL,
     DOUBAO_SEEDREAM_5_MODEL,
     DOUBAO_SEEDREAM_5_PRO_MODEL,
+    MJ_IMAGINE_MODEL,
+    MJ_BLEND_MODEL,
     GROK_IMAGINE_VIDEO_MODEL,
     GROK_IMAGINE_VIDEO_15_MODEL,
     KLING_MOTION_CONTROL_MODEL,
@@ -49,10 +53,11 @@ type MediaLimits = { min: number; max: number };
 
 type ImageCapability = {
     kind: "image";
-    invocation: "openai" | "gemini" | "seedream";
+    invocation: "openai" | "gemini" | "seedream" | "mj-imagine" | "mj-blend";
     allowsReferences: boolean;
     allowsMask: boolean;
     maxReferences: number;
+    minReferences?: number;
 };
 
 type VideoCapability = {
@@ -79,6 +84,8 @@ export const ANYAIGC_MEDIA_MODEL_CAPABILITIES: Record<AnyAIGCMediaModelId, Media
     [GROK_IMAGINE_IMAGE_PRO_MODEL]: { kind: "image", invocation: "openai", allowsReferences: true, allowsMask: false, maxReferences: 1 },
     [DOUBAO_SEEDREAM_5_MODEL]: { kind: "image", invocation: "seedream", allowsReferences: true, allowsMask: false, maxReferences: 14 },
     [DOUBAO_SEEDREAM_5_PRO_MODEL]: { kind: "image", invocation: "seedream", allowsReferences: true, allowsMask: false, maxReferences: 10 },
+    [MJ_IMAGINE_MODEL]: { kind: "image", invocation: "mj-imagine", allowsReferences: true, allowsMask: false, maxReferences: 5 },
+    [MJ_BLEND_MODEL]: { kind: "image", invocation: "mj-blend", allowsReferences: true, allowsMask: false, maxReferences: 5, minReferences: 2 },
     [GROK_IMAGINE_VIDEO_MODEL]: {
         kind: "video",
         invocation: "grok",
@@ -176,6 +183,19 @@ export function isSeedreamProImageModel(value: string) {
     return mediaModelName(value) === DOUBAO_SEEDREAM_5_PRO_MODEL;
 }
 
+export function isMjImageModel(value: string) {
+    const capability = mediaModelCapability(value);
+    return capability?.kind === "image" && (capability.invocation === "mj-imagine" || capability.invocation === "mj-blend");
+}
+
+export function isMjImagineModel(value: string) {
+    return mediaModelCapability(value)?.kind === "image" && mediaModelCapability(value)?.invocation === "mj-imagine";
+}
+
+export function isMjBlendModel(value: string) {
+    return mediaModelCapability(value)?.kind === "image" && mediaModelCapability(value)?.invocation === "mj-blend";
+}
+
 export function imageReferenceLimit(model: string) {
     const capability = mediaModelCapability(model);
     if (!capability || capability.kind !== "image" || !capability.allowsReferences) return 0;
@@ -215,6 +235,7 @@ export function mediaRequestError(model: string, state: MediaRequestState, langu
     if (capability.kind === "image") {
         if (images && !capability.allowsReferences) return mediaText("当前图片模型不支持参考图片", "The selected image model does not support reference images.", language);
         if (images > capability.maxReferences) return mediaText(`当前图片模型最多支持 ${capability.maxReferences} 张参考图`, `The selected image model supports up to ${capability.maxReferences} reference image${capability.maxReferences === 1 ? "" : "s"}.`, language);
+        if (capability.minReferences && images < capability.minReferences) return mediaText(`当前图片模型需要至少 ${capability.minReferences} 张参考图`, `The selected image model requires at least ${capability.minReferences} reference images.`, language);
         if (state.hasMask && !capability.allowsMask) return mediaText("当前图片模型不支持蒙版编辑", "The selected image model does not support masked editing.", language);
         return "";
     }
@@ -284,6 +305,62 @@ export function buildMiniMaxHailuoVideoPayload(input: { model: string; prompt: s
         prompt_optimizer: true,
         ...(input.operation === "image-to-video" ? { first_frame_image: imageUrls[0] } : input.operation === "first-last-frame" ? { first_frame_image: imageUrls[0], last_frame_image: imageUrls[1] } : {}),
     };
+}
+
+export const MJ_VERSION_OPTIONS = [
+    { value: "8", label: "v8" },
+    { value: "7", label: "v7" },
+    { value: "auto", label: "auto" },
+];
+
+/**
+ * MJ 用原生参数表达比例与版本，没有独立的 size / version 字段。
+ * 比例拼成 `--ar W:H`，版本拼成 `--v N`；prompt 里已写同名参数时以设置项为准，避免出现两个 `--v`。
+ */
+export function buildMjImaginePayload(input: { prompt: string; size: string; version?: string; base64Array?: string[] }) {
+    return {
+        prompt: buildMjPrompt(input.prompt, input.size, input.version),
+        botType: "MID_JOURNEY",
+        ...(input.base64Array?.length ? { base64Array: input.base64Array } : {}),
+    };
+}
+
+/** 供 imagine 与 modal（自定义 Zoom / 局部重绘）共用，保证版本参数一致。 */
+export function buildMjPrompt(prompt: string, size: string, version?: string) {
+    const ratio = mjAspectRatio(size);
+    // 先剥掉用户或上游已带的 --v / --version，再按设置项统一追加
+    let next = prompt.replace(/\s*--(?:v|version)\s+[\d.]+/gi, "").trim();
+    if (ratio && !/--ar\s/i.test(next)) next = `${next} --ar ${ratio}`.trim();
+    const normalizedVersion = (version || "").trim().toLowerCase();
+    if (normalizedVersion && normalizedVersion !== "auto") next = `${next} --v ${normalizedVersion}`.trim();
+    return next;
+}
+
+export function buildMjBlendPayload(input: { base64Array: string[]; size: string }) {
+    const ratio = mjAspectRatio(input.size) || "1:1";
+    const [width, height] = ratio.split(":").map(Number);
+    return {
+        base64Array: input.base64Array,
+        botType: "MID_JOURNEY",
+        dimensions: width > height ? "LANDSCAPE" : width < height ? "PORTRAIT" : "SQUARE",
+    };
+}
+
+/** 把 "1024x1536" / "9:16" / "auto" 归一成 MJ 能接受的 `W:H`；auto 返回空表示不加 --ar。 */
+function mjAspectRatio(size: string) {
+    const value = size.trim();
+    if (!value || value.toLowerCase() === "auto") return "";
+    if (/^\d+:\d+$/.test(value)) return value;
+    const dimensions = value.match(/^(\d+)x(\d+)$/i);
+    if (!dimensions) return "";
+    const width = Number(dimensions[1]);
+    const height = Number(dimensions[2]);
+    const divisor = greatestCommonDivisor(width, height);
+    return `${width / divisor}:${height / divisor}`;
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+    return b ? greatestCommonDivisor(b, a % b) : a || 1;
 }
 
 export function normalizeVideoDuration(value: number | string) {

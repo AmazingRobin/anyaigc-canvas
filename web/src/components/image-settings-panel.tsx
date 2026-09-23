@@ -3,6 +3,7 @@
 import { type ReactNode, useState } from "react";
 import { ConfigProvider, Switch } from "antd";
 
+import { MJ_VERSION_OPTIONS, isMjImageModel } from "@/lib/anyaigc-media-models";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { useI18n } from "@/lib/i18n";
 import { normalizeWorkbenchQuality, workbenchQualityLabel, workbenchText, type WorkbenchLanguage } from "@/lib/i18n-workbench";
@@ -35,7 +36,7 @@ const aspectOptions = [
 
 type ImageSettingsPanelProps = {
     config: AiConfig;
-    onConfigChange: (key: "quality" | "size" | "count", value: string) => void;
+    onConfigChange: (key: "quality" | "size" | "count" | "mjVersion", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     showQuality?: boolean;
@@ -88,6 +89,18 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         ))}
                     </div>
                 </div> : null}
+                {isMjImageModel(config.model || config.imageModel) ? (
+                    <div className="space-y-2.5">
+                        <SettingTitle color={theme.node.muted}>{workbenchText("MJ 版本", "MJ version", language)}</SettingTitle>
+                        <div className="grid grid-cols-4 gap-2.5">
+                            {MJ_VERSION_OPTIONS.map((item) => (
+                                <OptionPill key={item.value} selected={(config.mjVersion || "8") === item.value} theme={theme} onClick={() => onConfigChange("mjVersion", item.value)}>
+                                    {item.value === "auto" ? workbenchText("跟随账号", "Account", language) : <span data-no-i18n="true">{item.label}</span>}
+                                </OptionPill>
+                            ))}
+                        </div>
+                    </div>
+                ) : null}
                 {showSize ? <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-3">
                         <SettingTitle color={theme.node.muted}>{workbenchText("尺寸", "Size", language)}</SettingTitle>

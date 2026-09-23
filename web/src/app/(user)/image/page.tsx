@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Pin, Plus, RefreshCw, Search, Sparkles, Trash2, Upload, VideoIcon, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Brush, CheckSquare, ChevronDown, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Pin, Plus, RefreshCw, Search, Sparkles, Trash2, Upload, VideoIcon, Wand2, X, ZoomOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { App, Button, Drawer, Empty, Image, Input, Modal, Tooltip, Typography } from "antd";
+import { App, Button, Drawer, Empty, Image, Input, InputNumber, Modal, Popover, Tooltip, Typography } from "antd";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
 
@@ -14,19 +14,21 @@ import { SelectionBubble } from "@/components/selection-bubble";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
+import { CanvasNodeMaskEditDialog } from "@/app/(user)/canvas/components/canvas-node-mask-edit-dialog";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { useI18n } from "@/lib/i18n";
 import { normalizeWorkbenchQuality, workbenchCount, workbenchErrorText, workbenchFormatDate, workbenchPinLabel, workbenchQualityLabel, workbenchText, workbenchTrashExpiry, workbenchTrashLabel, type WorkbenchLanguage } from "@/lib/i18n-workbench";
-import { imageReferenceLimit as modelImageReferenceLimit, mediaModelCapability, mediaRequestError } from "@/lib/anyaigc-media-models";
+import { imageReferenceLimit as modelImageReferenceLimit, isMjBlendModel, isMjImageModel, mediaModelCapability, mediaRequestError } from "@/lib/anyaigc-media-models";
 import { matchesWorkbenchPromptSearch, sortWorkbenchHistoryItems } from "@/lib/workbench-history-search";
 import { createZip } from "@/lib/zip";
 import { fileExtensionFromMime, notifyWorkbenchTask, safeArchiveName, shouldSubmitPrompt, timestampForFileName } from "@/lib/workbench-preferences";
 import { modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
-import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSize, readImageMeta, validateAzureImageEditFile } from "@/lib/image-utils";
+import { AZURE_IMAGE_EDIT_ACCEPT, formatBytes, formatDuration, getDataUrlByteSize, readImageMeta, toMjMaskBase64, validateAzureImageEditFile } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
+import { findMjUpscaleButtons, findMjVariationButtons, findMjCustomZoomButton, findMjInpaintButton, requestMjImage, submitMjAction, submitMjCustomZoom, submitMjInpaint, submitMjZoom, waitForMjTask, type MjButton, type MjResult, type MjZoomAction } from "@/services/api/mj";
 import { isPromptOptimizerReady, optimizeGenerationPrompt } from "@/services/api/prompt";
 import { clearDeletedSyncIds, recordDeletedSyncIds } from "@/services/app-sync";
 import { deleteStoredImages, getImageBlob, resolveImageUrl, uploadImage } from "@/services/image-storage";
@@ -63,6 +65,10 @@ type GeneratedImage = {
     bytes: number;
     mimeType?: string;
     request?: GenerationRequestSnapshot;
+    /** MJ 派生操作（放大/变体/Zoom/局部重绘）依赖的父任务信息，随生成记录持久化 */
+    mjTaskId?: string;
+    mjButtons?: MjButton[];
+    mjModel?: string;
 };
 
 type GenerationResult = {
@@ -188,6 +194,7 @@ export default function ImagePage() {
     const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]);
     const [previewLog, setPreviewLog] = useState<GenerationLog | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [mjInpaintTarget, setMjInpaintTarget] = useState<GeneratedImage | null>(null);
     const [resultDeleteTargets, setResultDeleteTargets] = useState<GenerationResult[]>([]);
     const [trashOpen, setTrashOpen] = useState(false);
     const [trashItems, setTrashItems] = useState<WorkbenchTrashEntry<GenerationLog>[]>([]);
@@ -828,7 +835,8 @@ export default function ImagePage() {
 
     const buildRequestSnapshot = () => {
         const text = prompt.trim();
-        if (!text) {
+        // MJ Blend 只融合参考图，不需要提示词
+        if (!text && !isMjBlendModel(model)) {
             message.error(workbenchText("请输入生图提示词", undefined, language));
             return null;
         }
@@ -863,6 +871,13 @@ export default function ImagePage() {
     const runGenerationSlot = async (sessionId: string, resultId: string, snapshot: { text: string; config: AiConfig; references: ReferenceImage[] }, requestSnapshot: GenerationRequestSnapshot) => {
         const itemStartedAt = performance.now();
         try {
+            // MJ 是异步任务模型（提交 + 轮询），且结果带派生操作按钮，与同步图像接口分开处理
+            if (isMjImageModel(snapshot.config.model || snapshot.config.imageModel)) {
+                const mj = await requestMjImage(snapshot.config, snapshot.text, snapshot.references);
+                const nextImage = await buildMjGeneratedImage(mj, snapshot.config.model || snapshot.config.imageModel, itemStartedAt, requestSnapshot);
+                updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "success", image: nextImage }));
+                return nextImage;
+            }
             const result = snapshot.references.length ? await requestEdit(snapshot.config, snapshot.text, snapshot.references) : await requestGeneration(snapshot.config, snapshot.text);
             const image = result[0];
             if (!image) throw new Error(workbenchText("接口没有返回图片", undefined, language));
@@ -1000,6 +1015,60 @@ export default function ImagePage() {
             .finally(() => finishSessionRun(sessionId));
     };
 
+    /**
+     * MJ 派生操作（放大 / 变体 / Zoom / 自定义 Zoom / 局部重绘）。
+     * 这些操作必须基于父任务的 taskId 与 buttons，结果作为新结果追加进当前会话。
+     */
+    const runMjDerivedAction = (image: GeneratedImage, label: string, submit: (source: MjResult, model: string) => Promise<{ id: string; model: string }>) => {
+        if (!image.mjTaskId) return;
+        const mjModel = image.mjModel || model;
+        const source: MjResult = { imageUrl: image.dataUrl, taskId: image.mjTaskId, buttons: image.mjButtons || [], promptEn: image.request?.prompt };
+        const sessionId = activeSessionId;
+        const resultId = nanoid();
+        const requestSnapshot = buildImageRequestSnapshot({ text: `${label} · ${image.request?.prompt || ""}`.trim(), config: { ...effectiveConfig, model: mjModel, count: "1" }, references: [] }, mjModel, { count: "1" });
+        if (!logIdFromSession(sessionId)) setPreviewLog(null);
+        if (!runningBySession[sessionId]) setElapsedMs(0);
+        if (sessionsById[sessionId]) setSessionsById((value) => ({ ...value, [sessionId]: { ...value[sessionId], requestCount: (value[sessionId].requestCount || 0) + 1 } }));
+        updateSessionResults(sessionId, (value) => [...value, { id: resultId, status: "pending", request: requestSnapshot }]);
+        const startedAt = performance.now();
+        startSessionRun(sessionId, startedAt);
+        void (async () => {
+            const task = await submit(source, mjModel);
+            const result = await waitForMjTask(effectiveConfig, task);
+            return buildMjGeneratedImage(result, mjModel, startedAt, requestSnapshot);
+        })()
+            .then(
+                async (next) => {
+                    updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "success", image: next }));
+                    try {
+                        await persistRetriedImageResult(sessionId, resultId, [], next, { text: requestSnapshot.prompt, config: { ...effectiveConfig, model: mjModel, count: "1" }, references: [] }, requestSnapshot);
+                    } catch {
+                        message.warning(workbenchText("结果已生成，但本地保存失败，刷新后可能不会保留", undefined, language));
+                    }
+                    message.success(workbenchText("图片已生成", undefined, language));
+                },
+                async (error) => {
+                    const failure = error instanceof Error ? error.message : workbenchText("生成失败", undefined, language);
+                    updateSessionResults(sessionId, (value) => updateResultById(value, resultId, { status: "failed", error: failure, request: requestSnapshot }));
+                    message.error(workbenchErrorText(failure, language));
+                    try {
+                        await persistRetriedFailureResult(sessionId, resultId, [], error, performance.now() - startedAt, requestSnapshot);
+                    } catch {
+                        // 保存失败不影响界面上的失败提示
+                    }
+                },
+            )
+            .finally(() => finishSessionRun(sessionId));
+    };
+
+    const mjActionHandlers = {
+        onUpscale: (image: GeneratedImage, button: MjButton) => runMjDerivedAction(image, workbenchText("放大", "Upscale", language), (source, mjModel) => submitMjAction(effectiveConfig, mjModel, source.taskId, button.customId)),
+        onVariation: (image: GeneratedImage, button: MjButton) => runMjDerivedAction(image, workbenchText("变体", "Variation", language), (source, mjModel) => submitMjAction(effectiveConfig, mjModel, source.taskId, button.customId)),
+        onZoom: (image: GeneratedImage, action: MjZoomAction) => runMjDerivedAction(image, action === "ZOOM_OUT_2X" ? workbenchText("缩放 2x", "Zoom out 2x", language) : workbenchText("缩放 1.5x", "Zoom out 1.5x", language), (source, mjModel) => submitMjZoom(effectiveConfig, mjModel, source.taskId, action)),
+        onCustomZoom: (image: GeneratedImage, zoom: number) => runMjDerivedAction(image, workbenchText("自定义缩放", "Custom zoom", language), (source, mjModel) => submitMjCustomZoom(effectiveConfig, mjModel, source, { prompt: image.request?.prompt || "", zoom })),
+        onInpaint: (image: GeneratedImage, payload: { prompt: string; maskBase64: string }) => runMjDerivedAction(image, workbenchText("局部重绘", "Inpaint", language), (source, mjModel) => submitMjInpaint(effectiveConfig, mjModel, source, payload)),
+    };
+
     return (
         <div className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-background text-stone-900 dark:text-stone-100">
             <main className="grid h-full min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[460px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[520px_minmax(0,1fr)]">
@@ -1076,6 +1145,9 @@ export default function ImagePage() {
                                                     onDownload={downloadImage}
                                                     onSaveAsset={saveResultToAssets}
                                                     onDelete={() => requestDeleteResults([result])}
+                                                    mjHandlers={mjActionHandlers}
+                                                    onMjInpaintRequest={setMjInpaintTarget}
+                                                    language={language}
                                                 />
                                             ) : result.status === "failed" ? (
                                                 <FailedImageCard
@@ -1338,6 +1410,18 @@ export default function ImagePage() {
             </Drawer>
             <PromptSelectDialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen} onSelect={setPrompt} />
             <AssetPickerModal open={assetPickerOpen} defaultTab="my-assets" onInsert={(payload) => void insertPickedAsset(payload)} onClose={() => setAssetPickerOpen(false)} />
+            {mjInpaintTarget ? (
+                <CanvasNodeMaskEditDialog
+                    open
+                    dataUrl={mjInpaintTarget.dataUrl}
+                    onClose={() => setMjInpaintTarget(null)}
+                    onConfirm={(payload) => {
+                        const target = mjInpaintTarget;
+                        setMjInpaintTarget(null);
+                        void toMjMaskBase64(payload.maskDataUrl).then((maskBase64) => mjActionHandlers.onInpaint(target, { prompt: payload.prompt, maskBase64 }));
+                    }}
+                />
+            ) : null}
             <Modal title={workbenchText("删除生成结果", undefined, language)} open={Boolean(resultDeleteTargets.length)} onCancel={() => setResultDeleteTargets([])} onOk={() => void confirmDeleteResults()} okText={workbenchText("删除", "Delete", language)} okButtonProps={{ danger: true }} cancelText={workbenchText("取消", "Cancel", language)}>
                 {language === "en" ? `Delete the selected ${workbenchCount(resultDeleteTargets.length, "个生成结果", "generated result", "generated results", language)}? Successful images will also have their local media files removed.` : `确定删除选中的 ${resultDeleteTargets.length} 个生成结果吗？成功图片会同步删除本地媒体文件。`}
             </Modal>
@@ -1591,6 +1675,9 @@ function ResultImageCard({
     onDownload,
     onSaveAsset,
     onDelete,
+    mjHandlers,
+    onMjInpaintRequest,
+    language,
 }: {
     image: GeneratedImage;
     index: number;
@@ -1604,6 +1691,9 @@ function ResultImageCard({
     onDownload: (image: GeneratedImage, index: number) => void;
     onSaveAsset: (image: GeneratedImage, index: number) => void;
     onDelete: () => void;
+    mjHandlers?: MjActionHandlers;
+    onMjInpaintRequest: (image: GeneratedImage) => void;
+    language: WorkbenchLanguage;
 }) {
     const [resolvedUrl, setResolvedUrl] = useState(image.dataUrl);
     const [loadFailed, setLoadFailed] = useState(false);
@@ -1650,6 +1740,7 @@ function ResultImageCard({
                             <span>{formatDuration(image.durationMs)}</span>
                         </div>
                         <div className="pointer-events-auto flex items-center justify-end gap-1">
+                            {image.mjTaskId && mjHandlers ? <MjActionsPopover image={displayImage} handlers={mjHandlers} onInpaintRequest={onMjInpaintRequest} language={language} /> : null}
                             <Tooltip title={savedToAsset ? "已加入我的素材，点击取消" : "添加到素材"}>
                                 <Button
                                     type="text"
@@ -1691,6 +1782,95 @@ function ResultImageCard({
                 </div>
             )}
         </div>
+    );
+}
+
+export type MjActionHandlers = {
+    onUpscale: (image: GeneratedImage, button: MjButton) => void;
+    onVariation: (image: GeneratedImage, button: MjButton) => void;
+    onZoom: (image: GeneratedImage, action: MjZoomAction) => void;
+    onCustomZoom: (image: GeneratedImage, zoom: number) => void;
+    onInpaint: (image: GeneratedImage, payload: { prompt: string; maskBase64: string }) => void;
+};
+
+/**
+ * MJ 结果图的派生操作入口。按钮按该任务返回的 buttons 动态渲染，
+ * 因为并非每张 MJ 图都支持全部操作（例如已放大的图没有 U1-U4）。
+ */
+function MjActionsPopover({ image, handlers, onInpaintRequest, language }: { image: GeneratedImage; handlers: MjActionHandlers; onInpaintRequest: (image: GeneratedImage) => void; language: WorkbenchLanguage }) {
+    const [open, setOpen] = useState(false);
+    const [zoom, setZoom] = useState(1.8);
+    const upscales = findMjUpscaleButtons(image.mjButtons);
+    const variations = findMjVariationButtons(image.mjButtons);
+    const supportsCustomZoom = Boolean(findMjCustomZoomButton(image.mjButtons));
+    const supportsInpaint = Boolean(findMjInpaintButton(image.mjButtons));
+    const run = (action: () => void) => {
+        setOpen(false);
+        action();
+    };
+
+    const content = (
+        <div className="w-[248px] space-y-3">
+            {upscales.length ? (
+                <div className="space-y-1.5">
+                    <div className="text-xs font-medium opacity-60">{workbenchText("放大", "Upscale", language)}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {upscales.map((button) => (
+                            <Button key={button.customId} size="small" onClick={() => run(() => handlers.onUpscale(image, button))}>
+                                <span data-no-i18n="true">{button.label || "U"}</span>
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+            {variations.length ? (
+                <div className="space-y-1.5">
+                    <div className="text-xs font-medium opacity-60">{workbenchText("变体", "Variation", language)}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {variations.map((button) => (
+                            <Button key={button.customId} size="small" onClick={() => run(() => handlers.onVariation(image, button))}>
+                                <span data-no-i18n="true">{button.label || "V"}</span>
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+            <div className="space-y-1.5">
+                <div className="text-xs font-medium opacity-60">{workbenchText("扩展画面", "Zoom out", language)}</div>
+                <div className="flex flex-wrap gap-1.5">
+                    <Button size="small" icon={<ZoomOut className="size-3.5" />} onClick={() => run(() => handlers.onZoom(image, "ZOOM_OUT_1_5X"))}>
+                        1.5x
+                    </Button>
+                    <Button size="small" icon={<ZoomOut className="size-3.5" />} onClick={() => run(() => handlers.onZoom(image, "ZOOM_OUT_2X"))}>
+                        2x
+                    </Button>
+                </div>
+            </div>
+            {supportsCustomZoom ? (
+                <div className="space-y-1.5">
+                    <div className="text-xs font-medium opacity-60">{workbenchText("自定义缩放倍数", "Custom zoom factor", language)}</div>
+                    <div className="flex items-center gap-1.5">
+                        <InputNumber size="small" min={1} max={2} step={0.1} value={zoom} onChange={(value) => setZoom(Number(value) || 1.8)} className="!w-20" aria-label={workbenchText("缩放倍数", "Zoom factor", language)} />
+                        <Button size="small" type="primary" onClick={() => run(() => handlers.onCustomZoom(image, zoom))}>
+                            {workbenchText("应用", "Apply", language)}
+                        </Button>
+                    </div>
+                </div>
+            ) : null}
+            {supportsInpaint ? (
+                <Button size="small" block icon={<Brush className="size-3.5" />} onClick={() => run(() => onInpaintRequest(image))}>
+                    {workbenchText("局部重绘", "Inpaint", language)}
+                </Button>
+            ) : null}
+        </div>
+    );
+
+    return (
+        <Popover content={content} trigger="click" open={open} onOpenChange={setOpen} placement="topRight" title={workbenchText("Midjourney 操作", "Midjourney actions", language)}>
+            <Tooltip title={workbenchText("Midjourney 操作", "Midjourney actions", language)}>
+                <Button type="text" aria-label={workbenchText("Midjourney 操作", "Midjourney actions", language)} className={RESULT_OVERLAY_ICON_BUTTON_CLASS} size="small" icon={<Wand2 className="size-3.5" />} />
+            </Tooltip>
+        </Popover>
     );
 }
 
@@ -2328,6 +2508,27 @@ function normalizeGeneratedImageMetadata(item: Partial<GeneratedImage>, index: n
         bytes: item.bytes || 0,
         mimeType: item.mimeType,
         request: normalizeImageRequestSnapshot(item.request, fallbackRequest),
+        mjTaskId: item.mjTaskId,
+        mjButtons: item.mjButtons,
+        mjModel: item.mjModel,
+    };
+}
+
+/** MJ 返回远端 imageUrl 与后续可执行按钮；派生操作靠 taskId + buttons 继续下发。 */
+async function buildMjGeneratedImage(mj: MjResult, model: string, startedAt: number, request: GenerationRequestSnapshot): Promise<GeneratedImage> {
+    const meta = await readImageMeta(mj.imageUrl);
+    return {
+        id: nanoid(),
+        dataUrl: mj.imageUrl,
+        durationMs: performance.now() - startedAt,
+        width: meta.width,
+        height: meta.height,
+        bytes: 0,
+        mimeType: meta.mimeType,
+        request,
+        mjTaskId: mj.taskId,
+        mjButtons: mj.buttons,
+        mjModel: model,
     };
 }
 

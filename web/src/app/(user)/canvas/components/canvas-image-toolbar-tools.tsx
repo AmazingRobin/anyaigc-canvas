@@ -1,14 +1,18 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, FileText, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, Upload, ZoomIn } from "lucide-react";
+import { Brush, Camera, Copy, FileText, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, Upload, Wand2, ZoomIn, ZoomOut } from "lucide-react";
 
 import type { CanvasNodeData } from "../types";
 
-export type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "maskEdit" | "crop" | "split" | "upscale" | "superResolve" | "angle" | "view";
+export type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "maskEdit" | "crop" | "split" | "upscale" | "superResolve" | "angle" | "view" | "mjUpscale" | "mjVariation" | "mjZoom" | "mjInpaint";
 export type ImageQuickToolId = "info" | "delete" | "saveAsset" | "download" | "edit" | ImageNodeActionToolId;
 
 export type ImageToolHandlers = {
+    onMjUpscale: (node: CanvasNodeData) => void;
+    onMjVariation: (node: CanvasNodeData) => void;
+    onMjZoom: (node: CanvasNodeData) => void;
+    onMjInpaint: (node: CanvasNodeData) => void;
     onUpload: (node: CanvasNodeData) => void;
     onToggleFreeResize: (node: CanvasNodeData) => void;
     onMaskEdit: (node: CanvasNodeData) => void;
@@ -30,6 +34,8 @@ export type ImageToolDefinition = {
     title: string | ((node: CanvasNodeData) => string);
     icon: (node: CanvasNodeData) => ReactNode;
     active?: (node: CanvasNodeData) => boolean;
+    /** 返回 false 时该工具不出现在工具栏，用于只对特定模型生效的操作 */
+    available?: (node: CanvasNodeData) => boolean;
     run: (node: CanvasNodeData, handlers: ImageToolHandlers) => void;
 };
 
@@ -135,6 +141,46 @@ export const imageToolDefinitions: ImageToolDefinition[] = [
         run: (node, handlers) => handlers.onAngle(node),
     },
     {
+        id: "mjUpscale",
+        defaultVisible: true,
+        panelLabel: "MJ 放大",
+        label: "MJ 放大",
+        title: "Midjourney 放大（U）",
+        icon: () => <ZoomIn className="size-4" />,
+        available: (node) => Boolean(node.metadata?.mjTaskId),
+        run: (node, handlers) => handlers.onMjUpscale(node),
+    },
+    {
+        id: "mjVariation",
+        defaultVisible: true,
+        panelLabel: "MJ 变体",
+        label: "MJ 变体",
+        title: "Midjourney 变体（V）",
+        icon: () => <Wand2 className="size-4" />,
+        available: (node) => Boolean(node.metadata?.mjTaskId),
+        run: (node, handlers) => handlers.onMjVariation(node),
+    },
+    {
+        id: "mjZoom",
+        defaultVisible: true,
+        panelLabel: "MJ 扩图",
+        label: "MJ 扩图",
+        title: "Midjourney 扩展画面（Zoom Out 2x）",
+        icon: () => <ZoomOut className="size-4" />,
+        available: (node) => Boolean(node.metadata?.mjTaskId),
+        run: (node, handlers) => handlers.onMjZoom(node),
+    },
+    {
+        id: "mjInpaint",
+        defaultVisible: true,
+        panelLabel: "MJ 重绘",
+        label: "MJ 重绘",
+        title: "Midjourney 局部重绘（Vary Region）",
+        icon: () => <Brush className="size-4" />,
+        available: (node) => Boolean(node.metadata?.mjTaskId),
+        run: (node, handlers) => handlers.onMjInpaint(node),
+    },
+    {
         id: "view",
         defaultVisible: true,
         panelLabel: "查看大图",
@@ -148,14 +194,16 @@ export const imageToolDefinitions: ImageToolDefinition[] = [
 export const defaultImageQuickToolIds: ImageQuickToolId[] = [...defaultBaseToolIds, ...imageToolDefinitions.filter((tool) => tool.defaultVisible).map((tool) => tool.id)];
 
 export function buildImageToolbarTools(node: CanvasNodeData, handlers: ImageToolHandlers) {
-    return imageToolDefinitions.map((tool) => ({
-        id: tool.id,
-        label: resolveToolText(tool.label, node),
-        title: resolveToolText(tool.title, node),
-        icon: tool.icon(node),
-        active: tool.active?.(node),
-        onClick: () => tool.run(node, handlers),
-    }));
+    return imageToolDefinitions
+        .filter((tool) => tool.available?.(node) !== false)
+        .map((tool) => ({
+            id: tool.id,
+            label: resolveToolText(tool.label, node),
+            title: resolveToolText(tool.title, node),
+            icon: tool.icon(node),
+            active: tool.active?.(node),
+            onClick: () => tool.run(node, handlers),
+        }));
 }
 
 export function normalizeImageQuickToolIds(value: unknown[]) {
